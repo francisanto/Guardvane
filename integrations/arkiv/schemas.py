@@ -53,3 +53,4 @@ class ArkivSyncStatus(BaseModel):
     last_sync_timestamp: Optional[str] = None
     mode: str = "mock_interface"
     notice: str = "Arkiv Phase 1 interface initialized. Live blockchain transactions disabled."
+
