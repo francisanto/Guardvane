@@ -44,3 +44,4 @@ class SwarmStatus(BaseModel):
     postage_batch_configured: bool = False
     mode: str = "mock_interface"
     notice: str = "Swarm Phase 1 interface initialized. Reports stored with simulated bzz:// references."
+
