@@ -19,12 +19,10 @@ const STATE = {
     guestMode: false
   },
   user: {
-    id: 'francis',
-    name: 'Francis',
-    email: 'francis@guardvane.ai',
-    org: "Francis's Dev Workspace",
-    role: 'customer', // 'customer' or 'provider'
-    activeProviderId: 'prov_elena'
+    id: null,
+    name: 'Account',
+    role: 'customer',
+    activeProviderId: null
   },
   filters: {
     search: '',
@@ -54,8 +52,8 @@ const STATE = {
 async function apiFetch(endpoint, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
-    'X-User-Id': STATE.user.role === 'provider' ? STATE.user.activeProviderId : STATE.user.id,
-    'X-User-Role': STATE.user.role,
+    'X-User-Id': STATE.user.id || STATE.auth.walletAddress || 'guest',
+    'X-User-Role': STATE.user.role || 'customer',
     ...(options.headers || {})
   };
 
@@ -241,6 +239,15 @@ async function loadInitialData() {
     STATE.data.reports = reports;
     STATE.data.prompts = prompts;
     STATE.data.integrations = integrations;
+
+    // Auto-detect registered provider profile for the connected wallet
+    if (STATE.auth.walletAddress && Array.isArray(providers)) {
+      const myProv = providers.find(p => p.wallet_address && p.wallet_address.toLowerCase() === STATE.auth.walletAddress.toLowerCase());
+      if (myProv) {
+        STATE.user.activeProviderId = myProv.id;
+        STATE.user.role = 'provider';
+      }
+    }
   } catch (err) {
     console.error("Failed to load Guardvane marketplace data", err);
   } finally {
@@ -423,7 +430,15 @@ function renderLoginPage() {
 // ---------------------------------------------------------------------------
 
 function renderSidebar() {
-  const isSpecialist = STATE.user.role === 'provider';
+  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const myProvider = STATE.data.providers.find(p =>
+    (p.wallet_address && p.wallet_address.toLowerCase() === userWallet) ||
+    p.id === STATE.user.activeProviderId
+  );
+  const isRegisteredProvider = !!myProvider;
+  const shortAddr = STATE.auth.walletAddress
+    ? (STATE.auth.walletAddress.substring(0, 6) + '...' + STATE.auth.walletAddress.substring(STATE.auth.walletAddress.length - 4))
+    : (STATE.user.name || 'Account');
 
   return `
     <aside class="w-64 bg-[#FAFBF9] border-r border-[#E2E9E3] flex flex-col justify-between shrink-0 select-none">
@@ -503,7 +518,7 @@ function renderSidebar() {
               </svg>
               <span>Provider Workspace</span>
             </div>
-            ${isSpecialist ? '<span class="text-[10px] bg-[#176B45] text-white px-1.5 py-0.5 rounded font-mono">ACTIVE</span>' : ''}
+            ${isRegisteredProvider ? '<span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">PROVIDER</span>' : ''}
           </button>
         </div>
 
@@ -530,27 +545,16 @@ function renderSidebar() {
 
       <!-- Bottom User Profile -->
       <div class="p-4 border-t border-[#E2E9E3] bg-[#F7F9F7]/80">
-        <!-- Unified Role Indicator & Toggle -->
-        <div class="mb-2.5 px-2 py-1 bg-[#EAF5EE] rounded-md flex items-center justify-between text-[11.5px]">
-          <span class="text-[#176B45] font-semibold">Active Mode:</span>
-          <div class="flex gap-1">
-            <button onclick="switchUserRole('customer')" class="px-2 py-0.5 rounded transition-smooth ${STATE.user.role === 'customer' ? 'bg-[#176B45] text-white font-medium' : 'text-[#445246] hover:text-[#176B45]'}">
-              Customer
-            </button>
-            <button onclick="switchUserRole('provider', 'prov_elena')" class="px-2 py-0.5 rounded transition-smooth ${STATE.user.role === 'provider' ? 'bg-[#176B45] text-white font-medium' : 'text-[#445246] hover:text-[#176B45]'}">
-              Provider
-            </button>
-          </div>
-        </div>
-
         <!-- User Identity Row -->
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-[#E2E9E3] border border-[#CBD7CE] flex items-center justify-center font-semibold text-[#176B45] text-xs">
-            F
+          <div class="w-8 h-8 rounded-full bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] shrink-0">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
           </div>
           <div class="flex flex-col min-w-0">
-            <span class="text-[13px] font-semibold text-[#202820] truncate">${STATE.user.name}</span>
-            <span class="text-[11px] text-[#627566] truncate">${STATE.user.role === 'provider' ? 'Registered Provider' : 'Developer Account'}</span>
+            <span class="text-[13px] font-mono font-medium text-[#202820] truncate">${shortAddr}</span>
+            <span class="text-[11px] text-[#627566] truncate">${isRegisteredProvider ? 'Registered Provider' : 'Connected Wallet'}</span>
           </div>
         </div>
       </div>
@@ -625,11 +629,6 @@ function renderTopbar() {
           </div>
         ` : ''}
 
-        <!-- Active Role Badge -->
-        <span class="px-2.5 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider bg-[#F0F5F1] text-[#445246] border border-[#E2E9E3]">
-          ${STATE.user.role === 'provider' ? 'Provider' : 'Customer'}
-        </span>
-
         <!-- Logout Button -->
         <button
           onclick="handleLogout()"
@@ -692,12 +691,18 @@ function renderDashboardView() {
 
   const recommendedProviders = STATE.data.providers.slice(0, 3);
   const recentReports = STATE.data.reports.slice(0, 3);
+  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const myProvider = STATE.data.providers.find(p =>
+    (p.wallet_address && p.wallet_address.toLowerCase() === userWallet) ||
+    p.id === STATE.user.activeProviderId
+  );
+  const displayName = myProvider?.display_name || STATE.user.name || 'Developer';
 
   return `
     <!-- Top Greeting Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Good morning, ${STATE.user.name}</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Good morning, ${escapeHtml(displayName)}</h1>
         <p class="text-[14px] text-[#627566] mt-0.5">AI Security Platform — Manage prompt reviews, run automated vulnerability checks, and explore verified providers.</p>
       </div>
       <div class="flex items-center gap-3">
@@ -1090,8 +1095,9 @@ function renderBecomeProviderView() {
             </div>
 
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Wallet Address (Optional)</label>
-              <input type="text" name="wallet_address" placeholder="e.g. 0.0.7819234 or 0x..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] font-mono focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[#202820] mb-1">Wallet Address</label>
+              <input type="text" name="wallet_address" value="${escapeForAttr(STATE.auth.walletAddress || '')}" placeholder="0x..." class="w-full px-3 py-2 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[13.5px] font-mono focus:outline-none focus:border-[#176B45]" />
+              <p class="text-[11px] text-[#627566] mt-1">Audit requests and review orders from clients will be linked to this wallet.</p>
             </div>
           </div>
 
@@ -1188,9 +1194,35 @@ function renderBecomeProviderView() {
 // ---------------------------------------------------------------------------
 
 function renderProviderWorkspaceView() {
-  const provider = STATE.data.providers.find(p => p.id === STATE.user.activeProviderId) || STATE.data.providers[2];
-  
-  const assignedOrders = STATE.data.orders.filter(o => o.provider_id === provider.id);
+  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const myProvider = STATE.data.providers.find(p =>
+    (p.wallet_address && p.wallet_address.toLowerCase() === userWallet) ||
+    p.id === STATE.user.activeProviderId
+  );
+
+  if (!myProvider) {
+    return `
+      <div class="max-w-2xl mx-auto py-16 text-center space-y-4">
+        <div class="w-14 h-14 mx-auto rounded-2xl bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45]">
+          <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold text-[#202820]">Provider Registration Required</h2>
+        <p class="text-[14px] text-[#627566] max-w-md mx-auto leading-relaxed">
+          You are not currently registered as a provider. Register your security profile to offer prompt audits, receive scan requests from clients, and review submissions.
+        </p>
+        <div class="pt-2">
+          <button onclick="navigateTo('become_provider')" class="px-5 py-2.5 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-2">
+            Register as Provider →
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  const provider = myProvider;
+  const assignedOrders = STATE.data.orders.filter(o => o.provider_id === provider.id || (provider.wallet_address && o.provider_wallet === provider.wallet_address));
   const incoming = assignedOrders.filter(o => o.status === 'requested');
   const inProgress = assignedOrders.filter(o => o.status === 'accepted' || o.status === 'in_progress');
   const completed = assignedOrders.filter(o => o.status === 'completed' || o.status === 'delivered');
@@ -1913,45 +1945,43 @@ function renderReportViewerModal() {
 function renderWalletModal() {
   const isConnected = !!STATE.auth.walletAddress;
   const address = STATE.auth.walletAddress || 'Not Connected';
-  const roles = (STATE.auth.user && STATE.auth.user.roles) ? STATE.auth.user.roles.join(', ') : (STATE.user.role || 'customer');
+  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const myProvider = STATE.data.providers.find(p =>
+    (p.wallet_address && p.wallet_address.toLowerCase() === userWallet) ||
+    p.id === STATE.user.activeProviderId
+  );
 
   return `
     <div class="p-6 space-y-4 select-none">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Web3 Wallet & Authentication</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Connected Wallet</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
       <div class="space-y-4 text-[13px]">
-        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
+        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-3">
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Authentication Status:</span>
-            <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${isConnected ? 'bg-[#EAF5EE] text-[#176B45]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-              ${isConnected ? 'SIWE Verified & Active' : 'Disconnected'}
+            <span class="text-[#627566]">Status:</span>
+            <span class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${isConnected ? 'bg-[#EAF5EE] text-[#176B45]' : 'bg-[#FEF3C7] text-[#92400E]'}">
+              <span class="w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#176B45]' : 'bg-[#D97706]'}"></span>
+              ${isConnected ? 'Connected via MetaMask' : 'Disconnected'}
             </span>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Wallet Address:</span>
-            <code class="font-mono text-xs text-[#202820] bg-white px-2 py-0.5 rounded border border-[#E2E9E3] truncate max-w-[220px]" title="${escapeForAttr(address)}">
+            <span class="text-[#627566]">Address:</span>
+            <code class="font-mono text-xs text-[#202820] bg-white px-2 py-1 rounded border border-[#E2E9E3] truncate max-w-[240px]" title="${escapeForAttr(address)}">
               ${escapeHtml(address)}
             </code>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Active Roles:</span>
-            <span class="font-medium text-[#202820] uppercase text-xs tracking-wider">${escapeHtml(roles)}</span>
-          </div>
-
-          <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Vault Database:</span>
-            <span class="font-medium text-[#176B45] text-xs">PostgreSQL (Multi-Role Isolated)</span>
+            <span class="text-[#627566]">Provider Profile:</span>
+            <span class="font-medium text-[#202820] text-xs">
+              ${myProvider ? `${escapeHtml(myProvider.display_name)} (Registered)` : 'Not registered'}
+            </span>
           </div>
         </div>
-
-        <p class="text-[12px] text-[#627566]">
-          Your identity is verified on-chain via EIP-4361 Sign-In with Ethereum (SIWE). Private prompts, security orders, and review deliverables are cryptographically partitioned to your wallet account.
-        </p>
 
         <div class="pt-3 border-t border-[#E2E9E3] flex justify-between items-center">
           ${isConnected ? `
@@ -1974,39 +2004,81 @@ function renderWalletModal() {
 }
 
 function renderSettingsModal() {
+  const userWallet = STATE.auth.walletAddress || '';
+  const myProvider = STATE.data.providers.find(p =>
+    (p.wallet_address && userWallet && p.wallet_address.toLowerCase() === userWallet.toLowerCase()) ||
+    p.id === STATE.user.activeProviderId
+  );
+
   return `
-    <div class="p-6 space-y-4">
+    <div class="p-6 space-y-5">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Platform Settings</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Account & Settings</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
       <div class="space-y-4 text-[13px]">
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Developer Account</label>
-          <input type="text" disabled value="${STATE.user.name} (${STATE.user.email})" class="w-full px-3 py-2 bg-[#F7F9F7] border border-[#E2E9E3] rounded-md text-[13px] text-[#627566]" />
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Connected Wallet Address</label>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              readonly
+              value="${escapeForAttr(userWallet || 'Not Connected')}"
+              class="w-full px-3 py-2 bg-[#F7F9F7] border border-[#E2E9E3] rounded-md font-mono text-xs text-[#202820] select-all"
+            />
+            <button
+              onclick="navigator.clipboard.writeText('${escapeForAttr(userWallet)}'); alert('Wallet address copied to clipboard!');"
+              class="px-3 py-2 bg-[#FFFFFF] border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-xs font-medium rounded-md whitespace-nowrap transition-smooth shadow-xs"
+            >
+              Copy
+            </button>
+          </div>
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Default Analysis Mode</label>
-          <select class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]">
-            <option value="both" selected>Both (Prompt Security + Application Risks)</option>
-            <option value="prompt_security">Prompt Security Only</option>
-            <option value="application_risk">Application Risk Only</option>
-          </select>
-        </div>
-
-        <div class="flex items-center justify-between p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md">
-          <div>
-            <div class="font-medium text-[#202820]">Sensitive Data Sanitization</div>
-            <div class="text-[11.5px] text-[#627566]">Mask API keys and database credentials prior to external inference.</div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Provider Status</label>
+          <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md flex items-center justify-between">
+            <div class="space-y-0.5">
+              <div class="font-medium text-[#202820] text-[13px]">
+                ${myProvider ? escapeHtml(myProvider.display_name) : 'Standard Account'}
+              </div>
+              <div class="text-[11.5px] text-[#627566]">
+                ${myProvider ? `${escapeHtml(myProvider.title)} • ${myProvider.provider_type === 'automated' ? 'Automated AI Provider' : 'Human Security Provider'}` : 'Not registered as a security provider'}
+              </div>
+            </div>
+            ${myProvider ? `
+              <button onclick="closeModal(); navigateTo('provider_workspace');" class="px-3 py-1.5 bg-[#EAF5EE] text-[#176B45] hover:bg-[#D7EFE0] rounded text-xs font-semibold transition-smooth">
+                Workspace →
+              </button>
+            ` : `
+              <button onclick="closeModal(); navigateTo('become_provider');" class="px-3 py-1.5 bg-[#176B45] text-white hover:bg-[#115638] rounded text-xs font-medium transition-smooth">
+                Register →
+              </button>
+            `}
           </div>
-          <input type="checkbox" checked class="rounded text-[#176B45] focus:ring-[#176B45]" />
         </div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex justify-end">
-          <button onclick="closeModal()" class="px-4 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md">
-            Save Preferences
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Session Security</label>
+          <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md space-y-1 text-[12px] text-[#627566]">
+            <div class="flex items-center justify-between text-[#202820]">
+              <span>Authentication Standard</span>
+              <span class="font-mono text-[11px] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">EIP-4361 (SIWE)</span>
+            </div>
+            <div class="flex items-center justify-between text-[#202820] pt-1">
+              <span>Session Storage</span>
+              <span class="font-mono text-[11px] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">Secure HttpOnly Cookie</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-[#E2E9E3] flex justify-between items-center">
+          <button onclick="closeModal(); handleLogout();" class="text-xs text-[#991B1B] hover:underline font-medium">
+            Sign Out
+          </button>
+          <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth">
+            Close
           </button>
         </div>
       </div>

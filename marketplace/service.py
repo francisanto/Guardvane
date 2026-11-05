@@ -619,13 +619,17 @@ class MarketplaceService:
         params: List[Any] = []
 
         # Ownership enforcement:
-        # Customers only see their own orders; Specialists only see orders assigned to them!
+        # If role is 'provider', view assigned work; if 'customer', view submitted requests.
+        # If role is None, return all orders involving this user (both submitted and assigned).
         if role == "provider":
             sql += " AND (provider_id = ? OR provider_id IN (SELECT id FROM providers WHERE wallet_address = ?))"
             params.extend([user_id, user_id])
-        else:
+        elif role == "customer":
             sql += " AND customer_id = ?"
             params.append(user_id)
+        else:
+            sql += " AND (customer_id = ? OR provider_id = ? OR provider_id IN (SELECT id FROM providers WHERE wallet_address = ?))"
+            params.extend([user_id, user_id, user_id])
 
         if status:
             sql += " AND status = ?"

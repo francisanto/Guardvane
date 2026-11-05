@@ -224,7 +224,7 @@ def list_orders(
     List service orders. Enforces ownership:
     Customers view their submitted requests; Providers view assigned work in their workspace.
     """
-    effective_role = role.lower() if role else auth.get("role", "customer")
+    effective_role = role.lower() if role else None
     return marketplace_service.list_orders(
         user_id=auth["user_id"],
         role=effective_role,
