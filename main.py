@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 from models.schemas import (
     PromptRequest,
@@ -31,6 +31,7 @@ from analyzers.model_comparison import (
 )
 from auth.router import router as auth_router
 from marketplace.router import router as marketplace_router
+from db.database import check_db_health
 
 app = FastAPI(
     title="Guardvane AI",
@@ -54,7 +55,25 @@ def home():
         "message": "PromptShield AI backend is running",
         "dashboard_ui": "/dashboard",
         "marketplace_api": "/marketplace/services",
+        "health": "/health",
         "docs": "/docs"
+    }
+
+
+@app.get("/health/db")
+def health_db():
+    health = check_db_health()
+    status_code = 200 if health["database_reachable"] else 503
+    return JSONResponse(status_code=status_code, content=health)
+
+
+@app.get("/health")
+def health_summary():
+    db_health = check_db_health()
+    return {
+        "status": "healthy" if db_health["database_reachable"] else "degraded",
+        "service": "Guardvane AI Security Platform",
+        "database": db_health
     }
 
 

@@ -1882,7 +1882,7 @@ function renderQuickAnalyzeModal() {
         <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against Guardvane's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
 
         <div class="flex justify-end gap-2">
-          <button onclick="executeQuickAnalyze()" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md">
+          <button id="quick-scan-btn" onclick="executeQuickAnalyze()" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-2">
             Run ML Vulnerability Scan
           </button>
         </div>
@@ -2388,6 +2388,7 @@ async function runLocalPromptAnalysis(promptText, promptId = null) {
 async function executeQuickAnalyze(promptId = null) {
   const input = document.getElementById('quick-prompt-input');
   const resultsBox = document.getElementById('quick-analyze-results');
+  const scanBtn = document.getElementById('quick-scan-btn');
   if (!input || !resultsBox) return;
 
   const text = input.value;
@@ -2396,8 +2397,19 @@ async function executeQuickAnalyze(promptId = null) {
     return;
   }
 
+  // Prevent stale results and set explicit loading state
   resultsBox.classList.remove('hidden');
-  resultsBox.innerHTML = `<div class="text-[12px] text-[#627566] animate-pulse">Running Guardvane ML security analysis and OWASP risk detection...</div>`;
+  resultsBox.innerHTML = `
+    <div class="flex items-center gap-2.5 p-3 text-[12.5px] text-[#176B45] font-medium bg-[#EAF5EE] rounded border border-[#CDE5D5]">
+      <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+      <span>Running Guardvane ML security analysis (MPDD injection model, 15 application risks, credentials)...</span>
+    </div>
+  `;
+
+  if (scanBtn) {
+    scanBtn.disabled = true;
+    scanBtn.classList.add('opacity-60', 'cursor-not-allowed');
+  }
 
   try {
     const analysis = await apiFetch('/analyze', {
@@ -2408,42 +2420,88 @@ async function executeQuickAnalyze(promptId = null) {
     const pSec = analysis.prompt_security || {};
     const appRisks = analysis.application_risks || {};
     const sData = analysis.sensitive_data || {};
+    const taskClass = analysis.task_classification || {};
+
+    // 1. Safe extraction of probability and conversion to percentage
+    const rawProb = pSec.malicious_probability ?? pSec.confidence_score ?? pSec.injection_score;
+    let probNum = (typeof rawProb === 'number') ? rawProb : parseFloat(rawProb);
+    if (isNaN(probNum) || probNum === null || probNum === undefined) {
+      probNum = 0.0;
+    }
+    // Consistent probability to percentage conversion (0.0 to 1.0 -> 0% to 100%)
+    const probPct = (probNum <= 1.0 ? probNum * 100 : probNum).toFixed(1);
+
+    // 2. Safe malicious and risk category evaluation
+    const isMalicious = Boolean(pSec.is_malicious ?? pSec.is_injection_detected ?? (probNum >= 0.5));
+    const riskCat = pSec.risk_category || (isMalicious ? 'High Risk' : 'Low Risk');
+
+    // 3. Safe sensitive data detection counting
+    const sCount = (typeof sData.findings_count === 'number')
+      ? sData.findings_count
+      : ((typeof sData.count === 'number') ? sData.count : (Array.isArray(sData.findings) ? sData.findings.length : 0));
+    const hasSecrets = Boolean(sData.detected ?? sData.has_sensitive_data ?? (sCount > 0));
 
     resultsBox.innerHTML = `
-      <div class="space-y-3 text-[12.5px]">
+      <div class="space-y-3.5 text-[12.5px]">
         <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-2">
-          <strong class="text-[#202820]">Analysis Findings</strong>
-          <span class="text-[11px] px-2 py-0.5 rounded font-bold uppercase ${pSec.is_injection_detected ? 'bg-[#FEE2E2] text-[#991B1B]' : 'bg-[#EAF5EE] text-[#176B45]'}">
-            ${pSec.risk_category || 'Evaluated'}
+          <div class="flex items-center gap-2">
+            <strong class="text-[#202820]">Analysis Findings</strong>
+            ${taskClass.category ? `
+              <span class="px-2 py-0.5 bg-[#FAFBF9] text-[#627566] border border-[#E2E9E3] text-[11px] font-mono rounded">
+                task: ${escapeHtml(taskClass.category)}
+              </span>
+            ` : ''}
+          </div>
+          <span class="text-[11px] px-2.5 py-0.5 rounded font-bold uppercase tracking-wider ${isMalicious ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' : 'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]'}">
+            ${escapeHtml(riskCat)}
           </span>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-          <div class="bg-white p-2.5 rounded border border-[#E2E9E3]">
-            <div class="text-[11px] text-[#627566]">Injection Probability</div>
-            <div class="text-lg font-bold text-[#202820] mt-0.5">${(pSec.confidence_score * 100).toFixed(1)}%</div>
+          <div class="bg-white p-3 rounded-lg border border-[#E2E9E3]">
+            <div class="text-[11px] font-medium text-[#627566]">Injection Probability</div>
+            <div class="text-xl font-bold font-mono ${probNum >= 0.5 ? 'text-[#991B1B]' : 'text-[#202820]'} mt-0.5">
+              ${probPct}%
+            </div>
+            <div class="text-[10.5px] text-[#8B9C8E] mt-0.5">
+              ${isMalicious ? 'Adversarial pattern detected' : 'Within benign distribution'}
+            </div>
           </div>
-          <div class="bg-white p-2.5 rounded border border-[#E2E9E3]">
-            <div class="text-[11px] text-[#627566]">Sensitive Credentials</div>
-            <div class="text-lg font-bold ${sData.has_sensitive_data ? 'text-[#991B1B]' : 'text-[#176B45]'} mt-0.5">
-              ${sData.count || 0} detected
+
+          <div class="bg-white p-3 rounded-lg border border-[#E2E9E3]">
+            <div class="text-[11px] font-medium text-[#627566]">Sensitive Credentials</div>
+            <div class="text-xl font-bold font-mono ${hasSecrets ? 'text-[#991B1B]' : 'text-[#176B45]'} mt-0.5">
+              ${sCount} detected
+            </div>
+            <div class="text-[10.5px] text-[#8B9C8E] mt-0.5">
+              ${hasSecrets ? 'API keys / secrets found' : 'No credentials detected'}
             </div>
           </div>
         </div>
 
+        ${hasSecrets && Array.isArray(sData.findings) && sData.findings.length > 0 ? `
+          <div class="p-2.5 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[11.5px] space-y-1">
+            <div class="font-semibold text-[#991B1B]">Detected Secrets:</div>
+            ${sData.findings.map(f => `
+              <div class="font-mono text-[#7F1D1D]">${escapeHtml(f.description)}: ${escapeHtml(f.redacted)}</div>
+            `).join('')}
+          </div>
+        ` : ''}
+
         <div>
-          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Detected Risks (OWASP LLM)</div>
-          <div class="flex flex-wrap gap-1">
+          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1.5">Detected Risks (OWASP LLM)</div>
+          <div class="flex flex-wrap gap-1.5">
             ${(appRisks.detected_risks || []).length > 0 ? (appRisks.detected_risks || []).map(r => `
               <span class="px-2 py-0.5 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] text-[11px] font-medium rounded">
-                ${r}
+                ${escapeHtml(r)}
               </span>
-            `).join('') : '<span class="text-[#176B45]">No critical application risk categories triggered.</span>'}
+            `).join('') : '<span class="text-[#176B45] font-medium">No critical application risk categories triggered.</span>'}
           </div>
         </div>
 
-        <div class="pt-2 border-t border-[#E2E9E3] flex justify-end">
-          <button onclick="closeModal(); openModal('request_review', { promptText: '${escapeForAttr(text)}' })" class="px-3 py-1.5 bg-[#176B45] text-white text-[12px] font-medium rounded">
+        <div class="pt-2 border-t border-[#E2E9E3] flex justify-between items-center">
+          <span class="text-[11px] text-[#8B9C8E]">Evaluated by Guardvane Local Security Engine</span>
+          <button onclick="closeModal(); openModal('request_review', { promptText: '${escapeForAttr(text)}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth">
             Submit for Provider Hardening →
           </button>
         </div>
@@ -2455,8 +2513,8 @@ async function executeQuickAnalyze(promptId = null) {
         method: 'PUT',
         body: JSON.stringify({
           analysis_result: {
-            injection_score: pSec.confidence_score,
-            sensitive_data_count: sData.count || 0,
+            injection_score: probNum,
+            sensitive_data_count: sCount,
             risk_labels: appRisks.detected_risks || []
           }
         })
@@ -2464,7 +2522,17 @@ async function executeQuickAnalyze(promptId = null) {
       await loadInitialData();
     }
   } catch (err) {
-    resultsBox.innerHTML = `<div class="text-[#991B1B] text-[12px]">Analysis error: ${err.message}</div>`;
+    resultsBox.innerHTML = `
+      <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12.5px] text-[#991B1B] space-y-1">
+        <div class="font-semibold">Analysis Failed</div>
+        <div>${escapeHtml(err.message || 'An unexpected error occurred during security analysis.')}</div>
+      </div>
+    `;
+  } finally {
+    if (scanBtn) {
+      scanBtn.disabled = false;
+      scanBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
   }
 }
 

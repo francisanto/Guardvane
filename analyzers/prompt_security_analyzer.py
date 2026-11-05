@@ -4,10 +4,12 @@ Provides real-time inference for binary malicious prompt classification using
 the Prompt Security Model artifact (TF-IDF + Logistic Regression).
 """
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 import joblib
 
+logger = logging.getLogger("guardvane.analyzer.prompt_security")
 
 _MODEL_ARTIFACT: Optional[Dict[str, Any]] = None
 
@@ -33,6 +35,7 @@ def load_security_model() -> Dict[str, Any]:
                 "Train the model using '.venv/bin/python ml/train_prompt_security_model.py'."
             )
         _MODEL_ARTIFACT = joblib.load(model_path)
+        logger.info("Loaded Prompt Security Model artifact successfully from %s", model_path.name)
     return _MODEL_ARTIFACT
 
 
@@ -78,13 +81,32 @@ def analyze_prompt_security(prompt: str) -> Dict[str, Any]:
 
         benign_proba = float(proba[0])
         malicious_proba = float(proba[1])
-
         threshold = float(artifact.get("decision_threshold", 0.5))
+        is_mal = bool(malicious_proba >= threshold)
+
+        if malicious_proba >= 0.80:
+            risk_category = "Critical Risk"
+        elif malicious_proba >= 0.60:
+            risk_category = "High Risk"
+        elif malicious_proba >= 0.40:
+            risk_category = "Medium Risk"
+        else:
+            risk_category = "Low Risk"
+
+        logger.info(
+            "Prompt Security inference: is_malicious=%s, prob=%.4f, category=%s, input_len=%d",
+            is_mal, malicious_proba, risk_category, len(prompt)
+        )
+
         return {
             "status": "success",
-            "is_malicious": bool(malicious_proba >= threshold),
+            "is_malicious": is_mal,
             "malicious_probability": round(malicious_proba, 4),
             "benign_probability": round(benign_proba, 4),
+            "confidence_score": round(malicious_proba, 4),
+            "is_injection_detected": is_mal,
+            "risk_category": risk_category,
+            "decision_threshold": threshold,
             "disclaimer": disclaimer
         }
     except FileNotFoundError as e:

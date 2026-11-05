@@ -109,6 +109,8 @@ def detect_sensitive_data(prompt: str) -> Dict[str, Any]:
     return {
         "detected": len(findings) > 0,
         "findings_count": len(findings),
+        "has_sensitive_data": len(findings) > 0,
+        "count": len(findings),
         "findings": findings,
         "disclaimer": "Rule-based heuristic detector; regex alone cannot detect all sensitive data."
     }

@@ -4,12 +4,16 @@ Combines Prompt Security analysis, Application Risk assessment,
 and lightweight Sensitive Data detection.
 """
 
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import joblib
 
 from analyzers.prompt_security_analyzer import analyze_prompt_security
 from analyzers.sensitive_data_detector import detect_sensitive_data
+from analyzers.model_comparison.task_classifier import task_classifier
+
+logger = logging.getLogger("guardvane.analyzer")
 
 _APP_RISK_MODEL: Optional[Any] = None
 
@@ -53,6 +57,7 @@ def load_app_risk_model() -> Any:
                 "Train the model using '.venv/bin/python ml/train_security_model.py'."
             )
         _APP_RISK_MODEL = joblib.load(path)
+        logger.info("Loaded Application Risk Model artifact successfully from %s", path.name)
     return _APP_RISK_MODEL
 
 
@@ -134,6 +139,11 @@ def analyze_application_risks(prompt: str) -> Dict[str, Any]:
                     mitigated_surfaces.setdefault(risk, []).append(ctrl["name"])
 
         unmitigated_surfaces = [r for r in active_risks if r not in mitigated_surfaces]
+
+        logger.info(
+            "Application Risk inference: raw_detected=%s, active_risks=%s, input_len=%d",
+            raw_detected, active_risks, len(prompt)
+        )
 
         return {
             "status": "success",
@@ -227,7 +237,24 @@ def analyze_prompt(prompt: str, analysis_mode: str = "both") -> Dict[str, Any]:
     # 3. Sensitive Data Detection
     sensitive_data_result = detect_sensitive_data(prompt)
 
-    # 4. Overall status evaluation
+    # 4. Task Domain Classification via local ML pipeline (models/task_classifier_model.pkl)
+    try:
+        task_res = task_classifier.classify_task(prompt)
+        task_category = task_res.predicted_category
+        task_classification = {
+            "category": task_res.predicted_category,
+            "confidence": round(task_res.confidence, 4),
+            "probabilities": {k: round(v, 4) for k, v in task_res.category_probabilities.items()},
+            "status": task_res.confidence_status,
+            "model_source": task_res.model_source
+        }
+        logger.info("Task Classifier inference: category=%s, confidence=%.4f", task_category, task_res.confidence)
+    except Exception as e:
+        logger.warning("Task classification error: %s", e)
+        task_category = "general_instruction"
+        task_classification = None
+
+    # 5. Overall status evaluation
     errors: List[str] = []
     if prompt_sec_result.get("status") in {"model_unavailable", "error"}:
         errors.append(f"Prompt Security: {prompt_sec_result.get('error')}")
@@ -243,9 +270,12 @@ def analyze_prompt(prompt: str, analysis_mode: str = "both") -> Dict[str, Any]:
 
     result.update({
         "status": overall_status,
+        "task_type": task_category,
+        "task_classification": task_classification,
         "model_availability": {
             "prompt_security_model": prompt_sec_result.get("status") == "success",
-            "application_risk_model": app_risk_result.get("status") == "success"
+            "application_risk_model": app_risk_result.get("status") == "success",
+            "task_classifier_model": task_classification is not None
         },
         "errors": errors if errors else None,
         "prompt_security": prompt_sec_result,
