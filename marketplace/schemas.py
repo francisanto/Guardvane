@@ -104,8 +104,12 @@ class ServiceResponse(ServiceBase):
 
 class OrderCreate(BaseModel):
     service_id: str
-    prompt_content: str = Field(..., min_length=5, description="Prompt text submitted for review")
-    requirements: Optional[str] = Field(default="", max_length=2000, description="Customer-specific constraints")
+    prompt_content: str = Field(..., min_length=2, description="Prompt text or task specification")
+    requirements: Optional[str] = Field(default="", max_length=5000, description="Customer-specific constraints")
+    product_link: Optional[str] = Field(default=None, description="Product or application testing URL")
+    docs_link: Optional[str] = Field(default=None, description="Documentation or codebase repository URL")
+    test_env_notes: Optional[str] = Field(default=None, description="Test credentials or staging environment notes")
+    is_zero_g_wallet: Optional[bool] = Field(default=False, description="Whether customer uses a 0G-registered wallet eligible for 0G credits")
     customer_id: Optional[str] = Field(default="francis")
     customer_name: Optional[str] = Field(default="francis")
 
@@ -113,8 +117,13 @@ class OrderCreate(BaseModel):
     @classmethod
     def check_prompt(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("Prompt content cannot be empty.")
+            raise ValueError("Prompt or task content cannot be empty.")
         return v.strip()
+
+
+class TicketCreate(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=200, description="Reason for raising ticket or requesting revision")
+    feedback: str = Field(..., min_length=5, max_length=4000, description="Specific feedback or issues with specialist deliverable")
 
 
 class OrderStatusUpdate(BaseModel):

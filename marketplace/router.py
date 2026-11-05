@@ -29,6 +29,7 @@ from marketplace.schemas import (
     SecurityReportResponse,
     ServiceCreate,
     ServiceResponse,
+    TicketCreate,
 )
 from marketplace.service import marketplace_service
 
@@ -205,6 +206,10 @@ def create_order(
             service_id=data.service_id,
             prompt_content=data.prompt_content,
             requirements=data.requirements or "",
+            product_link=data.product_link,
+            docs_link=data.docs_link,
+            test_env_notes=data.test_env_notes,
+            is_zero_g_wallet=bool(data.is_zero_g_wallet),
             customer_id=cust_id,
             customer_name=cust_name
         )
@@ -298,6 +303,54 @@ def deliver_order(
             "order": order.model_dump(),
             "report": report.model_dump()
         }
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/orders/{order_id}/ticket")
+def raise_order_ticket(
+    order_id: str,
+    data: TicketCreate,
+    auth: Dict[str, str] = Depends(get_current_user)
+):
+    """
+    Raise a quality review or revision ticket for an order deliverable.
+    Allows customers to report dissatisfaction with specialist audit performance.
+    """
+    try:
+        return marketplace_service.raise_ticket(
+            order_id=order_id,
+            reason=data.reason,
+            feedback=data.feedback,
+            customer_id=auth["user_id"]
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/reports/{report_id}/ticket")
+def raise_report_ticket(
+    report_id: str,
+    data: TicketCreate,
+    auth: Dict[str, str] = Depends(get_current_user)
+):
+    """
+    Raise a quality review or revision ticket directly from a security report deliverable.
+    """
+    rep = marketplace_service.get_report(report_id)
+    if not rep:
+        raise HTTPException(status_code=404, detail=f"Report '{report_id}' not found.")
+    try:
+        return marketplace_service.raise_ticket(
+            order_id=rep.order_id,
+            reason=data.reason,
+            feedback=data.feedback,
+            customer_id=auth["user_id"]
+        )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:

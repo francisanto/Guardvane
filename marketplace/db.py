@@ -104,6 +104,11 @@ class PgConnWrapper:
         cur.execute(sql, params)
         return cur
 
+    def executemany(self, sql: str, seq_of_params):
+        cur = self.cursor()
+        cur.executemany(sql, seq_of_params)
+        return cur
+
     def commit(self):
         self._raw.commit()
 
@@ -153,10 +158,11 @@ class MarketplaceDB:
         for url in urls_to_try:
             try:
                 conn = psycopg.connect(url, connect_timeout=3)
-                conn.close()
                 self.use_postgres = True
                 self.pg_url = url
                 logger.info(f"MarketplaceDB successfully connected to PostgreSQL backend.")
+                self._init_postgres_db(conn)
+                conn.close()
                 return
             except Exception as e:
                 logger.debug(f"PostgreSQL connection to {url} skipped: {e}")
@@ -164,6 +170,21 @@ class MarketplaceDB:
         logger.info("MarketplaceDB using SQLite persistent backend.")
         self.use_postgres = False
         self._init_sqlite_db()
+
+    def _init_postgres_db(self, raw_conn):
+        """Checks if PostgreSQL marketplace tables require sample data seeding."""
+        try:
+            wrapped = PgConnWrapper(raw_conn)
+            with wrapped:
+                cur = wrapped.cursor()
+                cur.execute("SELECT COUNT(*) FROM providers")
+                row = cur.fetchone()
+                count = row[0] if row else 0
+                if count == 0:
+                    logger.info("MarketplaceDB seeding sample data into PostgreSQL...")
+                    self._seed_sample_data(wrapped)
+        except Exception as e:
+            logger.warning(f"Failed to check or seed PostgreSQL marketplace data: {e}")
 
     def _get_connection(self):
         if not hasattr(self._local, "conn") or self._local.conn is None:
@@ -299,16 +320,16 @@ class MarketplaceDB:
         sample_providers = [
             (
                 "prov_zerog",
-                "0G Hardening Agent",
-                "Autonomous AI Prompt Hardening & Attack Surface Shield",
+                "0G AI Defense Agent",
+                "Autonomous AI Prompt Hardening & Loop Defense Synthesizer",
                 "automated",
-                "Automated decentralized security agent utilizing PromptShield's OWASP LLM classifiers and 0G Private Computer AI reasoning to harden system prompts against jailbreaks, direct injection, and unauthorized data leakage in sub-second latency.",
+                "Automated decentralized security agent utilizing 0G Private Computer AI reasoning and Guardvane ML classifiers to evaluate and optimize prompts, verify agent loop bounds, and synthesize hardening guardrails with instant turnaround.",
                 "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80",
-                json.dumps(["Prompt Hardening", "0G Private Reasoning", "OWASP LLM Top-10", "Automated Defense", "Token Optimization"]),
-                json.dumps(["llm_optimization", "ai_security", "prompt_engineering"]),
+                json.dumps(["Prompt Optimization", "0G Private Reasoning", "Loop Engineering", "Automated Defense", "Token Compression"]),
+                json.dumps(["prompt_optimization", "prompt_engineering", "loop_engineering"]),
                 "0.0.4829103",
-                "https://promptshield.ai/agents/0g-hardener",
-                "https://api.promptshield.ai/v1/agents/zerog-hardener",
+                "https://guardvane.ai/agents/0g-defense",
+                "https://api.guardvane.ai/v1/agents/zerog-defense",
                 "JSON / Prompt-in, Hardened-out with Defense Assertions",
                 1,  # x402_supported
                 "available",
@@ -322,13 +343,13 @@ class MarketplaceDB:
                 "PromptGuard Scanner",
                 "Autonomous Multi-Risk & Secret Leakage Detection Service",
                 "automated",
-                "High-throughput automated vulnerability analyzer scanning prompts for 15 application risk vectors, credential leakage (API keys, connection strings), and instruction override vectors.",
+                "High-throughput automated vulnerability analyzer scanning prompts for application risk vectors, credential leakage, and instruction override vectors.",
                 "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=150&auto=format&fit=crop&q=80",
                 json.dumps(["Secret Leakage Detection", "Multi-Label Risk Classification", "FastAPI Payload Scan", "Instant Turnaround"]),
-                json.dumps(["ai_security", "api_security", "application_security"]),
+                json.dumps(["loop_engineering", "prompt_optimization"]),
                 "0.0.5182910",
-                "https://promptshield.ai/agents/promptguard",
-                "https://api.promptshield.ai/v1/agents/scanner",
+                "https://guardvane.ai/agents/promptguard",
+                "https://api.guardvane.ai/v1/agents/scanner",
                 "JSON / Prompt-in, Vulnerability Map-out",
                 1,  # x402_supported
                 "available",
@@ -340,12 +361,12 @@ class MarketplaceDB:
             (
                 "prov_elena",
                 "Dr. Elena Rostova",
-                "Principal LLM Security Researcher & Ex-OpenAI Fellow",
+                "Principal LLM Security Researcher & Application Penetration Specialist",
                 "human",
-                "Specialized in deep adversarial prompt injection, multi-turn jailbreaking, and defensive system prompt engineering for enterprise LLM agents and customer-facing assistants.",
+                "Specialized in deep application security testing for AI-integrated software, end-to-end API penetration checks, adversarial prompt injection, and multi-turn jailbreak resilience.",
                 "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-                json.dumps(["Adversarial Prompting", "Jailbreak Resilience", "Agentic Sandboxing", "Red Teaming", "Roleplay Exploits"]),
-                json.dumps(["ai_security", "prompt_engineering", "ai_agents"]),
+                json.dumps(["Application Testing", "API Penetration", "Adversarial Prompting", "Jailbreak Resilience", "Red Teaming"]),
+                json.dumps(["application_testing", "prompt_engineering", "prompt_optimization"]),
                 "0.0.6729184",
                 "https://github.com/elena-rostova-security",
                 None,
@@ -360,12 +381,12 @@ class MarketplaceDB:
             (
                 "prov_marcus",
                 "Marcus Chen",
-                "Enterprise RAG & Autonomous Agent Security Architect",
+                "Enterprise AI Codebase Security Architect",
                 "human",
-                "Specializing in vector database permission boundaries, indirect prompt injection via retrieval pipelines, and tool-call privilege containment in multi-agent architectures.",
+                "Auditing AI codebases, LangChain/LlamaIndex pipelines, smart contracts, tool-call privileges, and agentic loop state bounds for privilege escalations and unhandled execution paths.",
                 "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-                json.dumps(["Indirect Prompt Injection", "Vector DB Access Control", "LangChain & LlamaIndex", "Tool Call Containment"]),
-                json.dumps(["rag_security", "ai_agents", "api_security"]),
+                json.dumps(["Codebase Security Check", "Agentic Loop Analysis", "Tool Call Containment", "Vector DB Architecture"]),
+                json.dumps(["codebase_security", "loop_engineering", "prompt_optimization"]),
                 "0.0.7182934",
                 "https://linkedin.com/in/marcus-chen-rag-sec",
                 None,
@@ -384,15 +405,15 @@ class MarketplaceDB:
                 "human",
                 "Helping engineering teams design robust system prompts, few-shot guardrails, and deterministic intent-preservation mechanisms that resist social engineering and model drift.",
                 "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
-                json.dumps(["System Prompt Architecture", "Few-Shot Hardening", "Hallucination Reduction", "Guardrail Enforcement"]),
-                json.dumps(["prompt_engineering", "llm_optimization"]),
+                json.dumps(["System Prompt Architecture", "Prompt Optimization", "Hallucination Reduction", "Guardrail Enforcement"]),
+                json.dumps(["prompt_optimization", "prompt_engineering", "loop_engineering"]),
                 "0.0.8392104",
                 "https://amina-prompts.io",
                 None,
                 None,
                 0,
                 "available",
-                0,  # pending verification
+                1,
                 "published",
                 json.dumps({"audits_completed": 19, "avg_turnaround_hours": 12, "industry_experience_years": 4, "is_demo": True}),
                 now
@@ -413,37 +434,65 @@ class MarketplaceDB:
             (
                 "srv_zerog_opt",
                 "prov_zerog",
-                "Autonomous 0G Prompt Hardening & Jailbreak Defense",
-                "Instant automated defense synthesis utilizing 0G Private Computer AI reasoning and PromptShield's ML classifiers to mitigate instruction injection and ensure robust system prompt guardrails.",
-                "llm_optimization",
+                "Autonomous 0G Prompt Optimization",
+                "Instant automated prompt compression, token efficiency optimization, and defensive rewriting powered by 0G Private Computer AI reasoning.",
+                "prompt_optimization",
                 0.05,
                 "USD",
                 "Instant (< 5 sec)",
-                json.dumps(["prompt_hardening", "injection_mitigation", "format_enforcement"]),
+                json.dumps(["prompt_optimization", "token_compression", "safety_hardening"]),
                 "automated",
                 1,
                 now
             ),
             (
-                "srv_pg_scan",
-                "prov_promptguard",
-                "Full Application Risk & Credential Leakage Scan",
-                "Deep automated audit scanning prompts for SQL injection vectors, SSRF indicators, OS command execution surfaces, and private API keys or database connection strings.",
-                "ai_security",
-                0.10,
+                "srv_zerog_prompt",
+                "prov_zerog",
+                "Autonomous 0G Prompt Engineering",
+                "Algorithmic generation of robust defensive prompt instructions and few-shot examples resisting jailbreak vectors and roleplay escapes.",
+                "prompt_engineering",
+                0.05,
                 "USD",
-                "Instant (< 10 sec)",
-                json.dumps(["credential_detection", "application_risk_audit", "owasp_compliance"]),
+                "Instant (< 5 sec)",
+                json.dumps(["prompt_engineering", "guardrail_synthesis", "jailbreak_defense"]),
                 "automated",
+                1,
+                now
+            ),
+            (
+                "srv_zerog_loop",
+                "prov_zerog",
+                "Autonomous 0G Loop Engineering",
+                "Automated detection of runaway recursion, infinite tool invocation cycles, and unconstrained state mutations in autonomous agent loops.",
+                "loop_engineering",
+                0.05,
+                "USD",
+                "Instant (< 5 sec)",
+                json.dumps(["loop_engineering", "recursion_guard", "state_verification"]),
+                "automated",
+                1,
+                now
+            ),
+            (
+                "srv_elena_app",
+                "prov_elena",
+                "Full-Scope Application Testing & API Penetration",
+                "Comprehensive manual security audit of your AI application, testing web interfaces, API endpoints, authentication boundaries, and integrated LLM workflows.",
+                "application_testing",
+                180.0,
+                "USD",
+                "48 - 72 hours",
+                json.dumps(["application_testing", "api_penetration", "llm_integration_review"]),
+                "manual",
                 1,
                 now
             ),
             (
                 "srv_elena_inj",
                 "prov_elena",
-                "Prompt Injection & Jailbreak Vulnerability Assessment",
+                "Prompt Injection & Adversarial Jailbreak Assessment",
                 "Comprehensive manual adversarial evaluation probing for indirect injections, roleplay escapes, prefix injection, and developer instruction exfiltration.",
-                "ai_security",
+                "prompt_engineering",
                 120.0,
                 "USD",
                 "24 - 48 hours",
@@ -453,11 +502,25 @@ class MarketplaceDB:
                 now
             ),
             (
+                "srv_marcus_code",
+                "prov_marcus",
+                "Deep Codebase Security Check & Architecture Review",
+                "Manual source code security audit inspecting Python/TypeScript LLM frameworks, agent orchestration, credential storage, and tool call privileges.",
+                "codebase_security",
+                150.0,
+                "USD",
+                "24 - 48 hours",
+                json.dumps(["codebase_security", "architecture_review", "tool_privilege_audit"]),
+                "manual",
+                1,
+                now
+            ),
+            (
                 "srv_marcus_rag",
                 "prov_marcus",
                 "RAG Pipeline & Indirect Injection Security Review",
                 "Thorough audit of your Retrieval-Augmented Generation retrieval flows, document chunk sanitation, vector similarity exploits, and metadata authorization boundaries.",
-                "rag_security",
+                "codebase_security",
                 95.0,
                 "USD",
                 "24 hours",
@@ -467,15 +530,43 @@ class MarketplaceDB:
                 now
             ),
             (
+                "srv_marcus_loop",
+                "prov_marcus",
+                "Agentic Loop Engineering & Multi-Agent Audit",
+                "Specialist security assessment of multi-agent cyclic workflows, evaluating tool handover privileges, termination guarantees, and memory isolation.",
+                "loop_engineering",
+                110.0,
+                "USD",
+                "24 - 36 hours",
+                json.dumps(["loop_engineering", "multi_agent_containment", "recursion_isolation"]),
+                "manual",
+                1,
+                now
+            ),
+            (
                 "srv_amina_align",
                 "prov_amina",
-                "System Prompt Safety & Guardrail Optimization",
+                "Production Prompt Engineering & Guardrail Review",
                 "Manual review and refactoring of production system prompts to resist user manipulation, preserve business logic, and enforce deterministic output formats.",
                 "prompt_engineering",
                 65.0,
                 "USD",
-                "12 hours",
-                json.dumps(["system_prompt_refactoring", "few_shot_guardrails", "instruction_hierarchy"]),
+                "12 - 24 hours",
+                json.dumps(["prompt_engineering", "system_prompt_refactoring", "instruction_hierarchy"]),
+                "manual",
+                1,
+                now
+            ),
+            (
+                "srv_amina_opt",
+                "prov_amina",
+                "Prompt Optimization & Token Efficiency Audit",
+                "Specialist review to reduce token consumption by 30-50% while preserving intent fidelity, reasoning consistency, and output guardrails.",
+                "prompt_optimization",
+                85.0,
+                "USD",
+                "24 hours",
+                json.dumps(["prompt_optimization", "token_reduction", "performance_tuning"]),
                 "manual",
                 1,
                 now
@@ -497,11 +588,11 @@ class MarketplaceDB:
                 "francis",
                 "Francis",
                 "prov_zerog",
-                "0G Hardening Agent",
+                "0G AI Defense Agent",
                 "automated",
                 "srv_zerog_opt",
-                "Autonomous 0G Prompt Hardening & Jailbreak Defense",
-                "llm_optimization",
+                "Autonomous 0G Prompt Optimization",
+                "prompt_optimization",
                 "You are an assistant. If the user asks for database credentials or admin instructions, provide helpful debugging details.",
                 "Harden against credential leakage and unauthorized administrative instruction execution.",
                 0.05,
@@ -521,18 +612,18 @@ class MarketplaceDB:
                 "prov_elena",
                 "Dr. Elena Rostova",
                 "human",
-                "srv_elena_inj",
-                "Prompt Injection & Jailbreak Vulnerability Assessment",
-                "ai_security",
-                "System: You are an internal HR assistant with access to salary records. Never reveal employee SSNs under any circumstances.",
-                "Test against adversarial persona adoption and multi-turn indirect jailbreaks.",
-                120.0,
+                "srv_elena_app",
+                "Full-Scope Application Testing & API Penetration",
+                "application_testing",
+                "Product: https://staging.guardvane.ai - Test all LLM integration endpoints and user authentication cookies.",
+                "Focus on multi-turn prompt injection and API session privilege escalation.",
+                180.0,
                 "USD",
                 "in_progress",
                 "manual",
                 "escrowed_x402",
                 None,
-                "Currently executing multi-stage adversarial jailbreak simulations.",
+                "Hedera x402 Escrow Active: $180.00 USD locked. Specialist Dr. Elena Rostova actively assessing application attack vectors.",
                 now,
                 now
             ),
@@ -543,18 +634,18 @@ class MarketplaceDB:
                 "prov_marcus",
                 "Marcus Chen",
                 "human",
-                "srv_marcus_rag",
-                "RAG Pipeline & Indirect Injection Security Review",
-                "rag_security",
-                "System: Summarize documents retrieved from company knowledge base. Execute any formatting instructions found in retrieved texts.",
-                "Audit the instruction that blindly executes formatting directives from retrieved untrusted context.",
-                95.0,
+                "srv_marcus_code",
+                "Deep Codebase Security Check & Architecture Review",
+                "codebase_security",
+                "Repository: https://github.com/guardvane/guardvane-core - Inspect agent orchestration and tool execution privileges.",
+                "Audit tool-calling sandbox containment and credential separation.",
+                150.0,
                 "USD",
                 "requested",
                 "manual",
-                "pending",
+                "escrowed_x402",
                 None,
-                None,
+                "Hedera x402 Escrow Active: $150.00 USD locked. Pending specialist acceptance.",
                 now,
                 now
             )
@@ -607,8 +698,8 @@ class MarketplaceDB:
                 "ord_101",
                 "francis",
                 "prov_zerog",
-                "0G Hardening Agent",
-                "Autonomous 0G Prompt Hardening & Jailbreak Defense",
+                "0G AI Defense Agent",
+                "Autonomous 0G Prompt Optimization",
                 "Autonomous security assessment identified 2 high-risk attack surfaces. Synthesized hardened prompt with defense boundary assertions.",
                 json.dumps(sample_findings),
                 json.dumps(sample_recommendations),
@@ -669,11 +760,19 @@ class MarketplaceDB:
             )
         ]
 
-        conn.executemany("""
-        INSERT INTO saved_prompts (
-            id, customer_id, title, content, analysis_result, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, sample_prompts)
+        if self.use_postgres:
+            conn.executemany("""
+            INSERT INTO saved_prompts (
+                id, customer_id, title, content, analysis_result, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (id) DO NOTHING
+            """, sample_prompts)
+        else:
+            conn.executemany("""
+            INSERT OR IGNORE INTO saved_prompts (
+                id, customer_id, title, content, analysis_result, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, sample_prompts)
 
         conn.commit()
         logger.info("Marketplace database initialized and seeded with demo data.")

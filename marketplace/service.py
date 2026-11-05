@@ -400,6 +400,10 @@ class MarketplaceService:
         service_id: str,
         prompt_content: str,
         requirements: str = "",
+        product_link: Optional[str] = None,
+        docs_link: Optional[str] = None,
+        test_env_notes: Optional[str] = None,
+        is_zero_g_wallet: bool = False,
         customer_id: str = "francis",
         customer_name: str = "Francis"
     ) -> OrderResponse:
@@ -413,6 +417,19 @@ class MarketplaceService:
 
         # Differentiate execution flows: Automated AI vs Human Specialist
         is_automated = (service.execution_type == ServiceExecutionType.AUTOMATED)
+
+        # Store structured requirements with testing links / 0G wallet info if supplied
+        stored_requirements = requirements
+        if product_link or docs_link or test_env_notes or is_zero_g_wallet:
+            req_data = {
+                "requirements": requirements,
+                "product_link": product_link,
+                "docs_link": docs_link,
+                "test_env_notes": test_env_notes,
+                "is_zero_g_wallet": is_zero_g_wallet,
+                "payment_mode": "0g_credits" if (is_zero_g_wallet and is_automated) else ("x402_autonomous" if is_automated else "x402_escrow")
+            }
+            stored_requirements = json.dumps(req_data)
 
         if is_automated:
             # 1. Automated service flow
@@ -527,14 +544,14 @@ class MarketplaceService:
                         service.title,
                         service.category,
                         prompt_content,
-                        requirements,
+                        stored_requirements,
                         service.price,
                         service.currency,
                         OrderStatus.COMPLETED.value,
                         ServiceExecutionType.AUTOMATED.value,
                         PaymentStatus.SETTLED.value,
                         report_id,
-                        "Autonomous audit executed successfully and verified on Hedera & Swarm.",
+                        "Covered by 0G Compute Allocation Credits." if is_zero_g_wallet else f"Autonomous defense rules synthesized via 0G Private Computer. Settled via Hedera x402 autonomous micro-payment (${service.price:.2f} USD).",
                         now,
                         now
                     )
@@ -567,6 +584,7 @@ class MarketplaceService:
         else:
             # 2. Human Specialist Flow
             # Order starts in 'requested' state with payment escrowed placeholder
+            spec_notes = f"Hedera x402 Escrow Active: ${service.price:.2f} USD locked. Funds will disburse directly to specialist wallet upon deliverable completion."
             with conn:
                 conn.execute(
                     """
@@ -589,14 +607,14 @@ class MarketplaceService:
                         service.title,
                         service.category,
                         prompt_content,
-                        requirements,
+                        stored_requirements,
                         service.price,
                         service.currency,
                         OrderStatus.REQUESTED.value,
                         ServiceExecutionType.MANUAL.value,
                         PaymentStatus.ESCROWED_X402.value,
                         None,
-                        None,
+                        spec_notes,
                         now,
                         now
                     )
@@ -851,6 +869,62 @@ class MarketplaceService:
         updated_order = self.get_order(order_id)
         report = self.get_report(report_id)
         return updated_order, report
+
+    def raise_ticket(
+        self,
+        order_id: str,
+        reason: str,
+        feedback: str,
+        customer_id: str
+    ) -> Dict[str, Any]:
+        order = self.get_order(order_id)
+        if not order:
+            raise ValueError(f"Order '{order_id}' not found.")
+
+        if customer_id and order.customer_id.lower() != customer_id.lower():
+            raise PermissionError("Access denied: Only the customer who submitted this request can raise a quality ticket.")
+
+        now = datetime.now(timezone.utc).isoformat()
+        ticket_id = f"TK-{uuid.uuid4().hex[:6].upper()}"
+        ticket_obj = {
+            "ticket_id": ticket_id,
+            "order_id": order_id,
+            "reason": reason,
+            "feedback": feedback,
+            "status": "open",
+            "created_at": now
+        }
+
+        # Embed ticket into deliverable_notes
+        notes_dict = {}
+        if order.deliverable_notes:
+            try:
+                notes_dict = json.loads(order.deliverable_notes)
+                if not isinstance(notes_dict, dict):
+                    notes_dict = {"original_notes": str(order.deliverable_notes)}
+            except Exception:
+                notes_dict = {"original_notes": str(order.deliverable_notes)}
+
+        notes_dict["ticket"] = ticket_obj
+        new_deliverable_notes = json.dumps(notes_dict)
+
+        conn = self.db._get_connection()
+        with conn:
+            conn.execute(
+                """
+                UPDATE orders
+                SET deliverable_notes = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (new_deliverable_notes, now, order_id)
+            )
+
+        return {
+            "status": "success",
+            "ticket": ticket_obj,
+            "order_id": order_id,
+            "message": f"Ticket #{ticket_id} submitted successfully to specialist."
+        }
 
     # -----------------------------------------------------------------------
     # Security Reports

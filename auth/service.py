@@ -6,6 +6,7 @@ JWT session issuance, and user multi-role management.
 
 from datetime import datetime, timedelta, timezone
 import os
+import re
 import uuid
 import logging
 from typing import List, Optional
@@ -69,16 +70,17 @@ def verify_siwe(message_str: str, signature: str, db: Session) -> User:
     Enforces nonce validity, expiration, single-use consumption, and retrieves or creates
     the persistent user account with default customer role.
     """
-    # Pre-process line 2 address to ensure EIP-55 format for parser if valid hex
-    lines = message_str.split("\n")
-    msg_for_parser = message_str
-    if len(lines) > 1 and lines[1].strip().startswith("0x") and len(lines[1].strip()) == 42:
+    # Normalize message line endings
+    clean_msg = message_str.replace("\r\n", "\n").replace("\r", "\n").strip()
+
+    # Ensure Ethereum address matches EIP-55 checksum format required by pydantic SIWE model
+    def _to_checksum_match(m):
         try:
-            checksum_addr = to_checksum_address(lines[1].strip())
-            lines[1] = checksum_addr
-            msg_for_parser = "\n".join(lines)
+            return to_checksum_address(m.group(0))
         except Exception:
-            pass
+            return m.group(0)
+
+    msg_for_parser = re.sub(r'0x[a-fA-F0-9]{40}', _to_checksum_match, clean_msg)
 
     try:
         siwe_msg = siwe.SiweMessage.from_message(msg_for_parser)
@@ -126,13 +128,15 @@ def verify_siwe(message_str: str, signature: str, db: Session) -> User:
         logger.debug(f"Direct siwe_msg.verify failed, attempting direct recovery: {e}")
 
     if not verified:
-        try:
-            sig_hex = signature[2:] if signature.startswith("0x") else signature
-            recovered = Account.recover_message(encode_defunct(text=message_str), signature=bytes.fromhex(sig_hex))
-            if recovered.lower() == siwe_msg.address.lower():
-                verified = True
-        except Exception as e:
-            logger.warning(f"Signature recovery failed: {e}")
+        sig_hex = signature[2:] if signature.startswith("0x") else signature
+        for candidate_text in [message_str, clean_msg, msg_for_parser]:
+            try:
+                recovered = Account.recover_message(encode_defunct(text=candidate_text), signature=bytes.fromhex(sig_hex))
+                if recovered.lower() == siwe_msg.address.lower():
+                    verified = True
+                    break
+            except Exception as e:
+                logger.debug(f"Signature recovery with candidate failed: {e}")
 
     if not verified:
         raise HTTPException(

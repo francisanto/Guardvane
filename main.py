@@ -49,6 +49,23 @@ if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    icon_path = STATIC_DIR / "favicon.ico"
+    if icon_path.exists():
+        return FileResponse(str(icon_path), media_type="image/x-icon")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+@app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+async def apple_touch_icon():
+    icon_path = STATIC_DIR / "apple-touch-icon.png"
+    if icon_path.exists():
+        return FileResponse(str(icon_path), media_type="image/png")
+    raise HTTPException(status_code=404, detail="Apple touch icon not found")
+
+
 @app.get("/")
 def home():
     return {
