@@ -1,0 +1,205 @@
+{
+  "pipeline_name": "PromptShield MCDM Ranker Calibration",
+  "timestamp": "2026-10-30T04:53:50.105265+00:00",
+  "algorithms": [
+    "Weighted Sum Model (WSM)",
+    "TOPSIS (Euclidean Ideal Distance)"
+  ],
+  "categories": {
+    "foundation_models": {
+      "active_models_count": 21,
+      "presets": {
+        "balanced": {
+          "preset": "balanced",
+          "weights": {
+            "suitability": 0.45,
+            "cost": 0.35,
+            "context": 0.2
+          },
+          "evaluations": [
+            {
+              "task": "code_generation",
+              "top_model": "deepseek-flash",
+              "top_score": 0.9789,
+              "models_evaluated": 21
+            },
+            {
+              "task": "security_analysis",
+              "top_model": "deepseek-v4-pro",
+              "top_score": 0.9075,
+              "models_evaluated": 21
+            },
+            {
+              "task": "data_analysis",
+              "top_model": "gpt-6-luna",
+              "top_score": 1.0,
+              "models_evaluated": 21
+            }
+          ]
+        },
+        "cost_optimized": {
+          "preset": "cost_optimized",
+          "weights": {
+            "suitability": 0.2,
+            "cost": 0.7,
+            "context": 0.1
+          },
+          "evaluations": [
+            {
+              "task": "code_generation",
+              "top_model": "deepseek-flash",
+              "top_score": 0.973,
+              "models_evaluated": 21
+            },
+            {
+              "task": "security_analysis",
+              "top_model": "deepseek-flash",
+              "top_score": 0.9053,
+              "models_evaluated": 21
+            },
+            {
+              "task": "data_analysis",
+              "top_model": "gpt-6-luna",
+              "top_score": 1.0,
+              "models_evaluated": 21
+            }
+          ]
+        },
+        "quality_optimized": {
+          "preset": "quality_optimized",
+          "weights": {
+            "suitability": 0.8,
+            "cost": 0.05,
+            "context": 0.15
+          },
+          "evaluations": [
+            {
+              "task": "code_generation",
+              "top_model": "deepseek-flash",
+              "top_score": 0.9909,
+              "models_evaluated": 21
+            },
+            {
+              "task": "security_analysis",
+              "top_model": "deepseek-v4-pro",
+              "top_score": 0.9806,
+              "models_evaluated": 21
+            },
+            {
+              "task": "data_analysis",
+              "top_model": "gpt-6-luna",
+              "top_score": 1.0,
+              "models_evaluated": 21
+            }
+          ]
+        },
+        "long_context": {
+          "preset": "long_context",
+          "weights": {
+            "suitability": 0.25,
+            "cost": 0.25,
+            "context": 0.5
+          },
+          "evaluations": [
+            {
+              "task": "code_generation",
+              "top_model": "deepseek-flash",
+              "top_score": 0.9669,
+              "models_evaluated": 21
+            },
+            {
+              "task": "security_analysis",
+              "top_model": "deepseek-v4-pro",
+              "top_score": 0.9159,
+              "models_evaluated": 21
+            },
+            {
+              "task": "data_analysis",
+              "top_model": "gpt-6-luna",
+              "top_score": 1.0,
+              "models_evaluated": 21
+            }
+          ]
+        }
+      }
+    },
+    "ide_assistants": {
+      "active_tools_count": 4,
+      "presets": {
+        "balanced": {
+          "multi_file_agent": 0.2,
+          "repo_indexing": 0.15,
+          "terminal_execution": 0.15,
+          "model_flexibility": 0.15,
+          "ecosystem_integration": 0.15,
+          "privacy_controls": 0.1,
+          "plan_affordability": 0.1
+        },
+        "agentic_power": {
+          "multi_file_agent": 0.35,
+          "terminal_execution": 0.25,
+          "repo_indexing": 0.2,
+          "model_flexibility": 0.1,
+          "ecosystem_integration": 0.05,
+          "privacy_controls": 0.02,
+          "plan_affordability": 0.03
+        },
+        "ecosystem_integration": {
+          "ecosystem_integration": 0.35,
+          "model_flexibility": 0.25,
+          "plan_affordability": 0.15,
+          "repo_indexing": 0.1,
+          "multi_file_agent": 0.1,
+          "terminal_execution": 0.03,
+          "privacy_controls": 0.02
+        },
+        "privacy_enterprise": {
+          "privacy_controls": 0.4,
+          "repo_indexing": 0.2,
+          "ecosystem_integration": 0.15,
+          "multi_file_agent": 0.1,
+          "terminal_execution": 0.05,
+          "model_flexibility": 0.05,
+          "plan_affordability": 0.05
+        }
+      }
+    },
+    "app_builders": {
+      "active_tools_count": 4,
+      "presets": {
+        "balanced": {
+          "full_stack_backend": 0.2,
+          "frontend_ui_quality": 0.2,
+          "deployment_hosting": 0.15,
+          "code_export_github": 0.2,
+          "autonomous_iteration": 0.15,
+          "pricing_accessibility": 0.1
+        },
+        "full_stack": {
+          "full_stack_backend": 0.4,
+          "autonomous_iteration": 0.2,
+          "deployment_hosting": 0.15,
+          "code_export_github": 0.15,
+          "frontend_ui_quality": 0.05,
+          "pricing_accessibility": 0.05
+        },
+        "frontend_ui": {
+          "frontend_ui_quality": 0.45,
+          "deployment_hosting": 0.2,
+          "pricing_accessibility": 0.15,
+          "autonomous_iteration": 0.1,
+          "code_export_github": 0.05,
+          "full_stack_backend": 0.05
+        },
+        "code_ownership": {
+          "code_export_github": 0.45,
+          "full_stack_backend": 0.2,
+          "autonomous_iteration": 0.15,
+          "deployment_hosting": 0.1,
+          "frontend_ui_quality": 0.05,
+          "pricing_accessibility": 0.05
+        }
+      }
+    }
+  }
+}

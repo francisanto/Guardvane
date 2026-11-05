@@ -1,0 +1,35 @@
+{
+  "model_name": "Prompt Security Model",
+  "version": "2.1.0",
+  "evaluation_date": "2026-10-21T06:52:20.561363+00:00",
+  "train_samples": 32172,
+  "base_train_samples": 31292,
+  "synthetic_train_samples": 880,
+  "test_samples": 7824,
+  "decision_threshold": 0.5,
+  "metrics": {
+    "accuracy": 0.9379,
+    "precision": 0.9594,
+    "recall": 0.8878,
+    "f1_score": 0.9222,
+    "roc_auc": 0.9783,
+    "false_positive_rate": 0.0266
+  },
+  "confusion_matrix": {
+    "true_negatives": 4458,
+    "false_positives": 122,
+    "false_negatives": 364,
+    "true_positives": 2880
+  },
+  "data_splitting_and_leakage_audit": {
+    "exact_train_test_overlap": 0,
+    "split_before_augmentation": true,
+    "test_set_augmented": false,
+    "status": "clean_leakage_free_split_verified"
+  },
+  "scientific_notes": {
+    "model_type": "Binary malicious-prompt classification via TF-IDF + LogisticRegression",
+    "feature_configuration": "lowercase=True, stop_words='english', ngram_range=(1, 2), max_features=12000, sublinear_tf=True",
+    "methodology": "Deduplicated base MPDD; split train/test before augmentation; training-only diverse unique augmentations; benchmark kept strictly independent."
+  }
+}

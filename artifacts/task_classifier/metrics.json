@@ -1,0 +1,63 @@
+{
+  "model_name": "PromptShield Task Classifier",
+  "evaluation_timestamp": "2026-10-30T10:23:57.130226",
+  "total_samples": 240,
+  "train_samples": 192,
+  "test_samples": 48,
+  "overall_metrics": {
+    "accuracy": 0.7708,
+    "weighted_f1": 0.7637,
+    "macro_f1": 0.7637
+  },
+  "per_class_metrics": {
+    "code_generation": {
+      "precision": 0.8571,
+      "recall": 0.75,
+      "f1-score": 0.8,
+      "support": 8.0
+    },
+    "creative_and_writing": {
+      "precision": 0.6667,
+      "recall": 1.0,
+      "f1-score": 0.8,
+      "support": 8.0
+    },
+    "data_analysis": {
+      "precision": 0.8333,
+      "recall": 0.625,
+      "f1-score": 0.7143,
+      "support": 8.0
+    },
+    "general_instruction": {
+      "precision": 0.8,
+      "recall": 0.5,
+      "f1-score": 0.6154,
+      "support": 8.0
+    },
+    "reasoning_and_math": {
+      "precision": 0.875,
+      "recall": 0.875,
+      "f1-score": 0.875,
+      "support": 8.0
+    },
+    "security_analysis": {
+      "precision": 0.7,
+      "recall": 0.875,
+      "f1-score": 0.7778,
+      "support": 8.0
+    },
+    "accuracy": 0.7708,
+    "macro avg": {
+      "precision": 0.7887,
+      "recall": 0.7708,
+      "f1-score": 0.7637,
+      "support": 48.0
+    },
+    "weighted avg": {
+      "precision": 0.7887,
+      "recall": 0.7708,
+      "f1-score": 0.7637,
+      "support": 48.0
+    }
+  }
+}

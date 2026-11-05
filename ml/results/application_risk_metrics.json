@@ -1,0 +1,239 @@
+{
+  "model_name": "Application Risk Model",
+  "evaluation_date": "2026-10-21T05:56:49.707171+00:00",
+  "dataset_path": "/Users/francisanto/backend/backendprompt/data/security_risk_dataset.csv",
+  "total_dataset_records": 296,
+  "train_samples": 236,
+  "test_samples": 60,
+  "risk_labels": [
+    "sqli",
+    "xss",
+    "ssrf",
+    "idor",
+    "auth_weakness",
+    "authz_weakness",
+    "file_upload",
+    "path_traversal",
+    "command_injection",
+    "csrf",
+    "sensitive_data",
+    "prompt_injection",
+    "data_poisoning",
+    "model_extraction",
+    "ai_tool_risk"
+  ],
+  "overall_metrics": {
+    "micro_precision": 0.828,
+    "micro_recall": 0.837,
+    "micro_f1": 0.8324,
+    "macro_precision": 0.7783,
+    "macro_recall": 0.7993,
+    "macro_f1": 0.7793,
+    "weighted_f1": 0.8383,
+    "hamming_loss": 0.0344
+  },
+  "classification_report": {
+    "sqli": {
+      "precision": 1.0,
+      "recall": 0.8181818181818182,
+      "f1-score": 0.9,
+      "support": 11.0
+    },
+    "xss": {
+      "precision": 1.0,
+      "recall": 0.8181818181818182,
+      "f1-score": 0.9,
+      "support": 11.0
+    },
+    "ssrf": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 5.0
+    },
+    "idor": {
+      "precision": 0.7142857142857143,
+      "recall": 0.7142857142857143,
+      "f1-score": 0.7142857142857143,
+      "support": 7.0
+    },
+    "auth_weakness": {
+      "precision": 0.7142857142857143,
+      "recall": 1.0,
+      "f1-score": 0.8333333333333334,
+      "support": 5.0
+    },
+    "authz_weakness": {
+      "precision": 0.7142857142857143,
+      "recall": 0.7142857142857143,
+      "f1-score": 0.7142857142857143,
+      "support": 7.0
+    },
+    "file_upload": {
+      "precision": 1.0,
+      "recall": 0.875,
+      "f1-score": 0.9333333333333333,
+      "support": 8.0
+    },
+    "path_traversal": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "command_injection": {
+      "precision": 0.8571428571428571,
+      "recall": 1.0,
+      "f1-score": 0.9230769230769231,
+      "support": 6.0
+    },
+    "csrf": {
+      "precision": 0.8,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.7272727272727273,
+      "support": 6.0
+    },
+    "sensitive_data": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "f1-score": 0.8571428571428571,
+      "support": 8.0
+    },
+    "prompt_injection": {
+      "precision": 0.625,
+      "recall": 0.8333333333333334,
+      "f1-score": 0.7142857142857143,
+      "support": 6.0
+    },
+    "data_poisoning": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 4.0
+    },
+    "model_extraction": {
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1-score": 0.8571428571428571,
+      "support": 3.0
+    },
+    "ai_tool_risk": {
+      "precision": 0.5,
+      "recall": 0.8,
+      "f1-score": 0.6153846153846154,
+      "support": 5.0
+    },
+    "micro avg": {
+      "precision": 0.8279569892473119,
+      "recall": 0.8369565217391305,
+      "f1-score": 0.8324324324324325,
+      "support": 92.0
+    },
+    "macro avg": {
+      "precision": 0.7783333333333334,
+      "recall": 0.7993290043290044,
+      "f1-score": 0.7793029193029193,
+      "support": 92.0
+    },
+    "weighted avg": {
+      "precision": 0.8588509316770185,
+      "recall": 0.8369565217391305,
+      "f1-score": 0.8383330437678265,
+      "support": 92.0
+    },
+    "samples avg": {
+      "precision": 0.8013888888888889,
+      "recall": 0.9,
+      "f1-score": 0.8303968253968255,
+      "support": 92.0
+    }
+  },
+  "label_distribution": {
+    "sqli": {
+      "positives": 32,
+      "negatives": 264,
+      "positive_ratio": 0.1081
+    },
+    "xss": {
+      "positives": 34,
+      "negatives": 262,
+      "positive_ratio": 0.1149
+    },
+    "ssrf": {
+      "positives": 16,
+      "negatives": 280,
+      "positive_ratio": 0.0541
+    },
+    "idor": {
+      "positives": 28,
+      "negatives": 268,
+      "positive_ratio": 0.0946
+    },
+    "auth_weakness": {
+      "positives": 32,
+      "negatives": 264,
+      "positive_ratio": 0.1081
+    },
+    "authz_weakness": {
+      "positives": 33,
+      "negatives": 263,
+      "positive_ratio": 0.1115
+    },
+    "file_upload": {
+      "positives": 30,
+      "negatives": 266,
+      "positive_ratio": 0.1014
+    },
+    "path_traversal": {
+      "positives": 0,
+      "negatives": 296,
+      "positive_ratio": 0.0
+    },
+    "command_injection": {
+      "positives": 26,
+      "negatives": 270,
+      "positive_ratio": 0.0878
+    },
+    "csrf": {
+      "positives": 27,
+      "negatives": 269,
+      "positive_ratio": 0.0912
+    },
+    "sensitive_data": {
+      "positives": 35,
+      "negatives": 261,
+      "positive_ratio": 0.1182
+    },
+    "prompt_injection": {
+      "positives": 25,
+      "negatives": 271,
+      "positive_ratio": 0.0845
+    },
+    "data_poisoning": {
+      "positives": 26,
+      "negatives": 270,
+      "positive_ratio": 0.0878
+    },
+    "model_extraction": {
+      "positives": 26,
+      "negatives": 270,
+      "positive_ratio": 0.0878
+    },
+    "ai_tool_risk": {
+      "positives": 27,
+      "negatives": 269,
+      "positive_ratio": 0.0912
+    }
+  },
+  "unlearnable_labels": {
+    "labels": [
+      "path_traversal"
+    ],
+    "explanation": "Zero positive instances exist in the dataset; model defaults to constant negative predictor."
+  },
+  "scientific_notes": {
+    "model_type": "Multi-label text classification via TF-IDF (5000 max features) and OneVsRest Logistic Regression",
+    "solver": "liblinear with balanced class weighting for stable sparse-matrix convergence",
+    "validation_method": "Held-out test set split (20%), random_state=42"
+  }
+}

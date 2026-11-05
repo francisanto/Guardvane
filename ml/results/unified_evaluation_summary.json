@@ -1,0 +1,43 @@
+{
+  "evaluation_timestamp": "2026-11-01T14:37:13.159496+00:00",
+  "task_classifier": {
+    "status": "success",
+    "accuracy": 0.7708,
+    "weighted_f1": 0.7637,
+    "num_classes": 6,
+    "classes": [
+      "code_generation",
+      "security_analysis",
+      "data_analysis",
+      "creative_and_writing",
+      "reasoning_and_math",
+      "general_instruction"
+    ]
+  },
+  "injection_detector": {
+    "status": "success",
+    "accuracy": 0.9379,
+    "precision": 0.9594,
+    "recall": 0.8878,
+    "f1_score": 0.9222,
+    "roc_auc": 0.9783,
+    "decision_threshold": 0.5
+  },
+  "complexity_model": {
+    "status": "success",
+    "accuracy": 0.5,
+    "weighted_f1": 0.4861,
+    "tiers": [
+      "simple",
+      "moderate",
+      "complex",
+      "extreme"
+    ]
+  },
+  "golden_benchmark_suite": {
+    "status": "success",
+    "total_test_cases": 30,
+    "security_conformance_rate": 1.0,
+    "ranking_stability_rate": 1.0
+  }
+}

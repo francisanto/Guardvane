@@ -1,0 +1,105 @@
+/* PromptShield Console — Green Theme Inspired by Claude Console */
+:root {
+  --primary: #176B45;
+  --primary-hover: #115638;
+  --accent: #2FA36B;
+  --light-green: #EAF5EE;
+  --bg-main: #F7F9F7;
+  --border-color: #E2E9E3;
+  --text-main: #202820;
+  --text-muted: #627566;
+  --card-bg: #FFFFFF;
+  --sidebar-bg: #FAFBF9;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4DDD5;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B6C4B8;
+}
+
+/* Nav Item Active State */
+.nav-item-active {
+  background-color: var(--light-green) !important;
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+}
+
+.nav-item-active svg {
+  color: var(--primary) !important;
+}
+
+/* Transitions */
+.transition-smooth {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Card hover */
+.card-hover:hover {
+  border-color: #C7D8CA;
+  box-shadow: 0 4px 12px rgba(23, 107, 69, 0.05);
+}
+
+/* Status Badges */
+.badge-status-requested {
+  background-color: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+.badge-status-accepted {
+  background-color: #E0E7FF;
+  color: #3730A3;
+  border: 1px solid #C7D2FE;
+}
+.badge-status-in_progress {
+  background-color: #DBEAFE;
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+}
+.badge-status-delivered {
+  background-color: #D1FAE5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+.badge-status-completed {
+  background-color: #EAF5EE;
+  color: #176B45;
+  border: 1px solid #C4E4CE;
+}
+.badge-status-rejected, .badge-status-cancelled {
+  background-color: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+}
+
+/* Pulse animation for active simulation */
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-soft-pulse {
+  animation: softPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pandas
+scikit-learn
+joblib
+kagglehub
+pytest
+httpx
+tiktoken
+openai
+python-dotenv
