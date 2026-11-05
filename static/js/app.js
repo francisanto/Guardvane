@@ -9,6 +9,15 @@ const STATE = {
   selectedServiceId: null,
   selectedOrderId: null,
   selectedReportId: null,
+  auth: {
+    isAuthenticated: false,
+    walletAddress: null,
+    user: null,
+    loading: false,
+    error: null,
+    statusText: '',
+    guestMode: false
+  },
   user: {
     id: 'francis',
     name: 'Francis',
@@ -33,13 +42,13 @@ const STATE = {
     prompts: [],
     integrations: null
   },
-  activeModal: null, // request_review, deliver_modal, quick_analyze, create_prompt, report_viewer, wallet_modal, settings_modal, add_service_modal
+  activeModal: null,
   modalPayload: null,
   loading: false
 };
 
 // ---------------------------------------------------------------------------
-// API Helpers
+// API Helpers & Authentication Actions
 // ---------------------------------------------------------------------------
 
 async function apiFetch(endpoint, options = {}) {
@@ -51,8 +60,12 @@ async function apiFetch(endpoint, options = {}) {
   };
 
   try {
-    const res = await fetch(endpoint, { ...options, headers });
+    const res = await fetch(endpoint, { ...options, headers, credentials: 'include' });
     if (!res.ok) {
+      if (res.status === 401 && !STATE.auth.guestMode) {
+        STATE.auth.isAuthenticated = false;
+        renderApp();
+      }
       const errData = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(errData.detail || `API error (${res.status})`);
     }
@@ -61,6 +74,145 @@ async function apiFetch(endpoint, options = {}) {
     console.error(`Fetch error at ${endpoint}:`, err);
     throw err;
   }
+}
+
+async function checkAuthSession() {
+  try {
+    const res = await fetch('/auth/me', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      STATE.auth.isAuthenticated = true;
+      STATE.auth.user = data;
+      STATE.auth.walletAddress = data.wallet_address;
+      STATE.user.id = data.wallet_address;
+      STATE.user.name = data.display_name || (data.wallet_address.substring(0, 6) + '...' + data.wallet_address.substring(data.wallet_address.length - 4));
+      STATE.user.role = (data.roles && data.roles.includes('provider')) ? 'provider' : (data.roles[0] || 'customer');
+      return true;
+    }
+  } catch (e) {
+    console.debug('No active SIWE session:', e);
+  }
+  return false;
+}
+
+async function connectAndSignWithMetaMask() {
+  if (typeof window.ethereum === 'undefined') {
+    STATE.auth.error = 'MetaMask was not detected. Please install MetaMask to connect your wallet.';
+    renderApp();
+    return;
+  }
+
+  STATE.auth.loading = true;
+  STATE.auth.error = null;
+  STATE.auth.statusText = 'Connecting to MetaMask...';
+  renderApp();
+
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || accounts.length === 0) {
+      throw new Error('No Ethereum accounts authorized. Please select an account in MetaMask.');
+    }
+    const rawAddress = accounts[0];
+    STATE.auth.walletAddress = rawAddress.toLowerCase();
+    STATE.auth.statusText = 'Requesting challenge...';
+    renderApp();
+
+    const nonceRes = await fetch('/auth/nonce', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: rawAddress }),
+      credentials: 'include'
+    });
+
+    if (!nonceRes.ok) {
+      const err = await nonceRes.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to request challenge nonce.');
+    }
+    const nonceData = await nonceRes.json();
+    const nonce = nonceData.nonce;
+    const checksumAddress = nonceData.checksum_address || (window.ethers?.getAddress ? window.ethers.getAddress(rawAddress) : rawAddress);
+
+    const domain = window.location.host || 'localhost:8000';
+    const origin = window.location.origin || 'http://localhost:8000';
+    const statement = 'Sign in to Guardvane';
+    const issuedAt = new Date().toISOString();
+
+    const siweMessage = `${domain} wants you to sign in with your Ethereum account:\n${checksumAddress}\n\n${statement}\n\nURI: ${origin}\nVersion: 1\nChain ID: 1\nNonce: ${nonce}\nIssued At: ${issuedAt}`;
+
+    STATE.auth.statusText = 'Awaiting signature in MetaMask...';
+    renderApp();
+
+    let signature;
+    try {
+      signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [siweMessage, rawAddress]
+      });
+    } catch (signErr) {
+      if (signErr.code === 4001 || (signErr.message && signErr.message.toLowerCase().includes('reject'))) {
+        throw new Error('Signature was rejected in MetaMask. Please sign to connect.');
+      }
+      throw signErr;
+    }
+
+    STATE.auth.statusText = 'Verifying signature...';
+    renderApp();
+
+    const verifyRes = await fetch('/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: siweMessage, signature: signature }),
+      credentials: 'include'
+    });
+
+    if (!verifyRes.ok) {
+      const err = await verifyRes.json().catch(() => ({}));
+      throw new Error(err.detail || 'Authentication verification failed.');
+    }
+
+    const verifyData = await verifyRes.json();
+    STATE.auth.isAuthenticated = true;
+    STATE.auth.user = verifyData.user;
+    STATE.auth.walletAddress = verifyData.user.wallet_address;
+    STATE.user.id = verifyData.user.wallet_address;
+    STATE.user.name = verifyData.user.display_name || (verifyData.user.wallet_address.substring(0, 6) + '...' + verifyData.user.wallet_address.substring(verifyData.user.wallet_address.length - 4));
+    STATE.user.role = verifyData.user.roles?.[0] || 'customer';
+    STATE.auth.error = null;
+    STATE.auth.statusText = '';
+
+    await loadInitialData();
+  } catch (err) {
+    console.error('Authentication failure:', err);
+    STATE.auth.error = err.message || 'Failed to authenticate with MetaMask.';
+  } finally {
+    STATE.auth.loading = false;
+    renderApp();
+  }
+}
+
+async function handleLogout() {
+  try {
+    await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+  } catch (e) {
+    console.error('Logout error:', e);
+  }
+  STATE.auth.isAuthenticated = false;
+  STATE.auth.user = null;
+  STATE.auth.walletAddress = null;
+  STATE.auth.error = null;
+  STATE.auth.statusText = '';
+  STATE.auth.guestMode = false;
+  renderApp();
+}
+
+function continueAsGuest() {
+  STATE.auth.isAuthenticated = true;
+  STATE.auth.guestMode = true;
+  STATE.auth.walletAddress = '0xfrancis...dev';
+  STATE.user.id = 'francis';
+  STATE.user.name = 'Francis (Guest)';
+  STATE.user.role = 'customer';
+  loadInitialData();
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +297,11 @@ function renderApp() {
   const root = document.getElementById('app-root');
   if (!root) return;
 
+  if (!STATE.auth.isAuthenticated) {
+    root.innerHTML = renderLoginPage();
+    return;
+  }
+
   root.innerHTML = `
     <div class="flex h-screen overflow-hidden bg-[#F7F9F7] text-[#202820]">
       <!-- Left Sidebar -->
@@ -179,6 +336,86 @@ function renderApp() {
     });
     window._shortcutListenerAttached = true;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Guardvane Login Page (MetaMask + SIWE)
+// ---------------------------------------------------------------------------
+
+function renderLoginPage() {
+  return `
+    <div class="min-h-screen bg-[#F7F9F7] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 select-none">
+      <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+        <!-- Shield Brand Icon -->
+        <div class="mx-auto w-14 h-14 rounded-2xl bg-[#176B45] text-white flex items-center justify-center shadow-md">
+          <svg class="w-8 h-8 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <h1 class="mt-4 text-2xl font-bold tracking-tight text-[#202820]">Guardvane</h1>
+        <p class="mt-1.5 text-[13.5px] text-[#627566] max-w-sm mx-auto">
+          AI Security Platform
+        </p>
+      </div>
+
+      <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div class="bg-white py-8 px-6 shadow-sm border border-[#E2E9E3] rounded-2xl sm:px-10 space-y-5">
+          
+          <!-- Error Alert Banner -->
+          ${STATE.auth.error ? `
+            <div class="p-3.5 rounded-lg bg-[#FDF2F2] border border-[#F8B4B4] text-[13px] text-[#9B1C1C] flex items-start gap-2.5">
+              <svg class="w-5 h-5 shrink-0 text-[#E02424] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>${escapeHtml(STATE.auth.error)}</span>
+            </div>
+          ` : ''}
+
+          <!-- Signing / Loading State -->
+          ${STATE.auth.loading ? `
+            <div class="p-5 rounded-xl bg-[#EAF5EE] border border-[#CDE5D5] text-center space-y-2.5">
+              <div class="w-7 h-7 border-3 border-[#176B45] border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p class="text-[13.5px] font-semibold text-[#176B45]">${escapeHtml(STATE.auth.statusText || 'Connecting...')}</p>
+              <p class="text-[11.5px] text-[#627566]">Please confirm the signature in your wallet.</p>
+            </div>
+          ` : `
+            <!-- Connect Wallet Action Button -->
+            <button
+              onclick="connectAndSignWithMetaMask()"
+              class="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-[#176B45] hover:bg-[#115638] text-white text-[14px] font-semibold rounded-xl shadow-xs transition-smooth cursor-pointer"
+            >
+              <!-- MetaMask Fox SVG -->
+              <svg class="w-5 h-5 shrink-0" viewBox="0 0 318.6 318.6">
+                <path fill="#E2761B" stroke="#E2761B" stroke-linecap="round" stroke-linejoin="round" d="M274.1 35.5l-99.5 73.9L194 65.4z"/>
+                <path fill="#E4761B" stroke="#E4761B" stroke-linecap="round" stroke-linejoin="round" d="M44.5 35.5l99.5 73.9-19.4-44z"/>
+                <path fill="#E4761B" stroke="#E4761B" stroke-linecap="round" stroke-linejoin="round" d="M238.3 206.8l-30 45.4 67.9 18.7 19.5-63.5z"/>
+                <path fill="#E4761B" stroke="#E4761B" stroke-linecap="round" stroke-linejoin="round" d="M22.9 207.4l19.5 63.5 67.9-18.7-30-45.4z"/>
+                <path fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" d="M90.3 148.9l-22.6-33.8-38.6 11.4 14.6 35.9z"/>
+                <path fill="#D7C1B3" stroke="#D7C1B3" stroke-linecap="round" stroke-linejoin="round" d="M228.3 148.9l32.1 13.5 14.6-35.9-38.6-11.4z"/>
+                <path fill="#233447" stroke="#233447" stroke-linecap="round" stroke-linejoin="round" d="M106.9 182.2l-21.7-16.7-18.8 14.1 27.2 21.6z"/>
+                <path fill="#233447" stroke="#233447" stroke-linecap="round" stroke-linejoin="round" d="M211.7 182.2l13.3 19 27.2-21.6-18.8-14.1z"/>
+                <path fill="#CD6116" stroke="#CD6116" stroke-linecap="round" stroke-linejoin="round" d="M85.2 165.5l21.7 16.7 4.5-22.7-32.1-13.5z"/>
+                <path fill="#CD6116" stroke="#CD6116" stroke-linecap="round" stroke-linejoin="round" d="M207.2 159.5l4.5 22.7 21.7-16.7-5.9-19.5z"/>
+                <path fill="#E4751F" stroke="#E4751F" stroke-linecap="round" stroke-linejoin="round" d="M106.9 182.2l-21.7-16.7 5.9-19.5 30 45.4z"/>
+                <path fill="#E4751F" stroke="#E4751F" stroke-linecap="round" stroke-linejoin="round" d="M207.2 159.5l-5.9 19.5-21.7 16.7 30-45.4z"/>
+                <path fill="#F6851B" stroke="#F6851F" stroke-linecap="round" stroke-linejoin="round" d="M159.3 174.5l-38.6-11.4 12.1 40.8 26.5-29.4z"/>
+                <path fill="#F6851B" stroke="#F6851F" stroke-linecap="round" stroke-linejoin="round" d="M159.3 174.5l26.5 29.4 12.1-40.8-38.6 11.4z"/>
+                <path fill="#C0AD9E" stroke="#C0AD9E" stroke-linecap="round" stroke-linejoin="round" d="M197.9 203.9l-12.1 40.8 13.9 10.3 30-45.4-31.8-5.7z"/>
+                <path fill="#C0AD9E" stroke="#C0AD9E" stroke-linecap="round" stroke-linejoin="round" d="M88.9 209.6l30 45.4 13.9-10.3-12.1-40.8-31.8 5.7z"/>
+                <path fill="#161616" stroke="#161616" stroke-linecap="round" stroke-linejoin="round" d="M159.3 226.3l-26.5-29.4-13.9 10.3 26.5 19.1z"/>
+                <path fill="#161616" stroke="#161616" stroke-linecap="round" stroke-linejoin="round" d="M159.3 226.3l13.9 0 26.5-19.1-13.9-10.3z"/>
+                <path fill="#763D16" stroke="#763D16" stroke-linecap="round" stroke-linejoin="round" d="M118.9 237.2l13.9 10.3 26.5-21.2-13.9 0z"/>
+                <path fill="#763D16" stroke="#763D16" stroke-linecap="round" stroke-linejoin="round" d="M173.2 237.2l-26.5-10.9 26.5 21.2 13.9-10.3z"/>
+                <path fill="#F6851B" stroke="#F6851F" stroke-linecap="round" stroke-linejoin="round" d="M159.3 65.4l15.2 44.5 99.5-74.4-114.7 29.9z"/>
+                <path fill="#F6851B" stroke="#F6851F" stroke-linecap="round" stroke-linejoin="round" d="M44.5 35.5l99.5 74.4 15.3-44.5-114.8-29.9z"/>
+              </svg>
+              <span>Connect Wallet</span>
+            </button>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------------------
@@ -370,20 +607,37 @@ function renderTopbar() {
         </div>
       </div>
 
-      <!-- Top Right Controls (Cleaned: no fake Hedera balances or notification bells) -->
-      <div class="flex items-center gap-4">
+      <!-- Top Right Controls -->
+      <div class="flex items-center gap-3">
         <!-- Documentation Link -->
-        <a href="/docs" target="_blank" class="text-[13px] font-medium text-[#445246] hover:text-[#176B45] flex items-center gap-1 transition-smooth">
-          API Documentation
+        <a href="/docs" target="_blank" class="text-[13px] font-medium text-[#445246] hover:text-[#176B45] flex items-center gap-1 transition-smooth mr-1">
+          API Docs
           <svg class="w-3.5 h-3.5 text-[#8B9C8E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
         </a>
 
-        <!-- User Avatar -->
-        <div class="w-8 h-8 rounded-full bg-[#176B45] text-white flex items-center justify-center font-semibold text-xs shadow-xs">
-          F
-        </div>
+        <!-- Wallet Badge -->
+        ${STATE.auth.walletAddress ? `
+          <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
+            <span class="w-2 h-2 rounded-full bg-[#2FA36B] animate-pulse"></span>
+            <span>${STATE.auth.walletAddress.substring(0, 6)}...${STATE.auth.walletAddress.substring(STATE.auth.walletAddress.length - 4)}</span>
+          </div>
+        ` : ''}
+
+        <!-- Active Role Badge -->
+        <span class="px-2.5 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider bg-[#F0F5F1] text-[#445246] border border-[#E2E9E3]">
+          ${STATE.user.role === 'provider' ? 'Provider' : 'Customer'}
+        </span>
+
+        <!-- Logout Button -->
+        <button
+          onclick="handleLogout()"
+          title="Sign out of Guardvane"
+          class="px-2.5 py-1 text-xs text-[#627566] hover:text-[#C53030] hover:bg-[#FDE8E8] rounded-md transition-smooth font-medium cursor-pointer"
+        >
+          Logout
+        </button>
       </div>
     </header>
   `;
@@ -1657,35 +1911,60 @@ function renderReportViewerModal() {
 }
 
 function renderWalletModal() {
+  const isConnected = !!STATE.auth.walletAddress;
+  const address = STATE.auth.walletAddress || 'Not Connected';
+  const roles = (STATE.auth.user && STATE.auth.user.roles) ? STATE.auth.user.roles.join(', ') : (STATE.user.role || 'customer');
+
   return `
-    <div class="p-6 space-y-4">
+    <div class="p-6 space-y-4 select-none">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Wallet Management</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Web3 Wallet & Authentication</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
-      <div class="space-y-3 text-[13px]">
-        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-2">
+      <div class="space-y-4 text-[13px]">
+        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Wallet Status:</span>
-            <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#EAF5EE] text-[#176B45]">Ready for Connection</span>
+            <span class="text-[#627566]">Authentication Status:</span>
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold ${isConnected ? 'bg-[#EAF5EE] text-[#176B45]' : 'bg-[#FEF3C7] text-[#92400E]'}">
+              ${isConnected ? 'SIWE Verified & Active' : 'Disconnected'}
+            </span>
           </div>
+
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Account ID:</span>
-            <code class="font-mono text-[#202820]">0.0.4829103</code>
+            <span class="text-[#627566]">Wallet Address:</span>
+            <code class="font-mono text-xs text-[#202820] bg-white px-2 py-0.5 rounded border border-[#E2E9E3] truncate max-w-[220px]" title="${escapeForAttr(address)}">
+              ${escapeHtml(address)}
+            </code>
           </div>
+
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Settlement Network:</span>
-            <span class="font-medium text-[#202820]">Hedera Testnet</span>
+            <span class="text-[#627566]">Active Roles:</span>
+            <span class="font-medium text-[#202820] uppercase text-xs tracking-wider">${escapeHtml(roles)}</span>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-[#627566]">Vault Database:</span>
+            <span class="font-medium text-[#176B45] text-xs">PostgreSQL (Multi-Role Isolated)</span>
           </div>
         </div>
 
         <p class="text-[12px] text-[#627566]">
-          Autonomous micropayments and provider payouts will settle via the Hedera x402 payment protocol in Phase 2. Live wallet transactions are currently disabled.
+          Your identity is verified on-chain via EIP-4361 Sign-In with Ethereum (SIWE). Private prompts, security orders, and review deliverables are cryptographically partitioned to your wallet account.
         </p>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex justify-end">
-          <button onclick="closeModal()" class="px-4 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md">
+        <div class="pt-3 border-t border-[#E2E9E3] flex justify-between items-center">
+          ${isConnected ? `
+            <button onclick="closeModal(); handleLogout();" class="px-3 py-1.5 text-xs text-[#991B1B] hover:bg-[#FEE2E2] rounded-md font-medium transition-smooth">
+              Disconnect Wallet
+            </button>
+          ` : `
+            <button onclick="closeModal(); connectAndSignWithMetaMask();" class="px-3 py-1.5 bg-[#176B45] text-white text-xs rounded-md font-medium">
+              Connect MetaMask
+            </button>
+          `}
+
+          <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth">
             Close
           </button>
         </div>
@@ -2149,6 +2428,11 @@ function escapeForAttr(str) {
 }
 
 // Initialize on DOM load
-window.addEventListener('DOMContentLoaded', () => {
-  loadInitialData();
+window.addEventListener('DOMContentLoaded', async () => {
+  const hasSession = await checkAuthSession();
+  if (hasSession) {
+    await loadInitialData();
+  } else {
+    renderApp();
+  }
 });
