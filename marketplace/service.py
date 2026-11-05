@@ -491,32 +491,7 @@ class MarketplaceService:
             )
 
             with conn:
-                # Insert report
-                conn.execute(
-                    """
-                    INSERT INTO reports (
-                        id, order_id, customer_id, provider_id, provider_name,
-                        service_title, summary, findings, recommendations,
-                        hardened_prompt, swarm_reference, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        report_id,
-                        order_id,
-                        customer_id,
-                        service.provider_id,
-                        service.provider_name,
-                        service.title,
-                        report_summary,
-                        json.dumps(findings),
-                        json.dumps(rec_list),
-                        hardened_prompt,
-                        swarm_res.reference,
-                        now
-                    )
-                )
-
-                # Insert completed order
+                # 1. Insert order first to satisfy foreign key constraint on reports(order_id)
                 conn.execute(
                     """
                     INSERT INTO orders (
@@ -547,6 +522,31 @@ class MarketplaceService:
                         report_id,
                         "Autonomous audit executed successfully and verified on Hedera & Swarm.",
                         now,
+                        now
+                    )
+                )
+
+                # 2. Insert report referencing the order
+                conn.execute(
+                    """
+                    INSERT INTO reports (
+                        id, order_id, customer_id, provider_id, provider_name,
+                        service_title, summary, findings, recommendations,
+                        hardened_prompt, swarm_reference, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        report_id,
+                        order_id,
+                        customer_id,
+                        service.provider_id,
+                        service.provider_name,
+                        service.title,
+                        report_summary,
+                        json.dumps(findings),
+                        json.dumps(rec_list),
+                        hardened_prompt,
+                        swarm_res.reference,
                         now
                     )
                 )

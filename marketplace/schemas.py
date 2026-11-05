@@ -217,3 +217,4 @@ class IntegrationStatusResponse(BaseModel):
     zero_g: Dict[str, Any]
     swarm: Dict[str, Any]
     hedera: Dict[str, Any]
+

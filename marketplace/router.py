@@ -384,3 +384,4 @@ def get_integrations_status():
         swarm=swarm_client.get_status().model_dump(),
         hedera=hedera_client.get_status().model_dump()
     )
+
