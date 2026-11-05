@@ -29,15 +29,17 @@ from analyzers.model_comparison import (
     IDEProductMetadata,
     AppBuilderMetadata
 )
+from auth.router import router as auth_router
 from marketplace.router import router as marketplace_router
 
 app = FastAPI(
-    title="PromptShield AI",
+    title="Guardvane AI",
     description="Multi-model AI security analysis, local model comparison, and decentralized security marketplace connecting customers with automated AI defenses and human security experts.",
-    version="1.4.0"
+    version="1.5.0"
 )
 
-# Mount marketplace API router
+# Mount authentication and marketplace routers
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(marketplace_router, prefix="/marketplace", tags=["Marketplace"])
 
 # Static files directory
@@ -63,7 +65,7 @@ def serve_dashboard():
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
-    return HTMLResponse("<h1>PromptShield Console</h1><p>UI loading error</p>")
+    return HTMLResponse("<h1>Guardvane Console</h1><p>UI loading error</p>")
 
 
 @app.post("/analyze")
