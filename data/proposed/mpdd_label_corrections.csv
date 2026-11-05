@@ -224,7 +224,7 @@ var map;
 var directions;
 
 // token access for MAPBOX GL
-mapboxgl.accessToken = 'pk.eyJ1IjoiYW50b3RvIiwiYSI6ImNpdm15YmNwNTAwMDUyb3FwbzlzeWluZHcifQ.r44fcNU5pnX3-mYYM495Fw';
+mapboxgl.accessToken = '[REDACTED_MAPBOX_TOKEN]';
 
 // generate map
 var map = new mapboxgl.Map({
