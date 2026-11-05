@@ -20,7 +20,7 @@ const STATE = {
   },
   user: {
     id: null,
-    name: 'Account',
+    name: (typeof localStorage !== 'undefined' && localStorage.getItem('guardvane_display_name')) ? localStorage.getItem('guardvane_display_name') : 'Account',
     role: 'customer',
     activeProviderId: null
   },
@@ -83,7 +83,8 @@ async function checkAuthSession() {
       STATE.auth.user = data;
       STATE.auth.walletAddress = data.wallet_address;
       STATE.user.id = data.wallet_address;
-      STATE.user.name = data.display_name || (data.wallet_address.substring(0, 6) + '...' + data.wallet_address.substring(data.wallet_address.length - 4));
+      const savedDisplayName = (typeof localStorage !== 'undefined') ? localStorage.getItem('guardvane_display_name') : null;
+      STATE.user.name = savedDisplayName || data.display_name || (data.wallet_address.substring(0, 6) + '...' + data.wallet_address.substring(data.wallet_address.length - 4));
       STATE.user.role = (data.roles && data.roles.includes('provider')) ? 'provider' : (data.roles[0] || 'customer');
       return true;
     }
@@ -436,29 +437,18 @@ function renderSidebar() {
     p.id === STATE.user.activeProviderId
   );
   const isRegisteredProvider = !!myProvider;
-  const shortAddr = STATE.auth.walletAddress
-    ? (STATE.auth.walletAddress.substring(0, 6) + '...' + STATE.auth.walletAddress.substring(STATE.auth.walletAddress.length - 4))
-    : (STATE.user.name || 'Account');
+  const shortAddr = STATE.user.name
+    ? STATE.user.name
+    : (STATE.auth.walletAddress
+        ? (STATE.auth.walletAddress.substring(0, 6) + '...' + STATE.auth.walletAddress.substring(STATE.auth.walletAddress.length - 4))
+        : 'Account');
 
   return `
     <aside class="w-64 bg-[#FAFBF9] border-r border-[#E2E9E3] flex flex-col justify-between shrink-0 select-none">
       <!-- Top Brand & Nav -->
       <div class="flex flex-col">
-        <!-- Logo Header -->
-        <div class="h-16 flex items-center px-6 border-b border-[#E2E9E3] gap-3">
-          <div class="w-8 h-8 rounded-lg bg-[#176B45] text-white flex items-center justify-center font-bold shadow-sm">
-            <svg class="w-5 h-5 text-emerald-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-          <div class="flex flex-col">
-            <span class="font-semibold text-[15px] tracking-tight text-[#176B45]">Guardvane</span>
-            <span class="text-[11px] text-[#627566] tracking-wide font-medium">AI Security Platform</span>
-          </div>
-        </div>
-
         <!-- Navigation Section: WORKSPACE -->
-        <div class="px-3 py-3 space-y-1">
+        <div class="px-3 py-4 space-y-1">
           <div class="px-3 pb-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Workspace</div>
           
           <button onclick="navigateTo('dashboard')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'dashboard' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
@@ -567,60 +557,10 @@ function renderSidebar() {
 // ---------------------------------------------------------------------------
 
 function renderTopbar() {
-  const titles = {
-    dashboard: 'Dashboard',
-    opihub: 'OpiHub',
-    provider_detail: 'Provider Profile',
-    become_provider: 'Become a Provider',
-    provider_workspace: 'Provider Workspace',
-    my_prompts: 'My Prompts',
-    my_requests: 'My Requests',
-    security_reports: 'Security Reports'
-  };
-
-  const currentTitle = titles[STATE.activeView] || 'Console';
-
   return `
-    <header class="h-16 border-b border-[#E2E9E3] bg-[#FAFBF9] px-8 flex items-center justify-between shrink-0 select-none">
-      <!-- Breadcrumb & Search -->
-      <div class="flex items-center gap-6 min-w-0">
-        <div class="flex items-center gap-2 text-[14px]">
-          <span class="text-[#627566] font-medium hover:text-[#176B45] cursor-pointer" onclick="navigateTo('dashboard')">Guardvane</span>
-          <span class="text-[#8B9C8E]">/</span>
-          <span class="text-[#202820] font-semibold">${currentTitle}</span>
-        </div>
-
-        <!-- Search Bar with ⌘K -->
-        <div class="relative w-80">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#8B9C8E]">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            id="topbar-search-input"
-            type="text"
-            placeholder="Search providers, audits, prompts..."
-            value="${STATE.filters.search}"
-            oninput="handleGlobalSearch(this.value)"
-            class="w-full pl-9 pr-10 py-1.5 bg-[#FFFFFF] border border-[#E2E9E3] rounded-md text-[13px] text-[#202820] placeholder-[#8B9C8E] focus:outline-none focus:border-[#176B45] focus:ring-1 focus:ring-[#176B45] transition-smooth"
-          />
-          <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
-            <kbd class="px-1.5 py-0.5 text-[10px] font-mono text-[#8B9C8E] bg-[#F7F9F7] border border-[#E2E9E3] rounded shadow-xs">⌘K</kbd>
-          </div>
-        </div>
-      </div>
-
+    <header class="h-16 border-b border-[#E2E9E3] bg-[#FAFBF9] px-8 flex items-center justify-end shrink-0 select-none">
       <!-- Top Right Controls -->
       <div class="flex items-center gap-3">
-        <!-- Documentation Link -->
-        <a href="/docs" target="_blank" class="text-[13px] font-medium text-[#445246] hover:text-[#176B45] flex items-center gap-1 transition-smooth mr-1">
-          API Docs
-          <svg class="w-3.5 h-3.5 text-[#8B9C8E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-        </a>
-
         <!-- Wallet Badge -->
         ${STATE.auth.walletAddress ? `
           <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
@@ -700,11 +640,9 @@ function renderDashboardView() {
 
   return `
     <!-- Top Greeting Header -->
+    <!-- Dashboard Top Bar / Actions -->
     <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Good morning, ${escapeHtml(displayName)}</h1>
-        <p class="text-[14px] text-[#627566] mt-0.5">AI Security Platform — Manage prompt reviews, run automated vulnerability checks, and explore verified providers.</p>
-      </div>
+      <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Dashboard</h1>
       <div class="flex items-center gap-3">
         <button onclick="openModal('quick_analyze')" class="px-4 py-2 bg-[#FFFFFF] border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2">
           <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -839,13 +777,12 @@ function renderDashboardView() {
 
 function renderOpiHubView() {
   const categories = [
-    { id: 'all', label: 'All Providers' },
-    { id: 'ai_security', label: 'AI Security' },
+    { id: 'all', label: 'All Services & Specialists' },
+    { id: 'prompt_optimization', label: 'Prompt Optimization' },
     { id: 'prompt_engineering', label: 'Prompt Engineering' },
-    { id: 'llm_optimization', label: 'LLM Optimization' },
-    { id: 'ai_agents', label: 'AI Agents' },
-    { id: 'rag_security', label: 'RAG Security' },
-    { id: 'api_security', label: 'Application Security' }
+    { id: 'loop_engineering', label: 'Loop Engineering' },
+    { id: 'codebase_security', label: 'Codebase Security Check' },
+    { id: 'application_testing', label: 'Application Testing' }
   ];
 
   const filtered = STATE.data.providers.filter(p => {
@@ -854,12 +791,12 @@ function renderOpiHubView() {
       const matchName = p.display_name.toLowerCase().includes(q);
       const matchTitle = p.title.toLowerCase().includes(q);
       const matchDesc = p.description.toLowerCase().includes(q);
-      const matchSkills = p.skills.some(s => s.toLowerCase().includes(q));
+      const matchSkills = (p.skills || []).some(s => s.toLowerCase().includes(q));
       if (!matchName && !matchTitle && !matchDesc && !matchSkills) return false;
     }
 
     if (STATE.filters.category && STATE.filters.category !== 'all') {
-      const hasCat = p.categories.some(c => c.toLowerCase() === STATE.filters.category.toLowerCase());
+      const hasCat = (p.categories || []).some(c => c.toLowerCase() === STATE.filters.category.toLowerCase());
       if (!hasCat) return false;
     }
 
@@ -870,45 +807,56 @@ function renderOpiHubView() {
     return true;
   });
 
+  const matchingServices = STATE.data.services.filter(s => {
+    if (STATE.filters.category && STATE.filters.category !== 'all') {
+      return s.category === STATE.filters.category;
+    }
+    return true;
+  });
+
   return `
     <!-- Header -->
-    <div class="flex flex-col gap-1">
-      <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">OpiHub</h1>
-      <p class="text-[14px] text-[#627566]">Decentralized marketplace for AI security services, automated defense providers, and human auditors.</p>
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">OpiHub</h1>
+      </div>
     </div>
 
-    <!-- Category Filter Tabs -->
+    <!-- Category Filter Tabs with Authority Indicators -->
     <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#E2E9E3]">
       ${categories.map(c => `
         <button
           onclick="setCategoryFilter('${c.id}')"
-          class="px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-smooth ${
+          class="px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-smooth flex items-center gap-1.5 ${
             STATE.filters.category === c.id
               ? 'bg-[#176B45] text-white shadow-xs'
               : 'bg-white border border-[#E2E9E3] text-[#445246] hover:bg-[#F0F5F1]'
           }"
         >
-          ${c.label}
+          <span>${c.label}</span>
+          ${(c.id === 'codebase_security' || c.id === 'application_testing') ? `
+            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded ${STATE.filters.category === c.id ? 'bg-white/20 text-white' : 'bg-[#FEF3C7] text-[#92400E]'}">Specialists</span>
+          ` : ''}
         </button>
       `).join('')}
     </div>
 
     <!-- Sub-Filters: Type, Availability, Count -->
-    <div class="flex items-center justify-between gap-4 bg-white p-3 border border-[#E2E9E3] rounded-lg">
+    <div class="flex items-center justify-between gap-4 bg-white p-3.5 border border-[#E2E9E3] rounded-lg shadow-xs">
       <div class="flex items-center gap-3">
-        <span class="text-[12.5px] font-medium text-[#627566]">Provider Type:</span>
+        <span class="text-[13px] font-medium text-[#445246]">Provider Type:</span>
         <select
           onchange="setProviderTypeFilter(this.value)"
-          class="bg-[#F7F9F7] border border-[#E2E9E3] text-[13px] text-[#202820] rounded px-2.5 py-1 focus:outline-none focus:border-[#176B45]"
+          class="bg-white border border-[#CBD7CE] text-[13.5px] text-[#202820] font-medium rounded-md px-3.5 py-2 min-w-[220px] focus:outline-none focus:border-[#176B45] focus:ring-1 focus:ring-[#176B45] shadow-2xs transition-smooth cursor-pointer"
         >
-          <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All Types</option>
-          <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Automated AI Security Provider</option>
-          <option value="human" ${STATE.filters.providerType === 'human' ? 'selected' : ''}>Human Security Provider</option>
+          <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All Types (Automated & Specialists)</option>
+          <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Automated 0G Defense Agent</option>
+          <option value="human" ${STATE.filters.providerType === 'human' ? 'selected' : ''}>Human Security Specialists</option>
         </select>
       </div>
 
       <div class="text-[13px] text-[#627566]">
-        Showing <strong class="text-[#202820]">${filtered.length}</strong> of ${STATE.data.providers.length} registered providers
+        Showing <strong class="text-[#202820]">${filtered.length}</strong> providers • <strong class="text-[#202820]">${matchingServices.length}</strong> active offerings
       </div>
     </div>
 
@@ -1063,9 +1011,8 @@ function renderProviderDetailView() {
 function renderBecomeProviderView() {
   return `
     <div class="max-w-3xl mx-auto space-y-6">
-      <div class="space-y-1">
+      <div>
         <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Become a Provider</h1>
-        <p class="text-[14px] text-[#627566]">Register your human security expertise or deploy an automated AI defense provider to OpiHub.</p>
       </div>
 
       <form id="become-provider-form" onsubmit="handleBecomeProvider(event)" class="bg-white border border-[#E2E9E3] rounded-lg p-7 shadow-xs space-y-6">
@@ -1088,7 +1035,7 @@ function renderBecomeProviderView() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Type *</label>
-              <select name="provider_type" id="form-provider-type" onchange="toggleAutomatedFields(this.value)" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]">
+              <select name="provider_type" id="form-provider-type" onchange="toggleAutomatedFields(this.value)" class="w-full px-3.5 py-2.5 bg-white border border-[#CBD7CE] rounded-md text-[13.5px] font-medium text-[#202820] focus:outline-none focus:border-[#176B45] focus:ring-1 focus:ring-[#176B45] shadow-2xs transition-smooth cursor-pointer">
                 <option value="human">Human Security Provider</option>
                 <option value="automated">Automated AI Security Provider</option>
               </select>
@@ -1279,35 +1226,36 @@ function renderProviderWorkspaceView() {
             <h2 class="text-[14.5px] font-semibold text-[#202820]">Incoming Service Requests</h2>
             <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] font-medium px-2 py-0.5 rounded">${incoming.length} pending</span>
           </div>
-          <span class="text-[12px] text-[#627566]">Action required to accept or decline</span>
+          <span class="text-[12px] text-[#627566]">Inspect submitted links and scope before accepting</span>
         </div>
 
         ${incoming.length > 0 ? `
-          <div class="space-y-3">
+          <div class="space-y-4">
             ${incoming.map(o => `
-              <div class="p-4 rounded-md border border-[#E2E9E3] bg-[#FAFBF9] flex items-start justify-between gap-4">
-                <div class="space-y-1.5 flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
-                    <strong class="text-[13.5px] text-[#202820]">${o.service_title}</strong>
-                    <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-medium">$${o.price.toFixed(2)}</span>
+              <div class="p-4 rounded-lg border border-[#E2E9E3] bg-[#FAFBF9] space-y-3">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="space-y-1 flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
+                      <strong class="text-[13.5px] text-[#202820]">${escapeHtml(o.service_title)}</strong>
+                      <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-medium">$${o.price.toFixed(2)}</span>
+                    </div>
+                    <div class="text-[12.5px] text-[#445246]">
+                      Submitted by: <strong>${escapeHtml(o.customer_name)}</strong> • ${new Date(o.created_at).toLocaleDateString()}
+                    </div>
                   </div>
-                  <div class="text-[12.5px] text-[#445246]">
-                    Submitted by: <strong>${o.customer_name}</strong> • ${new Date(o.created_at).toLocaleDateString()}
-                  </div>
-                  <div class="text-[12px] text-[#627566] bg-white p-2.5 rounded border border-[#E2E9E3] font-mono line-clamp-2">
-                    ${escapeHtml(o.prompt_content)}
+
+                  <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth cursor-pointer">
+                      Accept Order
+                    </button>
+                    <button onclick="handleOrderStatusUpdate('${o.id}', 'rejected')" class="px-3 py-1.5 border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FCA5A5] text-[12px] font-medium rounded transition-smooth cursor-pointer">
+                      Reject
+                    </button>
                   </div>
                 </div>
 
-                <div class="flex items-center gap-2 shrink-0">
-                  <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth">
-                    Accept Order
-                  </button>
-                  <button onclick="handleOrderStatusUpdate('${o.id}', 'rejected')" class="px-3 py-1.5 border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FCA5A5] text-[12px] font-medium rounded transition-smooth">
-                    Reject
-                  </button>
-                </div>
+                ${renderOrderSubmittedSpec(o, provider.wallet_address)}
               </div>
             `).join('')}
           </div>
@@ -1325,47 +1273,38 @@ function renderProviderWorkspaceView() {
             <h2 class="text-[14.5px] font-semibold text-[#202820]">Active Work In Progress</h2>
             <span class="text-[11px] bg-[#DBEAFE] text-[#1E40AF] font-medium px-2 py-0.5 rounded">${inProgress.length} active</span>
           </div>
-          <span class="text-[12px] text-[#627566]">Prompts shared directly with assigned provider</span>
+          <span class="text-[12px] text-[#627566]">Audit scopes, product links, and repositories</span>
         </div>
 
         ${inProgress.length > 0 ? `
           <div class="space-y-4">
             ${inProgress.map(o => `
-              <div class="p-5 rounded-md border border-[#E2E9E3] bg-[#FFFFFF] space-y-3">
+              <div class="p-5 rounded-lg border border-[#E2E9E3] bg-[#FFFFFF] space-y-3 shadow-2xs">
                 <div class="flex items-start justify-between">
                   <div>
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
-                      <strong class="text-[13.5px] text-[#202820]">${o.service_title}</strong>
+                      <strong class="text-[13.5px] text-[#202820]">${escapeHtml(o.service_title)}</strong>
                       ${renderStatusBadge(o.status)}
                     </div>
                     <div class="text-[12px] text-[#627566] mt-0.5">
-                      Client: <strong>${o.customer_name}</strong> • Price: <strong class="text-[#176B45] font-mono">$${o.price.toFixed(2)}</strong>
+                      Client: <strong>${escapeHtml(o.customer_name)}</strong> • Escrow Value: <strong class="text-[#176B45] font-mono">$${o.price.toFixed(2)}</strong>
                     </div>
                   </div>
 
                   <div class="flex items-center gap-2">
                     ${o.status === 'accepted' ? `
-                      <button onclick="handleOrderStatusUpdate('${o.id}', 'in_progress')" class="px-3 py-1.5 bg-[#1E40AF] text-white text-[12px] font-medium rounded hover:bg-[#1E3A8A]">
+                      <button onclick="handleOrderStatusUpdate('${o.id}', 'in_progress')" class="px-3 py-1.5 bg-[#1E40AF] text-white text-[12px] font-medium rounded hover:bg-[#1E3A8A] transition-smooth cursor-pointer">
                         Mark In Progress
                       </button>
                     ` : ''}
-                    <button onclick="openModal('deliver_modal', { orderId: '${o.id}', order: ${escapeForAttr(JSON.stringify(o))} })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded shadow-xs">
+                    <button onclick="openModal('deliver_modal', { orderId: '${o.id}', order: ${escapeForAttr(JSON.stringify(o))} })" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded shadow-xs transition-smooth cursor-pointer">
                       Submit Deliverable & Report
                     </button>
                   </div>
                 </div>
 
-                <!-- Client Prompt View -->
-                <div class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded-md text-[12.5px] space-y-1">
-                  <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Submitted Prompt Under Review:</div>
-                  <pre class="font-mono text-[12px] text-[#202820] whitespace-pre-wrap">${escapeHtml(o.prompt_content)}</pre>
-                  ${o.requirements ? `
-                    <div class="pt-2 border-t border-[#E2E9E3] text-[12px] text-[#445246]">
-                      <strong class="text-[#202820]">Client Requirements:</strong> ${escapeHtml(o.requirements)}
-                    </div>
-                  ` : ''}
-                </div>
+                ${renderOrderSubmittedSpec(o, provider.wallet_address)}
               </div>
             `).join('')}
           </div>
@@ -1391,18 +1330,10 @@ function renderMyPromptsView() {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">My Prompts</h1>
-          <p class="text-[14px] text-[#627566]">Private repository of prompts, security analyses, and hardened versions.</p>
         </div>
         <button onclick="openModal('create_prompt')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-1.5">
           + Add New Prompt
         </button>
-      </div>
-
-      <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg p-3 text-[12.5px] text-[#445246] flex items-center gap-2">
-        <svg class="w-4 h-4 text-[#176B45] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        <span>Your prompts are stored privately on this node and are never shared with providers until you explicitly submit a review order.</span>
       </div>
 
       <div class="grid grid-cols-1 gap-4">
@@ -1467,7 +1398,6 @@ function renderMyRequestsView() {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">My Requests</h1>
-          <p class="text-[14px] text-[#627566]">Track the explicit lifecycle of your security audits and hardening requests.</p>
         </div>
         <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
           + Explore OpiHub
@@ -1501,13 +1431,22 @@ function renderMyRequestsView() {
                 <td class="px-5 py-3.5 font-mono font-medium text-[#202820]">$${o.price.toFixed(2)}</td>
                 <td class="px-5 py-3.5 text-[#627566]">${new Date(o.created_at).toLocaleDateString()}</td>
                 <td class="px-5 py-3.5 text-right">
-                  ${o.report_id ? `
-                    <button onclick="viewReport('${o.report_id}')" class="px-2.5 py-1 bg-[#EAF5EE] text-[#176B45] hover:bg-[#C4E4CE] font-medium text-[12px] rounded transition-smooth">
-                      View Report
-                    </button>
-                  ` : `
-                    <span class="text-[12px] text-[#8B9C8E]">In Progress</span>
-                  `}
+                  <div class="flex items-center justify-end gap-2">
+                    ${(() => {
+                      const notes = parseDeliverableNotes(o.deliverable_notes);
+                      if (notes.ticket) {
+                        return `<span class="px-2 py-0.5 rounded text-[10.5px] font-mono font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">Ticket Open</span>`;
+                      }
+                      return '';
+                    })()}
+                    ${o.report_id ? `
+                      <button onclick="viewReport('${o.report_id}')" class="px-2.5 py-1 bg-[#EAF5EE] text-[#176B45] hover:bg-[#C4E4CE] font-medium text-[12px] rounded transition-smooth cursor-pointer">
+                        View Report
+                      </button>
+                    ` : `
+                      <span class="text-[12px] text-[#8B9C8E]">In Progress</span>
+                    `}
+                  </div>
                 </td>
               </tr>
             `).join('')}
@@ -1526,7 +1465,6 @@ function renderSecurityReportsView() {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Security Reports</h1>
-          <p class="text-[14px] text-[#627566]">Completed vulnerability audits, defense recommendations, and deliverable manifests.</p>
         </div>
       </div>
 
@@ -1578,9 +1516,120 @@ function renderSecurityReportsView() {
 // Clean Card Sub-Components (Cleaned: no text walls or excessive badges)
 // ---------------------------------------------------------------------------
 
+function formatCategoryName(cat) {
+  const map = {
+    prompt_optimization: 'Prompt Optimization',
+    prompt_engineering: 'Prompt Engineering',
+    loop_engineering: 'Loop Engineering',
+    codebase_security: 'Codebase Security Check',
+    application_testing: 'Application Testing',
+    ai_security: 'AI Security',
+    llm_optimization: 'Prompt Optimization',
+    rag_security: 'Codebase Security Check'
+  };
+  return map[cat] || (cat ? cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Security');
+}
+
+function parseOrderRequirements(reqStr) {
+  if (!reqStr) return {};
+  try {
+    const data = JSON.parse(reqStr);
+    if (typeof data === 'object' && data !== null) return data;
+  } catch (e) {}
+  return { user_requirements: reqStr };
+}
+
+function parseDeliverableNotes(notesStr) {
+  if (!notesStr) return {};
+  try {
+    const data = JSON.parse(notesStr);
+    if (typeof data === 'object' && data !== null) return data;
+  } catch (e) {}
+  return { original_notes: notesStr };
+}
+
+function renderOrderSubmittedSpec(o, providerWallet) {
+  const reqData = parseOrderRequirements(o.requirements);
+  const notesData = parseDeliverableNotes(o.deliverable_notes);
+
+  return `
+    <div class="space-y-2 mt-2">
+      <!-- Client Specification / Prompt -->
+      <div class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded-md text-[12.5px] space-y-1">
+        <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Submitted Specification / Scope:</div>
+        <pre class="font-mono text-[12px] text-[#202820] whitespace-pre-wrap">${escapeHtml(o.prompt_content)}</pre>
+        ${reqData.user_requirements ? `
+          <div class="pt-2 border-t border-[#E2E9E3] text-[12px] text-[#445246]">
+            <strong class="text-[#202820]">Client Constraints:</strong> ${escapeHtml(reqData.user_requirements)}
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- Extended Links (Product, Docs/Repo, Environment) -->
+      ${(reqData.product_link || reqData.docs_link || reqData.test_env_notes) ? `
+        <div class="p-3 bg-white border border-[#E2E9E3] rounded-md space-y-2 text-[12px]">
+          <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">Audit Artifacts & Scopes</div>
+          <div class="flex flex-wrap items-center gap-2">
+            ${reqData.product_link ? `
+              <a
+                href="${escapeForAttr(reqData.product_link)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#EAF5EE] text-[#176B45] hover:bg-[#D5EBDC] font-medium border border-[#CDE5D5] transition-smooth cursor-pointer"
+              >
+                <span>🔗 Launch Product URL</span>
+                <span class="font-mono text-[11px] text-[#2FA36B] truncate max-w-[200px]">(${escapeHtml(reqData.product_link)})</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+              </a>
+            ` : ''}
+
+            ${reqData.docs_link ? `
+              <a
+                href="${escapeForAttr(reqData.docs_link)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FAFBF9] text-[#202820] hover:bg-[#F0F5F1] font-medium border border-[#CBD7CE] transition-smooth cursor-pointer"
+              >
+                <span>📄 View Docs / Codebase</span>
+                <span class="font-mono text-[11px] text-[#627566] truncate max-w-[200px]">(${escapeHtml(reqData.docs_link)})</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+              </a>
+            ` : ''}
+          </div>
+
+          ${reqData.test_env_notes ? `
+            <div class="pt-1.5 border-t border-[#E2E9E3] text-[#445246] leading-relaxed">
+              <strong class="text-[#202820]">Environment & Credentials Notes:</strong> ${escapeHtml(reqData.test_env_notes)}
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
+
+      <!-- Payment & Escrow Status -->
+      <div class="text-[11.5px] text-[#627566] bg-[#FAFBF9] px-3 py-1.5 rounded border border-[#E2E9E3] flex items-center justify-between">
+        <span>Payment: <strong class="text-[#176B45]">Hedera x402 Autonomous Escrow</strong> ($${o.price.toFixed(2)} USD)</span>
+        <span class="font-mono text-[11px] text-[#202820]">Disburses to: ${providerWallet ? escapeHtml(providerWallet.substring(0, 8) + '...' + providerWallet.substring(providerWallet.length - 4)) : 'Provider Wallet'}</span>
+      </div>
+
+      <!-- Active Ticket Alert Banner if Raised -->
+      ${notesData.ticket ? `
+        <div class="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-md space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[12.5px] font-semibold text-[#991B1B] flex items-center gap-1.5">
+              🚨 Quality Review Ticket Raised (${escapeHtml(notesData.ticket.ticket_id || 'TK-01')})
+            </span>
+            <span class="text-[11px] font-mono text-[#B91C1C]">${new Date(notesData.ticket.created_at).toLocaleString()}</span>
+          </div>
+          <div class="text-[12px] text-[#7F1D1D]"><strong class="font-semibold text-[#991B1B]">Reason:</strong> ${escapeHtml(notesData.ticket.reason)}</div>
+          <div class="text-[12px] text-[#7F1D1D] bg-white/80 p-2 rounded border border-[#FCA5A5] italic">${escapeHtml(notesData.ticket.feedback)}</div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
 function renderCleanProviderCard(p) {
   const isAutomated = p.provider_type === 'automated';
-  // Concise description limited to ~120 chars
   const shortDesc = p.description.length > 130 ? p.description.slice(0, 130) + '...' : p.description;
 
   return `
@@ -1599,8 +1648,8 @@ function renderCleanProviderCard(p) {
             </div>
             <p class="text-[11.5px] text-[#627566] line-clamp-1">${escapeHtml(p.title)}</p>
             <div class="mt-1">
-              <span class="text-[10px] font-medium px-2 py-0.5 rounded ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-                ${isAutomated ? 'Automated AI Security Provider' : 'Human Security Provider'}
+              <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
+                ${isAutomated ? '0G AI Defense Agent' : 'Human Security Specialist'}
               </span>
             </div>
           </div>
@@ -1610,14 +1659,14 @@ function renderCleanProviderCard(p) {
           ${escapeHtml(shortDesc)}
         </p>
 
-        <!-- Concise Skills chips (max 2) -->
+        <!-- Concise Skills chips -->
         <div class="flex flex-wrap gap-1">
-          ${(p.skills || []).slice(0, 2).map(s => `
+          ${(p.skills || []).slice(0, 3).map(s => `
             <span class="text-[10.5px] bg-[#FAFBF9] border border-[#E2E9E3] text-[#445246] px-2 py-0.5 rounded">
               ${escapeHtml(s)}
             </span>
           `).join('')}
-          ${(p.skills || []).length > 2 ? `<span class="text-[10px] text-[#8B9C8E] self-center">+${p.skills.length - 2}</span>` : ''}
+          ${(p.skills || []).length > 3 ? `<span class="text-[10px] text-[#8B9C8E] self-center">+${p.skills.length - 3}</span>` : ''}
         </div>
       </div>
 
@@ -1628,7 +1677,7 @@ function renderCleanProviderCard(p) {
         </div>
         <button
           onclick="navigateTo('provider_detail', '${p.id}')"
-          class="px-3 py-1.5 bg-[#FAFBF9] hover:bg-[#EAF5EE] border border-[#E2E9E3] text-[#176B45] text-[12px] font-medium rounded transition-smooth"
+          class="px-3 py-1.5 bg-[#FAFBF9] hover:bg-[#EAF5EE] border border-[#E2E9E3] text-[#176B45] text-[12px] font-medium rounded transition-smooth cursor-pointer"
         >
           View Profile
         </button>
@@ -1638,19 +1687,24 @@ function renderCleanProviderCard(p) {
 }
 
 function renderCleanServiceCard(s, showProvider = true) {
+  const isAutomated = s.execution_type === 'automated';
+
   return `
     <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-3">
       <div class="space-y-2">
         <div class="flex items-start justify-between gap-2">
           <h3 class="text-[14px] font-semibold text-[#202820] tracking-tight leading-snug">${escapeHtml(s.title)}</h3>
-          <span class="font-mono font-bold text-[13.5px] text-[#176B45] shrink-0">$${s.price.toFixed(2)}</span>
+          <div class="text-right shrink-0">
+            <span class="font-mono font-bold text-[13.5px] text-[#176B45]">$${s.price.toFixed(2)}</span>
+            ${isAutomated ? '<div class="text-[10px] font-mono text-[#2FA36B]">Free with 0G Credits</div>' : ''}
+          </div>
         </div>
 
         ${showProvider ? `
           <div class="text-[12px] text-[#627566] flex items-center gap-1.5">
             By <strong class="text-[#202820] cursor-pointer hover:underline" onclick="navigateTo('provider_detail', '${s.provider_id}')">${escapeHtml(s.provider_name)}</strong>
-            <span class="text-[10px] px-1.5 py-0.2 rounded ${s.execution_type === 'automated' ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-              ${s.execution_type === 'automated' ? 'Instant AI' : 'Manual'}
+            <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
+              ${isAutomated ? '0G Autonomous AI' : 'Specialist Review'}
             </span>
           </div>
         ` : ''}
@@ -1661,16 +1715,19 @@ function renderCleanServiceCard(s, showProvider = true) {
 
         <div class="flex items-center gap-4 text-[11.5px] text-[#627566] pt-1">
           <span>Turnaround: <strong class="text-[#202820]">${s.estimated_delivery}</strong></span>
-          <span>Category: <strong class="text-[#202820]">${s.category}</strong></span>
+          <span>Category: <strong class="text-[#202820]">${formatCategoryName(s.category)}</strong></span>
         </div>
       </div>
 
-      <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end">
+      <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
+        <div class="text-[11px] text-[#627566]">
+          ${isAutomated ? '⚡ Instant On-Chain Inference' : '🔒 Hedera x402 Escrow Protected'}
+        </div>
         <button
           onclick="openModal('request_review', { serviceId: '${s.id}', providerId: '${s.provider_id}' })"
-          class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth"
+          class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth cursor-pointer shadow-xs"
         >
-          Request Review
+          ${isAutomated ? 'Run 0G Defense' : 'Request Review'}
         </button>
       </div>
     </div>
@@ -1753,64 +1810,233 @@ function renderModalContent() {
 function renderRequestReviewModal() {
   const payload = STATE.modalPayload || {};
   const services = STATE.data.services;
-  const initialService = services.find(s => s.id === payload.serviceId) || services[0];
+  const currentService = services.find(s => s.id === payload.serviceId) || services[0];
+  const isAutomated = currentService?.execution_type === 'automated';
+  const category = currentService?.category || '';
   const prompts = STATE.data.prompts;
+  const isApplicationTesting = category === 'application_testing';
+  const isCodebaseSecurity = category === 'codebase_security';
 
   return `
     <div class="p-6 space-y-5">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Request a Security Review</h3>
+        <div>
+          <h3 class="text-[16px] font-semibold text-[#202820]">
+            ${isAutomated ? 'Execute Autonomous 0G Defense' : 'Request Specialist Security Review'}
+          </h3>
+          <p class="text-[12px] text-[#627566] mt-0.5">${formatCategoryName(category)} • ${escapeHtml(currentService?.provider_name || '')}</p>
+        </div>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
       <form onsubmit="handleOrderSubmit(event)" class="space-y-4">
+        <!-- Service Selector -->
         <div>
           <label class="block text-[13px] font-medium text-[#202820] mb-1">Select Service Offering *</label>
-          <select name="service_id" id="modal-service-select" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">
+          <select
+            name="service_id"
+            id="modal-service-select"
+            onchange="onRequestModalServiceChange(this.value)"
+            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-medium text-[#202820] focus:outline-none focus:border-[#176B45]"
+          >
             ${services.map(s => `
-              <option value="${s.id}" ${s.id === initialService?.id ? 'selected' : ''}>
-                ${escapeHtml(s.title)} — $${s.price.toFixed(2)} (${s.provider_name})
+              <option value="${s.id}" ${s.id === currentService?.id ? 'selected' : ''}>
+                ${escapeHtml(s.title)} — $${s.price.toFixed(2)} (${escapeHtml(s.provider_name)}${s.execution_type === 'automated' ? ' • Automated 0G' : ' • Specialist'})
               </option>
             `).join('')}
           </select>
         </div>
 
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="text-[13px] font-medium text-[#202820]">Prompt Under Review *</label>
-            ${prompts.length > 0 ? `
-              <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] text-[#176B45] border border-[#E2E9E3] rounded px-2 py-0.5">
-                <option value="">Insert from Saved Prompts...</option>
-                ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
-              </select>
-            ` : ''}
-          </div>
-          <textarea
-            id="order-prompt-input"
-            name="prompt_content"
-            rows="5"
-            required
-            placeholder="Paste system instructions or prompt here..."
-            class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
-          >${payload.promptText || ''}</textarea>
-        </div>
+        <!-- Dynamic Category-Specific Form Fields -->
+        ${isApplicationTesting ? `
+          <!-- Application Testing Specific Inputs -->
+          <div class="space-y-3.5 p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl">
+            <div class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Application Target Details</div>
+            
+            <div>
+              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Product Link / Staging URL *</label>
+              <input
+                type="url"
+                name="product_link"
+                required
+                placeholder="https://app.example.com or https://staging.example.com"
+                class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+              />
+              <p class="text-[11px] text-[#627566] mt-1">Specialist will test this target environment directly for injection, authentication, and SSRF flaws.</p>
+            </div>
 
-        <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Specific Requirements & Constraints</label>
-          <textarea
-            name="requirements"
-            rows="2"
-            placeholder="e.g. Test against jailbreaks, indirect injection, or roleplay escapes..."
-            class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
-          ></textarea>
-        </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Documentation / API Spec Link</label>
+                <input
+                  type="url"
+                  name="docs_link"
+                  placeholder="https://docs.example.com or Swagger URL"
+                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
+                />
+              </div>
+              <div>
+                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Staging Credentials & Scope Notes</label>
+                <input
+                  type="text"
+                  name="test_env_notes"
+                  placeholder="Test account logins, staging endpoints, focus pages..."
+                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] focus:outline-none focus:border-[#176B45]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Testing Scope & Attack Vectors to Probe *</label>
+            <textarea
+              name="prompt_content"
+              rows="4"
+              required
+              placeholder="Describe user roles, sensitive business logic, connected LLM APIs, and priority attack vectors (e.g. prompt injection, unauthorized data exfiltration, privilege escalation)..."
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
+            >${payload.promptText || ''}</textarea>
+          </div>
+        ` : (isCodebaseSecurity ? `
+          <!-- Codebase Security Specific Inputs -->
+          <div class="space-y-3.5 p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl">
+            <div class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Repository & Architecture Scope</div>
+
+            <div>
+              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Codebase / Repository URL *</label>
+              <input
+                type="url"
+                name="docs_link"
+                required
+                placeholder="https://github.com/organization/repo (or private repo invite link)"
+                class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+              />
+              <p class="text-[11px] text-[#627566] mt-1">Specialist Marcus Chen will review Python/TypeScript agent frameworks and tool invocation boundaries.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Live Application / Staging Link (Optional)</label>
+                <input
+                  type="url"
+                  name="product_link"
+                  placeholder="https://app.example.com"
+                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
+                />
+              </div>
+              <div>
+                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Branch / Sensitive Modules Notes</label>
+                <input
+                  type="text"
+                  name="test_env_notes"
+                  placeholder="e.g. main branch, langchain_agents/, secrets.py"
+                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] focus:outline-none focus:border-[#176B45]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Codebase Security Audit Scope & Focus *</label>
+            <textarea
+              name="prompt_content"
+              rows="4"
+              required
+              placeholder="Specify sensitive modules, credential access patterns, agent memory persistence, or tool execution privileges to evaluate..."
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
+            >${payload.promptText || ''}</textarea>
+          </div>
+        ` : `
+          <!-- Prompt / Loop Engineering Inputs -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[13px] font-medium text-[#202820]">Prompt or Agent Instructions Under Review *</label>
+              ${prompts.length > 0 ? `
+                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] text-[#176B45] border border-[#CBD7CE] rounded px-2 py-0.5">
+                  <option value="">Insert from Saved Prompts...</option>
+                  ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
+                </select>
+              ` : ''}
+            </div>
+            <textarea
+              id="order-prompt-input"
+              name="prompt_content"
+              rows="5"
+              required
+              placeholder="Paste system instructions, agent cyclic graph, or prompt here..."
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+            >${payload.promptText || ''}</textarea>
+          </div>
+
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Specific Hardening Constraints & Target LLM</label>
+            <textarea
+              name="requirements"
+              rows="2"
+              placeholder="e.g. Target model (GPT-4o / Claude 3.5), tone constraints, defense against roleplay escapes..."
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
+            ></textarea>
+          </div>
+        `)}
+
+        <!-- Payment & Authority Architecture Section -->
+        ${isAutomated ? `
+          <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Payment & Execution Authority</span>
+              <span class="text-[11px] bg-[#E0E7FF] text-[#3730A3] font-semibold px-2 py-0.5 rounded font-mono">0G Private Computer</span>
+            </div>
+            <div class="space-y-2 text-[12.5px]">
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-[#CDE5D5] bg-[#EAF5EE] cursor-pointer transition-smooth">
+                <input type="radio" name="wallet_payment_mode" value="0g" checked onchange="toggleZeroGMode(true)" class="mt-0.5 text-[#176B45] focus:ring-[#176B45]" />
+                <div>
+                  <span class="font-semibold text-[#176B45] flex items-center gap-1.5">
+                    ✨ 0G-Registered Wallet (0G Compute Credits)
+                  </span>
+                  <p class="text-[11.5px] text-[#445246] mt-0.5 leading-relaxed">
+                    Covered under 0G Compute Allocation Credits — <strong class="text-[#176B45] font-mono">$0.00 USD (Zero Gas)</strong>.
+                  </p>
+                </div>
+              </label>
+              <label class="flex items-start gap-3 p-3 rounded-lg border border-[#E2E9E3] bg-white cursor-pointer transition-smooth">
+                <input type="radio" name="wallet_payment_mode" value="x402" onchange="toggleZeroGMode(false)" class="mt-0.5 text-[#176B45] focus:ring-[#176B45]" />
+                <div>
+                  <span class="font-semibold text-[#202820]">
+                    ⚡ Standard Web3 Wallet (Hedera x402 Micropayment)
+                  </span>
+                  <p class="text-[11.5px] text-[#627566] mt-0.5 leading-relaxed">
+                    Autonomous micro-payment settled via Hedera x402 protocol — <strong class="text-[#202820] font-mono">$${currentService.price.toFixed(2)} USD</strong>.
+                  </p>
+                </div>
+              </label>
+              <input type="hidden" name="is_zero_g_wallet" id="is_zero_g_wallet_hidden" value="true" />
+            </div>
+          </div>
+        ` : `
+          <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Payment & Escrow Protection</span>
+              <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] font-semibold px-2 py-0.5 rounded font-mono">Hedera x402 Smart Escrow</span>
+            </div>
+            <div class="p-3 rounded-lg border border-[#E2E9E3] bg-white text-[12.5px] space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[#445246] font-medium">Specialist Audit Fee:</span>
+                <span class="font-mono font-bold text-[#202820] text-[14px]">$${currentService.price.toFixed(2)} USD</span>
+              </div>
+              <p class="text-[11.5px] text-[#627566] leading-relaxed">
+                Payment is locked in autonomous smart escrow and automatically disburses directly to the specialist's wallet upon verified delivery of your audit deliverable.
+              </p>
+            </div>
+            <input type="hidden" name="is_zero_g_wallet" value="false" />
+          </div>
+        `}
 
         <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
             Cancel
           </button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
-            Submit Review Request
+          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+            ${isAutomated ? 'Execute 0G Defense' : 'Submit Review Request'}
           </button>
         </div>
       </form>
@@ -1832,14 +2058,14 @@ function renderDeliverModal() {
       <form onsubmit="handleDeliverSubmit(event, '${orderId}')" class="space-y-4">
         <div>
           <label class="block text-[13px] font-medium text-[#202820] mb-1">Executive Summary *</label>
-          <textarea name="summary" rows="3" required placeholder="Summarize findings, risk severity, and remediation..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <textarea name="summary" rows="3" required placeholder="Summarize vulnerabilities identified, testing scope verified, and remediation..." class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
         </div>
 
         <div>
           <label class="block text-[13px] font-medium text-[#202820] mb-1">Primary Finding (Title & Severity)</label>
           <div class="grid grid-cols-3 gap-2">
-            <input type="text" name="finding_title" placeholder="e.g. Indirect Injection Surface" class="col-span-2 px-2.5 py-1.5 border border-[#E2E9E3] rounded text-[12.5px]" />
-            <select name="finding_severity" class="px-2 py-1.5 border border-[#E2E9E3] rounded text-[12.5px]">
+            <input type="text" name="finding_title" placeholder="e.g. Indirect Injection Surface" class="col-span-2 px-2.5 py-1.5 border border-[#CBD7CE] rounded text-[12.5px]" />
+            <select name="finding_severity" class="px-2 py-1.5 border border-[#CBD7CE] rounded text-[12.5px]">
               <option value="critical">Critical</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
@@ -1850,18 +2076,18 @@ function renderDeliverModal() {
 
         <div>
           <label class="block text-[13px] font-medium text-[#202820] mb-1">Actionable Recommendations</label>
-          <textarea name="recommendations_raw" rows="3" placeholder="1. Enforce XML delimiter encapsulation&#10;2. Apply input sanitization" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <textarea name="recommendations_raw" rows="3" placeholder="1. Enforce XML delimiter encapsulation&#10;2. Apply input sanitization" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Hardened Prompt Deliverable</label>
-          <textarea name="hardened_prompt" rows="3" placeholder="Paste hardened defense prompt..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Delivered Hardened Prompt / Code Patch / Test Deliverable</label>
+          <textarea name="hardened_prompt" rows="3" placeholder="Paste hardened defense prompt, security patch, or detailed PoC findings..." class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
         </div>
 
         <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
-            Deliver Audit
+          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+            Deliver Audit & Disburse Payment
           </button>
         </div>
       </form>
@@ -1879,7 +2105,7 @@ function renderQuickAnalyzeModal() {
 
       <div class="space-y-3">
         <label class="block text-[13px] font-medium text-[#202820]">Prompt Text</label>
-        <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against Guardvane's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
+        <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against Guardvane's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
 
         <div class="flex justify-end gap-2">
           <button id="quick-scan-btn" onclick="executeQuickAnalyze()" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-2">
@@ -1897,6 +2123,11 @@ function renderReportViewerModal() {
   const report = STATE.modalPayload;
   if (!report) return '';
 
+  const order = STATE.data.orders.find(o => o.id === report.order_id);
+  const parsedNotes = parseDeliverableNotes(order?.deliverable_notes);
+  const hasTicket = !!parsedNotes.ticket;
+  const isTicketFormOpen = STATE.activeTicketFormOrderId === report.order_id;
+
   return `
     <div class="p-6 space-y-5">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
@@ -1906,6 +2137,21 @@ function renderReportViewerModal() {
         </div>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
+
+      <!-- Ticket Alert Banner if Ticket Exists -->
+      ${hasTicket ? `
+        <div class="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[13px] font-semibold text-[#991B1B] flex items-center gap-2">
+              🚨 Quality Review Ticket Raised (${escapeHtml(parsedNotes.ticket.ticket_id || 'TK-01')})
+            </span>
+            <span class="text-[11px] font-mono text-[#B91C1C]">${new Date(parsedNotes.ticket.created_at).toLocaleString()}</span>
+          </div>
+          <div class="text-[12.5px] text-[#7F1D1D]"><strong class="font-medium text-[#991B1B]">Reason:</strong> ${escapeHtml(parsedNotes.ticket.reason)}</div>
+          <div class="text-[12px] text-[#7F1D1D] bg-white/80 p-2.5 rounded border border-[#FCA5A5] italic">${escapeHtml(parsedNotes.ticket.feedback)}</div>
+          <div class="text-[11.5px] text-[#991B1B] font-medium">Status: Under Specialist Revision</div>
+        </div>
+      ` : ''}
 
       <div class="space-y-4 text-[13px]">
         <div>
@@ -1933,8 +2179,59 @@ function renderReportViewerModal() {
 
         ${report.hardened_prompt ? `
           <div>
-            <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Delivered Hardened Prompt</div>
+            <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Delivered Security Output & Defense Assertions</div>
             <pre class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded font-mono text-[12px] text-[#202820] whitespace-pre-wrap">${escapeHtml(report.hardened_prompt)}</pre>
+          </div>
+        ` : ''}
+
+        <!-- Raise a Ticket Option for Dissatisfied Performance -->
+        ${!hasTicket && order ? `
+          <div class="pt-4 border-t border-[#E2E9E3]">
+            ${!isTicketFormOpen ? `
+              <div class="flex items-center justify-between p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl">
+                <div>
+                  <h4 class="text-[13px] font-medium text-[#202820]">Dissatisfied with audit findings or performance?</h4>
+                  <p class="text-[11.5px] text-[#627566]">Raise a quality review ticket directly to the specialist to request revisions or dispute deliverable coverage.</p>
+                </div>
+                <button
+                  onclick="toggleTicketForm('${report.order_id}', true)"
+                  class="px-3.5 py-1.5 bg-white border border-[#FECACA] hover:bg-[#FEE2E2] text-[#991B1B] text-[12px] font-semibold rounded-md transition-smooth shrink-0 cursor-pointer shadow-2xs"
+                >
+                  Raise a Ticket
+                </button>
+              </div>
+            ` : `
+              <div class="p-4 bg-[#FEF2F2]/60 border border-[#FECACA] rounded-xl space-y-3">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-[13.5px] font-semibold text-[#991B1B] flex items-center gap-1.5">
+                    🚨 Raise a Quality Ticket / Dispute Deliverable
+                  </h4>
+                  <button onclick="toggleTicketForm('${report.order_id}', false)" class="text-[#991B1B] hover:text-[#7F1D1D] text-xs">Cancel</button>
+                </div>
+                <form onsubmit="handleRaiseTicketSubmit(event, '${report.order_id}', '${report.id}')" class="space-y-3">
+                  <div>
+                    <label class="block text-[12px] font-medium text-[#7F1D1D] mb-1">Primary Concern *</label>
+                    <select name="reason" required class="w-full px-3 py-2 bg-white border border-[#FECACA] rounded-md text-[12.5px] text-[#202820] focus:outline-none focus:border-[#991B1B]">
+                      <option value="Incomplete Vulnerability Analysis">Incomplete Vulnerability Analysis</option>
+                      <option value="Missed Scope Requirements">Missed Scope Requirements (Product / Repo links unverified)</option>
+                      <option value="Unclear Remediation Guidance">Unclear Remediation Guidance</option>
+                      <option value="Deliverable Format Issue">Deliverable Format Issue</option>
+                      <option value="Other Quality Concern">Other Quality Concern</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[12px] font-medium text-[#7F1D1D] mb-1">Detailed Feedback & Requested Changes *</label>
+                    <textarea name="feedback" rows="3" required placeholder="Specify what the specialist missed, which endpoints or prompts require further testing, and what corrections are required..." class="w-full px-3 py-2 bg-white border border-[#FECACA] rounded-md text-[12.5px] text-[#202820] focus:outline-none focus:border-[#991B1B]"></textarea>
+                  </div>
+                  <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="toggleTicketForm('${report.order_id}', false)" class="px-3 py-1.5 bg-white border border-[#E2E9E3] text-[#445246] text-xs rounded-md">Cancel</button>
+                    <button type="submit" class="px-4 py-1.5 bg-[#991B1B] hover:bg-[#7F1D1D] text-white text-xs font-semibold rounded-md shadow-xs transition-smooth cursor-pointer">
+                      Submit Ticket to Specialist
+                    </button>
+                  </div>
+                </form>
+              </div>
+            `}
           </div>
         ` : ''}
       </div>
@@ -2019,6 +2316,25 @@ function renderSettingsModal() {
 
       <div class="space-y-4 text-[13px]">
         <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Display Name</label>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              id="settings-name-input"
+              value="${escapeForAttr(STATE.user.name || '')}"
+              placeholder="Enter your name or handle..."
+              class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            />
+            <button
+              onclick="saveDisplayName()"
+              class="px-3.5 py-2 bg-[#176B45] text-white hover:bg-[#115638] text-xs font-medium rounded-md whitespace-nowrap transition-smooth shadow-xs cursor-pointer"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div>
           <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Connected Wallet Address</label>
           <div class="flex items-center gap-2">
             <input
@@ -2084,6 +2400,21 @@ function renderSettingsModal() {
       </div>
     </div>
   `;
+}
+
+function saveDisplayName() {
+  const input = document.getElementById('settings-name-input');
+  if (!input) return;
+  const newName = input.value.trim();
+  if (newName) {
+    STATE.user.name = newName;
+    localStorage.setItem('guardvane_display_name', newName);
+  } else {
+    STATE.user.name = null;
+    localStorage.removeItem('guardvane_display_name');
+  }
+  renderApp();
+  openModal('settings_modal');
 }
 
 function renderCreatePromptModal() {
@@ -2207,12 +2538,39 @@ function populatePromptFromSelect(content) {
   }
 }
 
+function onRequestModalServiceChange(serviceId) {
+  STATE.modalPayload = STATE.modalPayload || {};
+  STATE.modalPayload.serviceId = serviceId;
+  const cur = STATE.data.services.find(s => s.id === serviceId);
+  if (cur) {
+    STATE.modalPayload.providerId = cur.provider_id;
+  }
+  openModal('request_review', STATE.modalPayload);
+}
+
+function toggleZeroGMode(isZeroG) {
+  const hiddenInput = document.getElementById('is_zero_g_wallet_hidden');
+  if (hiddenInput) {
+    hiddenInput.value = isZeroG ? 'true' : 'false';
+  }
+}
+
+function toggleTicketForm(orderId, isOpen) {
+  STATE.activeTicketFormOrderId = isOpen ? orderId : null;
+  const rep = STATE.modalPayload;
+  openModal('report_viewer', rep);
+}
+
 async function handleOrderSubmit(e) {
   e.preventDefault();
   const form = e.target;
   const serviceId = form.service_id.value;
-  const promptContent = form.prompt_content.value;
-  const requirements = form.requirements.value;
+  const promptContent = form.prompt_content?.value || '';
+  const requirements = form.requirements?.value || '';
+  const productLink = form.product_link?.value ? form.product_link.value.trim() : null;
+  const docsLink = form.docs_link?.value ? form.docs_link.value.trim() : null;
+  const testEnvNotes = form.test_env_notes?.value ? form.test_env_notes.value.trim() : null;
+  const isZeroGWallet = (form.is_zero_g_wallet?.value === 'true') || !!form.is_zero_g_wallet?.checked;
 
   try {
     const order = await apiFetch('/marketplace/orders', {
@@ -2221,6 +2579,10 @@ async function handleOrderSubmit(e) {
         service_id: serviceId,
         prompt_content: promptContent,
         requirements: requirements,
+        product_link: productLink,
+        docs_link: docsLink,
+        test_env_notes: testEnvNotes,
+        is_zero_g_wallet: isZeroGWallet,
         customer_id: STATE.user.id,
         customer_name: STATE.user.name
       })
@@ -2231,6 +2593,34 @@ async function handleOrderSubmit(e) {
     navigateTo('my_requests');
   } catch (err) {
     alert(`Order submission error: ${err.message}`);
+  }
+}
+
+async function handleRaiseTicketSubmit(e, orderId, reportId) {
+  e.preventDefault();
+  const form = e.target;
+  const reason = form.reason.value;
+  const feedback = form.feedback.value;
+
+  try {
+    const res = await apiFetch(`/marketplace/orders/${orderId}/ticket`, {
+      method: 'POST',
+      body: JSON.stringify({
+        reason: reason,
+        feedback: feedback
+      })
+    });
+    alert(res.message || 'Ticket submitted successfully to specialist.');
+    STATE.activeTicketFormOrderId = null;
+    await loadInitialData();
+    const updatedReport = STATE.data.reports.find(r => r.id === reportId || r.order_id === orderId);
+    if (updatedReport) {
+      openModal('report_viewer', updatedReport);
+    } else {
+      closeModal();
+    }
+  } catch (err) {
+    alert(`Failed to submit ticket: ${err.message}`);
   }
 }
 
