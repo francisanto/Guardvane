@@ -1,11 +1,10 @@
 /**
- * PromptShield Marketplace — Professional AI Developer Console
- * Visual Inspiration: Claude Console (platform.claude.com/dashboard)
- * Green Palette: #176B45 (primary), #EAF5EE (surface/active), #F7F9F7 (background)
+ * Guardvane — AI Security Platform & OpiHub Marketplace
+ * Developer Console Layout & Green Palette: #176B45 (primary), #EAF5EE (surface/active), #F7F9F7 (background)
  */
 
 const STATE = {
-  activeView: 'dashboard',
+  activeView: 'dashboard', // dashboard, opihub, provider_detail, become_provider, provider_workspace, my_prompts, my_requests, security_reports
   selectedProviderId: null,
   selectedServiceId: null,
   selectedOrderId: null,
@@ -13,7 +12,8 @@ const STATE = {
   user: {
     id: 'francis',
     name: 'Francis',
-    org: "francis's Dev Org",
+    email: 'francis@guardvane.ai',
+    org: "Francis's Dev Workspace",
     role: 'customer', // 'customer' or 'provider'
     activeProviderId: 'prov_elena'
   },
@@ -33,7 +33,7 @@ const STATE = {
     prompts: [],
     integrations: null
   },
-  activeModal: null,
+  activeModal: null, // request_review, deliver_modal, quick_analyze, create_prompt, report_viewer, wallet_modal, settings_modal, add_service_modal
   modalPayload: null,
   loading: false
 };
@@ -90,7 +90,7 @@ async function loadInitialData() {
     STATE.data.prompts = prompts;
     STATE.data.integrations = integrations;
   } catch (err) {
-    console.error("Failed to load initial marketplace data", err);
+    console.error("Failed to load Guardvane marketplace data", err);
   } finally {
     STATE.loading = false;
     renderApp();
@@ -109,6 +109,9 @@ function navigateTo(view, payload = null) {
     STATE.selectedOrderId = payload;
   } else if (view === 'report_detail') {
     STATE.selectedReportId = payload;
+  } else if (view === 'provider_workspace') {
+    // Enable provider role when entering provider workspace
+    STATE.user.role = 'provider';
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
   renderApp();
@@ -197,14 +200,14 @@ function renderSidebar() {
             </svg>
           </div>
           <div class="flex flex-col">
-            <span class="font-semibold text-[15px] tracking-tight text-[#176B45]">PromptShield</span>
-            <span class="text-[11px] text-[#627566] tracking-wide font-medium">SECURITY CONSOLE</span>
+            <span class="font-semibold text-[15px] tracking-tight text-[#176B45]">Guardvane</span>
+            <span class="text-[11px] text-[#627566] tracking-wide font-medium">AI Security Platform</span>
           </div>
         </div>
 
-        <!-- Navigation Section: Core -->
-        <div class="px-3 py-4 space-y-1">
-          <div class="px-3 pb-2 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Marketplace</div>
+        <!-- Navigation Section: WORKSPACE -->
+        <div class="px-3 py-3 space-y-1">
+          <div class="px-3 pb-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Workspace</div>
           
           <button onclick="navigateTo('dashboard')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'dashboard' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
             <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,11 +216,11 @@ function renderSidebar() {
             Dashboard
           </button>
 
-          <button onclick="navigateTo('discover')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'discover' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
+          <button onclick="navigateTo('opihub')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'opihub' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
             <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            Discover Specialists
+            OpiHub
           </button>
 
           <button onclick="navigateTo('my_prompts')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'my_prompts' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
@@ -245,52 +248,72 @@ function renderSidebar() {
           </button>
         </div>
 
-        <!-- Navigation Section: Specialist Area -->
-        <div class="px-3 py-2 space-y-1 border-t border-[#E2E9E3]/70">
-          <div class="px-3 py-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Specialist Program</div>
+        <!-- Navigation Section: PROVIDER -->
+        <div class="px-3 py-3 space-y-1 border-t border-[#E2E9E3]/70">
+          <div class="px-3 py-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Provider</div>
 
-          <button onclick="navigateTo('become_specialist')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'become_specialist' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
+          <button onclick="navigateTo('become_provider')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'become_provider' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
             <svg class="w-4 h-4 text-[#2FA36B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            Become a Specialist
+            Become a Provider
           </button>
 
-          <button onclick="navigateTo('workspace')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'workspace' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
+          <button onclick="navigateTo('provider_workspace')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'provider_workspace' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
             <div class="flex items-center gap-3">
               <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-              <span>Workspace</span>
+              <span>Provider Workspace</span>
             </div>
-            ${isSpecialist ? '<span class="text-[10px] bg-[#176B45] text-white px-1.5 py-0.5 rounded font-mono">ACTIVE</span>' : '<span class="text-[10px] text-[#8B9C8E]">Pro</span>'}
+            ${isSpecialist ? '<span class="text-[10px] bg-[#176B45] text-white px-1.5 py-0.5 rounded font-mono">ACTIVE</span>' : ''}
+          </button>
+        </div>
+
+        <!-- Navigation Section: ACCOUNT -->
+        <div class="px-3 py-3 space-y-1 border-t border-[#E2E9E3]/70">
+          <div class="px-3 py-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Account</div>
+
+          <button onclick="openModal('wallet_modal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820] transition-smooth">
+            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            Wallet
+          </button>
+
+          <button onclick="openModal('settings_modal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820] transition-smooth">
+            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Settings
           </button>
         </div>
       </div>
 
-      <!-- Bottom User Profile & Switcher -->
+      <!-- Bottom User Profile -->
       <div class="p-4 border-t border-[#E2E9E3] bg-[#F7F9F7]/80">
-        <!-- View Role Toggle -->
-        <div class="mb-3 px-2 py-1.5 bg-[#EAF5EE] rounded-md flex items-center justify-between text-[11.5px]">
-          <span class="text-[#176B45] font-semibold">Mode:</span>
+        <!-- Unified Role Indicator & Toggle -->
+        <div class="mb-2.5 px-2 py-1 bg-[#EAF5EE] rounded-md flex items-center justify-between text-[11.5px]">
+          <span class="text-[#176B45] font-semibold">Active Mode:</span>
           <div class="flex gap-1">
             <button onclick="switchUserRole('customer')" class="px-2 py-0.5 rounded transition-smooth ${STATE.user.role === 'customer' ? 'bg-[#176B45] text-white font-medium' : 'text-[#445246] hover:text-[#176B45]'}">
               Customer
             </button>
             <button onclick="switchUserRole('provider', 'prov_elena')" class="px-2 py-0.5 rounded transition-smooth ${STATE.user.role === 'provider' ? 'bg-[#176B45] text-white font-medium' : 'text-[#445246] hover:text-[#176B45]'}">
-              Specialist
+              Provider
             </button>
           </div>
         </div>
 
         <!-- User Identity Row -->
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-[#E2E9E3] border border-[#CBD7CE] flex items-center justify-center font-semibold text-[#176B45] text-sm">
+          <div class="w-8 h-8 rounded-full bg-[#E2E9E3] border border-[#CBD7CE] flex items-center justify-center font-semibold text-[#176B45] text-xs">
             F
           </div>
           <div class="flex flex-col min-w-0">
             <span class="text-[13px] font-semibold text-[#202820] truncate">${STATE.user.name}</span>
-            <span class="text-[11px] text-[#627566] truncate">${STATE.user.role === 'provider' ? 'Specialist Workspace' : STATE.user.org}</span>
+            <span class="text-[11px] text-[#627566] truncate">${STATE.user.role === 'provider' ? 'Registered Provider' : 'Developer Account'}</span>
           </div>
         </div>
       </div>
@@ -305,12 +328,12 @@ function renderSidebar() {
 function renderTopbar() {
   const titles = {
     dashboard: 'Dashboard',
-    discover: 'Discover Specialists',
-    provider_detail: 'Specialist Profile',
-    become_specialist: 'Become a Specialist',
-    workspace: 'Specialist Workspace',
-    my_prompts: 'My Prompts & Analyses',
-    my_requests: 'My Requests & Orders',
+    opihub: 'OpiHub',
+    provider_detail: 'Provider Profile',
+    become_provider: 'Become a Provider',
+    provider_workspace: 'Provider Workspace',
+    my_prompts: 'My Prompts',
+    my_requests: 'My Requests',
     security_reports: 'Security Reports'
   };
 
@@ -321,7 +344,7 @@ function renderTopbar() {
       <!-- Breadcrumb & Search -->
       <div class="flex items-center gap-6 min-w-0">
         <div class="flex items-center gap-2 text-[14px]">
-          <span class="text-[#627566] font-medium hover:text-[#176B45] cursor-pointer" onclick="navigateTo('dashboard')">PromptShield</span>
+          <span class="text-[#627566] font-medium hover:text-[#176B45] cursor-pointer" onclick="navigateTo('dashboard')">Guardvane</span>
           <span class="text-[#8B9C8E]">/</span>
           <span class="text-[#202820] font-semibold">${currentTitle}</span>
         </div>
@@ -336,7 +359,7 @@ function renderTopbar() {
           <input
             id="topbar-search-input"
             type="text"
-            placeholder="Search specialists, audits, prompts..."
+            placeholder="Search providers, audits, prompts..."
             value="${STATE.filters.search}"
             oninput="handleGlobalSearch(this.value)"
             class="w-full pl-9 pr-10 py-1.5 bg-[#FFFFFF] border border-[#E2E9E3] rounded-md text-[13px] text-[#202820] placeholder-[#8B9C8E] focus:outline-none focus:border-[#176B45] focus:ring-1 focus:ring-[#176B45] transition-smooth"
@@ -347,37 +370,20 @@ function renderTopbar() {
         </div>
       </div>
 
-      <!-- Top Right Controls -->
+      <!-- Top Right Controls (Cleaned: no fake Hedera balances or notification bells) -->
       <div class="flex items-center gap-4">
-        <!-- Integration Boundary Readiness Pill -->
-        <button onclick="openModal('integrations_info')" class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[#E2E9E3] bg-[#FFFFFF] text-[12px] font-medium text-[#445246] hover:bg-[#F0F5F1] transition-smooth">
-          <span class="w-2 h-2 rounded-full bg-[#2FA36B] animate-soft-pulse"></span>
-          <span>Integrations: 4 Ready</span>
-        </button>
-
-        <!-- Hedera Wallet Status Placeholder -->
-        <div class="flex items-center gap-2 px-3 py-1.5 bg-[#EAF5EE] border border-[#C4E4CE] rounded-md text-[12px] text-[#176B45] font-medium">
-          <svg class="w-3.5 h-3.5 text-[#176B45]" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14.5v-2.1c2.16-.36 3.5-1.78 3.5-3.65 0-2.02-1.52-3.35-4-3.55V5h-2v2.22c-2.31.38-3.7 1.83-3.7 3.69 0 2.05 1.55 3.32 4.2 3.54v2.35c-1.87-.27-2.9-1.25-3.05-2.55H6.4c.15 2.1 1.7 3.55 3.6 3.9V20h2v-2.05c2.37-.36 3.8-1.8 3.8-3.8 0-2.12-1.55-3.4-4.2-3.6v-2.3c1.7.25 2.65 1.15 2.8 2.3h1.55c-.15-1.95-1.5-3.35-3.35-3.7V5h-2v2.25c-2.2.35-3.5 1.7-3.5 3.5 0 1.95 1.45 3.15 4 3.4v2.4c-1.7-.25-2.7-1.15-2.85-2.3H6.4c.15 2 1.6 3.45 3.6 3.8V20h2v-2.05c2.3-.35 3.7-1.75 3.7-3.65 0-2.05-1.5-3.3-4.1-3.5z"/>
-          </svg>
-          <span class="font-mono">Hedera: 0.0.4829103</span>
-        </div>
-
         <!-- Documentation Link -->
-        <a href="/docs" target="_blank" class="text-[13px] font-medium text-[#445246] hover:text-[#176B45] flex items-center gap-1">
-          Docs
+        <a href="/docs" target="_blank" class="text-[13px] font-medium text-[#445246] hover:text-[#176B45] flex items-center gap-1 transition-smooth">
+          API Documentation
           <svg class="w-3.5 h-3.5 text-[#8B9C8E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
           </svg>
         </a>
 
-        <!-- Notification Bell -->
-        <button class="p-2 text-[#627566] hover:text-[#202820] hover:bg-[#F0F5F1] rounded-md transition-smooth relative">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-[#176B45] rounded-full"></span>
-        </button>
+        <!-- User Avatar -->
+        <div class="w-8 h-8 rounded-full bg-[#176B45] text-white flex items-center justify-center font-semibold text-xs shadow-xs">
+          F
+        </div>
       </div>
     </header>
   `;
@@ -392,7 +398,7 @@ function renderCurrentView() {
     return `
       <div class="h-64 flex flex-col items-center justify-center space-y-3">
         <div class="w-8 h-8 border-3 border-[#176B45] border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-[13px] text-[#627566]">Loading marketplace data...</p>
+        <p class="text-[13px] text-[#627566]">Loading Guardvane data...</p>
       </div>
     `;
   }
@@ -400,14 +406,14 @@ function renderCurrentView() {
   switch (STATE.activeView) {
     case 'dashboard':
       return renderDashboardView();
-    case 'discover':
-      return renderDiscoverView();
+    case 'opihub':
+      return renderOpiHubView();
     case 'provider_detail':
       return renderProviderDetailView();
-    case 'become_specialist':
-      return renderBecomeSpecialistView();
-    case 'workspace':
-      return renderWorkspaceView();
+    case 'become_provider':
+      return renderBecomeProviderView();
+    case 'provider_workspace':
+      return renderProviderWorkspaceView();
     case 'my_prompts':
       return renderMyPromptsView();
     case 'my_requests':
@@ -420,29 +426,25 @@ function renderCurrentView() {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Dashboard Home Page (Claude Console Inspired)
+// 1. Dashboard Home Page (Cleaned & Simplified)
 // ---------------------------------------------------------------------------
 
 function renderDashboardView() {
-  const stats = STATE.data.stats || {
-    registered_specialists_count: 5,
-    available_services_count: 5,
-    my_requests_count: 3,
-    completed_reviews_count: 1,
-    human_specialists_count: 3,
-    automated_providers_count: 2,
-    recent_activity: []
-  };
+  const stats = STATE.data.stats || {};
+  const savedPromptsCount = stats.saved_prompts_count ?? STATE.data.prompts.length;
+  const activeRequestsCount = stats.active_requests_count ?? STATE.data.orders.filter(o => ['requested', 'accepted', 'in_progress'].includes(o.status)).length;
+  const completedAuditsCount = stats.completed_audits_count ?? stats.completed_reviews_count ?? STATE.data.reports.length;
+  const availableProvidersCount = stats.available_providers_count ?? STATE.data.providers.length;
 
-  const featuredSpecialists = STATE.data.providers.slice(0, 3);
-  const recommendedServices = STATE.data.services.slice(0, 4);
+  const recommendedProviders = STATE.data.providers.slice(0, 3);
+  const recentReports = STATE.data.reports.slice(0, 3);
 
   return `
     <!-- Top Greeting Header -->
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Good morning, ${STATE.user.name}</h1>
-        <p class="text-[14px] text-[#627566] mt-0.5">Discover AI security specialists and manage your prompt reviews.</p>
+        <p class="text-[14px] text-[#627566] mt-0.5">AI Security Platform — Manage prompt reviews, run automated vulnerability checks, and explore verified providers.</p>
       </div>
       <div class="flex items-center gap-3">
         <button onclick="openModal('quick_analyze')" class="px-4 py-2 bg-[#FFFFFF] border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2">
@@ -451,146 +453,134 @@ function renderDashboardView() {
           </svg>
           Analyze a Prompt
         </button>
-        <button onclick="navigateTo('discover')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2">
+        <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          Request Security Review
+          Explore OpiHub
         </button>
       </div>
     </div>
 
-    <!-- Summary Metrics Cards (Matching Claude Console Metric Row) -->
+    <!-- 4 Clean Metric Cards (Matching Claude Console developer style) -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
         <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>Registered Specialists</span>
-          <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">Total</span>
+          <span>Saved Prompts</span>
+          <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">Private</span>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${stats.registered_specialists_count}</span>
-          <span class="text-[12px] text-[#627566]">(${stats.automated_providers_count} AI / ${stats.human_specialists_count} Human)</span>
+          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${savedPromptsCount}</span>
+          <span class="text-[12px] text-[#627566]">saved in library</span>
         </div>
-        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('discover')">
-          Browse directory →
+        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('my_prompts')">
+          View prompt library →
         </div>
       </div>
 
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
         <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>Available Services</span>
-          <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">Audits & Hardening</span>
+          <span>Active Requests</span>
+          <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] px-2 py-0.5 rounded font-medium">In Flight</span>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${stats.available_services_count}</span>
-          <span class="text-[12px] text-[#627566]">active offerings</span>
-        </div>
-        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('discover')">
-          View all services →
-        </div>
-      </div>
-
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>My Requests</span>
-          <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] px-2 py-0.5 rounded font-medium">Orders</span>
-        </div>
-        <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${stats.my_requests_count}</span>
-          <span class="text-[12px] text-[#627566]">orders in flight</span>
+          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${activeRequestsCount}</span>
+          <span class="text-[12px] text-[#627566]">orders in progress</span>
         </div>
         <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('my_requests')">
-          Track lifecycle →
+          Track active orders →
         </div>
       </div>
 
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
         <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>Completed Reviews</span>
+          <span>Completed Audits</span>
           <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">Reports</span>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${stats.completed_reviews_count}</span>
-          <span class="text-[12px] text-[#627566]">audited prompts</span>
+          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${completedAuditsCount}</span>
+          <span class="text-[12px] text-[#627566]">audited deliverables</span>
         </div>
         <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('security_reports')">
-          Inspect reports →
+          Inspect audit reports →
+        </div>
+      </div>
+
+      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
+        <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
+          <span>Available Providers</span>
+          <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">OpiHub</span>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${availableProvidersCount}</span>
+          <span class="text-[12px] text-[#627566]">human & automated</span>
+        </div>
+        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('opihub')">
+          Explore on OpiHub →
         </div>
       </div>
     </div>
 
-    <!-- Integration Architecture Readiness Banner -->
-    <div class="bg-white border border-[#E2E9E3] rounded-lg p-4 flex items-center justify-between shadow-xs">
-      <div class="flex items-center gap-4">
-        <div class="w-10 h-10 rounded-md bg-[#EAF5EE] text-[#176B45] flex items-center justify-center shrink-0">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-[13.5px] font-semibold text-[#202820]">Decentralized Foundation Integration Architecture</span>
-            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">PHASE 1 READY</span>
-          </div>
-          <p class="text-[12.5px] text-[#627566] mt-0.5">
-            Interfaces prepared for <strong class="text-[#202820]">0G Private Computer</strong> (AI reasoning), <strong class="text-[#202820]">Arkiv</strong> (registry), <strong class="text-[#202820]">Swarm</strong> (decentralized reports), and <strong class="text-[#202820]">Hedera x402</strong> (autonomous micropayments).
-          </p>
-        </div>
-      </div>
-      <button onclick="openModal('integrations_info')" class="px-3 py-1.5 text-[12.5px] font-medium text-[#176B45] hover:bg-[#EAF5EE] rounded-md transition-smooth">
-        View Specs
-      </button>
-    </div>
-
-    <!-- Featured Specialists Row -->
+    <!-- Recommended Providers Row (Cleaned & Concise) -->
     <div class="space-y-3">
       <div class="flex items-center justify-between">
-        <h2 class="text-[16px] font-semibold tracking-tight text-[#202820]">Featured Security Specialists</h2>
-        <button onclick="navigateTo('discover')" class="text-[13px] font-medium text-[#176B45] hover:underline">
-          View all specialists (${STATE.data.providers.length}) →
+        <h2 class="text-[15px] font-semibold tracking-tight text-[#202820]">Recommended Providers</h2>
+        <button onclick="navigateTo('opihub')" class="text-[13px] font-medium text-[#176B45] hover:underline">
+          Explore all on OpiHub (${STATE.data.providers.length}) →
         </button>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        ${featuredSpecialists.map(p => renderSpecialistCard(p)).join('')}
+        ${recommendedProviders.map(p => renderCleanProviderCard(p)).join('')}
       </div>
     </div>
 
-    <!-- Recommended Security Services -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="text-[16px] font-semibold tracking-tight text-[#202820]">Recommended Services</h2>
-        <button onclick="navigateTo('discover')" class="text-[13px] font-medium text-[#176B45] hover:underline">
-          Compare all offerings →
-        </button>
+    <!-- Two Column: Recent Activity & Recent Reports -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <!-- Recent Activity Feed -->
+      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
+        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+          <h3 class="text-[14px] font-semibold text-[#202820]">Recent Activity</h3>
+          <span class="text-[12px] text-[#627566] hover:text-[#176B45] cursor-pointer" onclick="navigateTo('my_requests')">View all orders →</span>
+        </div>
+        <div class="divide-y divide-[#E2E9E3]/70">
+          ${renderActivityFeed(stats.recent_activity || [])}
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        ${recommendedServices.map(s => renderServiceCard(s)).join('')}
-      </div>
-    </div>
-
-    <!-- Recent Activity Feed -->
-    <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[14px] font-semibold text-[#202820]">Recent Activity & Order Lifecycle</h3>
-        <span class="text-[12px] text-[#627566]">Updated in real-time</span>
-      </div>
-
-      <div class="divide-y divide-[#E2E9E3]/70">
-        ${renderActivityFeed(stats.recent_activity)}
+      <!-- Recent Reports -->
+      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
+        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+          <h3 class="text-[14px] font-semibold text-[#202820]">Recent Reports</h3>
+          <span class="text-[12px] text-[#627566] hover:text-[#176B45] cursor-pointer" onclick="navigateTo('security_reports')">View all reports →</span>
+        </div>
+        <div class="space-y-3">
+          ${recentReports.length > 0 ? recentReports.map(r => `
+            <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9] flex items-center justify-between">
+              <div class="min-w-0 pr-3">
+                <div class="font-medium text-[13px] text-[#202820] truncate">${escapeHtml(r.service_title)}</div>
+                <div class="text-[11.5px] text-[#627566]">By ${escapeHtml(r.provider_name)} • ${(r.findings || []).length} findings</div>
+              </div>
+              <button onclick="viewReport('${r.id}')" class="px-2.5 py-1 text-[12px] font-medium bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#176B45] rounded shrink-0 transition-smooth">
+                Inspect Findings
+              </button>
+            </div>
+          `).join('') : `
+            <div class="py-6 text-center text-[#627566] text-[13px]">No completed audit reports recorded yet.</div>
+          `}
+        </div>
       </div>
     </div>
   `;
 }
 
 // ---------------------------------------------------------------------------
-// 2. Discover Specialists Page
+// 2. OpiHub Marketplace Discovery Page
 // ---------------------------------------------------------------------------
 
-function renderDiscoverView() {
+function renderOpiHubView() {
   const categories = [
-    { id: 'all', label: 'All Specialists' },
+    { id: 'all', label: 'All Providers' },
     { id: 'ai_security', label: 'AI Security' },
     { id: 'prompt_engineering', label: 'Prompt Engineering' },
     { id: 'llm_optimization', label: 'LLM Optimization' },
@@ -599,9 +589,7 @@ function renderDiscoverView() {
     { id: 'api_security', label: 'Application Security' }
   ];
 
-  // Filter specialists
   const filtered = STATE.data.providers.filter(p => {
-    // Search keyword
     if (STATE.filters.search) {
       const q = STATE.filters.search.toLowerCase();
       const matchName = p.display_name.toLowerCase().includes(q);
@@ -611,13 +599,11 @@ function renderDiscoverView() {
       if (!matchName && !matchTitle && !matchDesc && !matchSkills) return false;
     }
 
-    // Category
     if (STATE.filters.category && STATE.filters.category !== 'all') {
       const hasCat = p.categories.some(c => c.toLowerCase() === STATE.filters.category.toLowerCase());
       if (!hasCat) return false;
     }
 
-    // Provider Type
     if (STATE.filters.providerType && p.provider_type !== STATE.filters.providerType) {
       return false;
     }
@@ -628,11 +614,11 @@ function renderDiscoverView() {
   return `
     <!-- Header -->
     <div class="flex flex-col gap-1">
-      <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Discover AI Security Specialists</h1>
-      <p class="text-[14px] text-[#627566]">Browse vetted human security auditors and automated AI defense agents.</p>
+      <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">OpiHub</h1>
+      <p class="text-[14px] text-[#627566]">Decentralized marketplace for AI security services, automated defense providers, and human auditors.</p>
     </div>
 
-    <!-- Category Filter Tabs (Pill Style) -->
+    <!-- Category Filter Tabs -->
     <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#E2E9E3]">
       ${categories.map(c => `
         <button
@@ -648,7 +634,7 @@ function renderDiscoverView() {
       `).join('')}
     </div>
 
-    <!-- Sub-Filters: Type, Price, Availability -->
+    <!-- Sub-Filters: Type, Availability, Count -->
     <div class="flex items-center justify-between gap-4 bg-white p-3 border border-[#E2E9E3] rounded-lg">
       <div class="flex items-center gap-3">
         <span class="text-[12.5px] font-medium text-[#627566]">Provider Type:</span>
@@ -657,20 +643,20 @@ function renderDiscoverView() {
           class="bg-[#F7F9F7] border border-[#E2E9E3] text-[13px] text-[#202820] rounded px-2.5 py-1 focus:outline-none focus:border-[#176B45]"
         >
           <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All Types</option>
-          <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Automated AI Provider</option>
-          <option value="human" ${STATE.filters.providerType === 'human' ? 'selected' : ''}>Human Specialist</option>
+          <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Automated AI Security Provider</option>
+          <option value="human" ${STATE.filters.providerType === 'human' ? 'selected' : ''}>Human Security Provider</option>
         </select>
       </div>
 
       <div class="text-[13px] text-[#627566]">
-        Showing <strong class="text-[#202820]">${filtered.length}</strong> of ${STATE.data.providers.length} registered specialists
+        Showing <strong class="text-[#202820]">${filtered.length}</strong> of ${STATE.data.providers.length} registered providers
       </div>
     </div>
 
-    <!-- Specialists Grid -->
+    <!-- Providers Grid -->
     ${filtered.length > 0 ? `
       <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        ${filtered.map(p => renderSpecialistCard(p)).join('')}
+        ${filtered.map(p => renderCleanProviderCard(p)).join('')}
       </div>
     ` : `
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
@@ -679,7 +665,7 @@ function renderDiscoverView() {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 class="text-[15px] font-semibold text-[#202820]">No specialists matched your filter</h3>
+        <h3 class="text-[15px] font-semibold text-[#202820]">No providers matched your filter</h3>
         <p class="text-[13px] text-[#627566]">Try clearing your search query or selecting a different category.</p>
         <button onclick="resetFilters()" class="px-3.5 py-1.5 text-[13px] font-medium bg-[#176B45] text-white rounded-md">
           Reset Filters
@@ -690,13 +676,13 @@ function renderDiscoverView() {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Specialist Profile Page
+// 3. Provider Profile Page
 // ---------------------------------------------------------------------------
 
 function renderProviderDetailView() {
   const provider = STATE.data.providers.find(p => p.id === STATE.selectedProviderId) || STATE.data.providers[0];
   if (!provider) {
-    return `<div class="p-8 text-center">Specialist not found. <button onclick="navigateTo('discover')" class="text-[#176B45] underline">Back to Directory</button></div>`;
+    return `<div class="p-8 text-center">Provider not found. <button onclick="navigateTo('opihub')" class="text-[#176B45] underline">Back to OpiHub</button></div>`;
   }
 
   const providerServices = STATE.data.services.filter(s => s.provider_id === provider.id);
@@ -705,8 +691,8 @@ function renderProviderDetailView() {
   return `
     <!-- Back Link -->
     <div>
-      <button onclick="navigateTo('discover')" class="text-[13px] text-[#176B45] font-medium hover:underline flex items-center gap-1.5">
-        ← Back to Specialist Directory
+      <button onclick="navigateTo('opihub')" class="text-[13px] text-[#176B45] font-medium hover:underline flex items-center gap-1.5">
+        ← Back to OpiHub
       </button>
     </div>
 
@@ -717,32 +703,31 @@ function renderProviderDetailView() {
           <img
             src="${provider.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}"
             alt="${provider.display_name}"
-            class="w-20 h-20 rounded-lg object-cover border border-[#E2E9E3] shadow-xs shrink-0"
+            class="w-16 h-16 rounded-lg object-cover border border-[#E2E9E3] shadow-xs shrink-0"
           />
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2.5">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
               <h1 class="text-xl font-semibold text-[#202820] tracking-tight">${provider.display_name}</h1>
               ${provider.verified ? `
                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#C4E4CE]">
                   <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                   </svg>
-                  Verified Specialist
+                  Verified Provider
                 </span>
               ` : `
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F7F9F7] text-[#627566] border border-[#E2E9E3]">
-                  Registered Provider
+                  Registered
                 </span>
               `}
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-                ${isAutomated ? 'Autonomous AI Provider' : 'Human Specialist'}
+                ${isAutomated ? 'Automated AI Security Provider' : 'Human Security Provider'}
               </span>
             </div>
-            <p class="text-[14px] text-[#445246] font-medium">${provider.title}</p>
-            <div class="flex items-center gap-4 text-[12px] text-[#627566] pt-1">
-              <span>Status: <strong class="text-[#176B45]">${provider.availability}</strong></span>
-              ${provider.wallet_address ? `<span>Hedera Account: <code class="font-mono text-[#202820]">${provider.wallet_address}</code></span>` : ''}
-              ${isAutomated && provider.x402_supported ? `<span class="text-[#176B45] font-semibold">x402 Protocol Enabled</span>` : ''}
+            <p class="text-[13.5px] text-[#445246] font-medium">${provider.title}</p>
+            <div class="flex items-center gap-4 text-[12px] text-[#627566] pt-0.5">
+              <span>Status: <strong class="text-[#176B45] capitalize">${provider.availability}</strong></span>
+              ${provider.wallet_address ? `<span>Wallet: <code class="font-mono text-[#202820]">${provider.wallet_address}</code></span>` : ''}
             </div>
           </div>
         </div>
@@ -751,20 +736,20 @@ function renderProviderDetailView() {
           onclick="openModal('request_review', { providerId: '${provider.id}', serviceId: '${providerServices[0]?.id || ''}' })"
           class="px-5 py-2.5 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth"
         >
-          Request a Review
+          Request Review
         </button>
       </div>
 
-      <!-- Description & Genuine Reputation -->
+      <!-- Description & Genuine Track Record -->
       <div class="border-t border-[#E2E9E3] pt-5 space-y-4">
         <div>
-          <h3 class="text-[13px] font-semibold text-[#8B9C8E] uppercase tracking-wider">About Specialist</h3>
-          <p class="text-[14px] text-[#333E35] leading-relaxed mt-1.5">${provider.description}</p>
+          <h3 class="text-[12.5px] font-semibold text-[#8B9C8E] uppercase tracking-wider">About Provider</h3>
+          <p class="text-[13.5px] text-[#333E35] leading-relaxed mt-1.5">${provider.description}</p>
         </div>
 
         <!-- Skills Chips -->
         <div>
-          <h3 class="text-[13px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Verified Skills & Tools</h3>
+          <h3 class="text-[12.5px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Capabilities & Skills</h3>
           <div class="flex flex-wrap gap-1.5 mt-2">
             ${provider.skills.map(s => `
               <span class="px-2.5 py-1 bg-[#F7F9F7] border border-[#E2E9E3] text-[#202820] text-[12px] font-medium rounded-md">
@@ -774,25 +759,25 @@ function renderProviderDetailView() {
           </div>
         </div>
 
-        <!-- Genuine Verified Reputation (No Invented Stars) -->
+        <!-- Real Track Record Metrics -->
         <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-md p-4">
-          <div class="text-[12px] font-semibold text-[#176B45] uppercase tracking-wider mb-2">Auditing Track Record & Performance</div>
+          <div class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider mb-2">Track Record & Performance</div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div class="bg-white p-3 rounded border border-[#E2E9E3]">
               <div class="text-xl font-bold text-[#202820]">${provider.reputation_metadata.audits_completed || 0}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Audits Completed</div>
+              <div class="text-[11px] text-[#627566] mt-0.5">Audits Delivered</div>
             </div>
             <div class="bg-white p-3 rounded border border-[#E2E9E3]">
               <div class="text-xl font-bold text-[#202820]">${provider.reputation_metadata.avg_turnaround_hours ? `${provider.reputation_metadata.avg_turnaround_hours}h` : (provider.reputation_metadata.avg_turnaround_sec ? `${provider.reputation_metadata.avg_turnaround_sec}s` : 'Instant')}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Avg Turnaround</div>
+              <div class="text-[11px] text-[#627566] mt-0.5">Turnaround Time</div>
             </div>
             <div class="bg-white p-3 rounded border border-[#E2E9E3]">
-              <div class="text-xl font-bold text-[#202820]">${isAutomated ? 'API / x402' : 'Manual'}</div>
+              <div class="text-xl font-bold text-[#202820]">${isAutomated ? 'Autonomous' : 'Manual'}</div>
               <div class="text-[11px] text-[#627566] mt-0.5">Execution Type</div>
             </div>
             <div class="bg-white p-3 rounded border border-[#E2E9E3]">
               <div class="text-xl font-bold text-[#202820]">${provider.portfolio_url ? 'Verified' : 'Active'}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Portfolio Check</div>
+              <div class="text-[11px] text-[#627566] mt-0.5">Profile Status</div>
             </div>
           </div>
         </div>
@@ -802,45 +787,36 @@ function renderProviderDetailView() {
     <!-- Published Services List -->
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h2 class="text-[16px] font-semibold tracking-tight text-[#202820]">Published Services (${providerServices.length})</h2>
+        <h2 class="text-[15px] font-semibold tracking-tight text-[#202820]">Published Services (${providerServices.length})</h2>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        ${providerServices.map(s => renderServiceCard(s, false)).join('')}
+        ${providerServices.map(s => renderCleanServiceCard(s, false)).join('')}
       </div>
     </div>
   `;
 }
 
 // ---------------------------------------------------------------------------
-// 4. Become a Specialist Page
+// 4. Become a Provider Page
 // ---------------------------------------------------------------------------
 
-function renderBecomeSpecialistView() {
+function renderBecomeProviderView() {
   return `
     <div class="max-w-3xl mx-auto space-y-6">
       <div class="space-y-1">
-        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Become a PromptShield Specialist</h1>
-        <p class="text-[14px] text-[#627566]">Register your human expertise or register an automated defense agent for discovery.</p>
+        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Become a Provider</h1>
+        <p class="text-[14px] text-[#627566]">Register your human security expertise or deploy an automated AI defense provider to OpiHub.</p>
       </div>
 
-      <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg p-4 text-[13px] text-[#445246] flex items-center gap-3">
-        <svg class="w-5 h-5 text-[#176B45] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>
-          Newly submitted profiles are published directly for testing with status <strong class="text-[#202820]">published</strong>. Verified badges require manual code and identity review.
-        </span>
-      </div>
-
-      <form id="become-specialist-form" onsubmit="handleBecomeSpecialist(event)" class="bg-white border border-[#E2E9E3] rounded-lg p-7 shadow-xs space-y-6">
+      <form id="become-provider-form" onsubmit="handleBecomeProvider(event)" class="bg-white border border-[#E2E9E3] rounded-lg p-7 shadow-xs space-y-6">
         <!-- Section 1: Provider Identity -->
         <div class="space-y-4">
-          <h3 class="text-[14px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">1. Specialist Identity & Type</h3>
+          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">1. Provider Identity</h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Full Name / Agent Name *</label>
+              <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Name *</label>
               <input type="text" name="display_name" required placeholder="e.g. Dr. Maya Patel or GuardAgent-X" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
             </div>
 
@@ -854,30 +830,30 @@ function renderBecomeSpecialistView() {
             <div>
               <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Type *</label>
               <select name="provider_type" id="form-provider-type" onchange="toggleAutomatedFields(this.value)" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]">
-                <option value="human">Human Specialist</option>
-                <option value="automated">Automated AI Provider</option>
+                <option value="human">Human Security Provider</option>
+                <option value="automated">Automated AI Security Provider</option>
               </select>
             </div>
 
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Wallet Address (Hedera or EVM)</label>
+              <label class="block text-[13px] font-medium text-[#202820] mb-1">Wallet Address (Optional)</label>
               <input type="text" name="wallet_address" placeholder="e.g. 0.0.7819234 or 0x..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] font-mono focus:outline-none focus:border-[#176B45]" />
             </div>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Profile Bio / Description *</label>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Bio / Description *</label>
             <textarea name="description" rows="3" required placeholder="Describe your security focus, background, attack surfaces tested, and tooling..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]"></textarea>
           </div>
         </div>
 
         <!-- Section 2: Automated Provider Configuration (Conditional) -->
         <div id="automated-provider-fields" class="space-y-4 hidden p-4 bg-[#F7F9F7] rounded-md border border-[#E2E9E3]">
-          <h3 class="text-[13.5px] font-semibold text-[#176B45]">Automated Agent Configuration</h3>
+          <h3 class="text-[13px] font-semibold text-[#176B45]">Automated Agent Configuration</h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Provider API Endpoint</label>
+              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">API Endpoint</label>
               <input type="url" name="endpoint_url" placeholder="https://api.yourdomain.com/v1/scan" class="w-full px-3 py-2 bg-white border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]" />
             </div>
 
@@ -886,16 +862,11 @@ function renderBecomeSpecialistView() {
               <input type="text" name="io_format" value="JSON / Prompt-in, Hardened-out" class="w-full px-3 py-2 bg-white border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
             </div>
           </div>
-
-          <div class="flex items-center gap-2">
-            <input type="checkbox" name="x402_supported" id="cb-x402" class="rounded text-[#176B45] focus:ring-[#176B45]" />
-            <label for="cb-x402" class="text-[13px] text-[#202820]">Enable Hedera x402 Autonomous Payment Protocol</label>
-          </div>
         </div>
 
         <!-- Section 3: Skills & Categories -->
         <div class="space-y-4">
-          <h3 class="text-[14px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">2. Expertise & Categories</h3>
+          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">2. Expertise & Categories</h3>
 
           <div>
             <label class="block text-[13px] font-medium text-[#202820] mb-1">Skills (Comma-separated)</label>
@@ -903,7 +874,7 @@ function renderBecomeSpecialistView() {
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Primary Categories</label>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Categories</label>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
               <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="ai_security" checked /> AI Security</label>
               <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="prompt_engineering" checked /> Prompt Engineering</label>
@@ -917,7 +888,7 @@ function renderBecomeSpecialistView() {
 
         <!-- Section 4: Initial Service Listing -->
         <div class="space-y-4">
-          <h3 class="text-[14px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">3. Primary Service Offering</h3>
+          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">3. Initial Service Offering</h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -926,7 +897,7 @@ function renderBecomeSpecialistView() {
             </div>
 
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD equivalent) *</label>
+              <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD) *</label>
               <input type="number" step="0.01" min="0" name="service_price" value="50.00" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
             </div>
           </div>
@@ -944,13 +915,13 @@ function renderBecomeSpecialistView() {
           </div>
         </div>
 
-        <!-- Action Submit -->
+        <!-- Submit Button -->
         <div class="pt-4 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
           <button type="button" onclick="navigateTo('dashboard')" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] hover:bg-[#F7F9F7] text-[13.5px] font-medium rounded-md transition-smooth">
             Cancel
           </button>
           <button type="submit" class="px-6 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth">
-            Register Specialist Profile
+            Register Provider Profile
           </button>
         </div>
       </form>
@@ -959,14 +930,12 @@ function renderBecomeSpecialistView() {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Specialist Workspace
+// 5. Provider Workspace
 // ---------------------------------------------------------------------------
 
-function renderWorkspaceView() {
-  // Find current specialist profile
+function renderProviderWorkspaceView() {
   const provider = STATE.data.providers.find(p => p.id === STATE.user.activeProviderId) || STATE.data.providers[2];
   
-  // Work assigned to this specialist
   const assignedOrders = STATE.data.orders.filter(o => o.provider_id === provider.id);
   const incoming = assignedOrders.filter(o => o.status === 'requested');
   const inProgress = assignedOrders.filter(o => o.status === 'accepted' || o.status === 'in_progress');
@@ -974,14 +943,14 @@ function renderWorkspaceView() {
 
   return `
     <div class="space-y-6">
-      <!-- Specialist Banner -->
+      <!-- Provider Workspace Banner -->
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-6 shadow-xs flex items-center justify-between">
         <div class="flex items-center gap-4">
           <img src="${provider.avatar_url}" class="w-14 h-14 rounded-lg object-cover border border-[#E2E9E3]" />
           <div>
             <div class="flex items-center gap-2">
               <h1 class="text-xl font-semibold text-[#202820]">${provider.display_name}</h1>
-              <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">Active Workspace</span>
+              <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">Provider Workspace</span>
             </div>
             <p class="text-[13px] text-[#627566]">${provider.title}</p>
           </div>
@@ -997,7 +966,7 @@ function renderWorkspaceView() {
         </div>
       </div>
 
-      <!-- Quick Stats -->
+      <!-- Quick Metrics -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white p-4 rounded-lg border border-[#E2E9E3]">
           <span class="text-[12px] text-[#627566] font-medium">Incoming Requests</span>
@@ -1012,7 +981,7 @@ function renderWorkspaceView() {
           <div class="text-2xl font-bold text-[#176B45] mt-1">${completed.length}</div>
         </div>
         <div class="bg-white p-4 rounded-lg border border-[#E2E9E3]">
-          <span class="text-[12px] text-[#627566] font-medium">Earnings Escrow Placeholder</span>
+          <span class="text-[12px] text-[#627566] font-medium">Completed Value</span>
           <div class="text-2xl font-bold text-[#202820] mt-1 font-mono">$${(completed.length * 95).toFixed(2)}</div>
         </div>
       </div>
@@ -1021,10 +990,10 @@ function renderWorkspaceView() {
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
         <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
           <div class="flex items-center gap-2">
-            <h2 class="text-[15px] font-semibold text-[#202820]">Incoming Service Requests</h2>
+            <h2 class="text-[14.5px] font-semibold text-[#202820]">Incoming Service Requests</h2>
             <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] font-medium px-2 py-0.5 rounded">${incoming.length} pending</span>
           </div>
-          <span class="text-[12px] text-[#627566]">Specialist action required to accept or decline</span>
+          <span class="text-[12px] text-[#627566]">Action required to accept or decline</span>
         </div>
 
         ${incoming.length > 0 ? `
@@ -1034,22 +1003,22 @@ function renderWorkspaceView() {
                 <div class="space-y-1.5 flex-1 min-w-0">
                   <div class="flex items-center gap-2">
                     <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
-                    <strong class="text-[14px] text-[#202820]">${o.service_title}</strong>
+                    <strong class="text-[13.5px] text-[#202820]">${o.service_title}</strong>
                     <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-medium">$${o.price.toFixed(2)}</span>
                   </div>
                   <div class="text-[12.5px] text-[#445246]">
                     Submitted by: <strong>${o.customer_name}</strong> • ${new Date(o.created_at).toLocaleDateString()}
                   </div>
-                  <div class="text-[12.5px] text-[#627566] bg-white p-2.5 rounded border border-[#E2E9E3] font-mono text-[11.5px] line-clamp-2">
+                  <div class="text-[12px] text-[#627566] bg-white p-2.5 rounded border border-[#E2E9E3] font-mono line-clamp-2">
                     ${escapeHtml(o.prompt_content)}
                   </div>
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
-                  <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth">
+                  <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth">
                     Accept Order
                   </button>
-                  <button onclick="handleOrderStatusUpdate('${o.id}', 'rejected')" class="px-3 py-1.5 border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FCA5A5] text-[12.5px] font-medium rounded transition-smooth">
+                  <button onclick="handleOrderStatusUpdate('${o.id}', 'rejected')" class="px-3 py-1.5 border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FCA5A5] text-[12px] font-medium rounded transition-smooth">
                     Reject
                   </button>
                 </div>
@@ -1067,10 +1036,10 @@ function renderWorkspaceView() {
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
         <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
           <div class="flex items-center gap-2">
-            <h2 class="text-[15px] font-semibold text-[#202820]">Active Work In Progress</h2>
+            <h2 class="text-[14.5px] font-semibold text-[#202820]">Active Work In Progress</h2>
             <span class="text-[11px] bg-[#DBEAFE] text-[#1E40AF] font-medium px-2 py-0.5 rounded">${inProgress.length} active</span>
           </div>
-          <span class="text-[12px] text-[#627566]">Prompts only shared with assigned specialist</span>
+          <span class="text-[12px] text-[#627566]">Prompts shared directly with assigned provider</span>
         </div>
 
         ${inProgress.length > 0 ? `
@@ -1081,7 +1050,7 @@ function renderWorkspaceView() {
                   <div>
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
-                      <strong class="text-[14px] text-[#202820]">${o.service_title}</strong>
+                      <strong class="text-[13.5px] text-[#202820]">${o.service_title}</strong>
                       ${renderStatusBadge(o.status)}
                     </div>
                     <div class="text-[12px] text-[#627566] mt-0.5">
@@ -1101,7 +1070,7 @@ function renderWorkspaceView() {
                   </div>
                 </div>
 
-                <!-- Private Client Prompt Preview -->
+                <!-- Client Prompt View -->
                 <div class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded-md text-[12.5px] space-y-1">
                   <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Submitted Prompt Under Review:</div>
                   <pre class="font-mono text-[12px] text-[#202820] whitespace-pre-wrap">${escapeHtml(o.prompt_content)}</pre>
@@ -1147,7 +1116,7 @@ function renderMyPromptsView() {
         <svg class="w-4 h-4 text-[#176B45] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
-        <span>Your prompts are stored privately on this node and are never broadcasted or shared with specialists until you submit a specific review order.</span>
+        <span>Your prompts are stored privately on this node and are never shared with providers until you explicitly submit a review order.</span>
       </div>
 
       <div class="grid grid-cols-1 gap-4">
@@ -1155,7 +1124,7 @@ function renderMyPromptsView() {
           <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-3 card-hover transition-smooth">
             <div class="flex items-start justify-between">
               <div>
-                <h3 class="text-[15px] font-semibold text-[#202820]">${escapeHtml(p.title)}</h3>
+                <h3 class="text-[14.5px] font-semibold text-[#202820]">${escapeHtml(p.title)}</h3>
                 <span class="text-[11.5px] text-[#627566] font-mono">${p.id} • Saved ${new Date(p.created_at).toLocaleDateString()}</span>
               </div>
 
@@ -1164,10 +1133,10 @@ function renderMyPromptsView() {
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  Analyze with PromptShield
+                  Analyze with Guardvane
                 </button>
                 <button onclick="openModal('request_review', { promptText: '${escapeForAttr(p.content)}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth">
-                  Submit to Specialist
+                  Submit to Provider
                 </button>
                 <button onclick="handleDeletePrompt('${p.id}')" class="p-1.5 text-[#8B9C8E] hover:text-[#991B1B] rounded transition-smooth">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1211,11 +1180,11 @@ function renderMyRequestsView() {
     <div class="space-y-5">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">My Requests & Orders</h1>
+          <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">My Requests</h1>
           <p class="text-[14px] text-[#627566]">Track the explicit lifecycle of your security audits and hardening requests.</p>
         </div>
-        <button onclick="navigateTo('discover')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
-          + New Service Request
+        <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
+          + Explore OpiHub
         </button>
       </div>
 
@@ -1226,7 +1195,7 @@ function renderMyRequestsView() {
             <tr>
               <th class="px-5 py-3">Order ID</th>
               <th class="px-5 py-3">Service</th>
-              <th class="px-5 py-3">Specialist / Provider</th>
+              <th class="px-5 py-3">Provider</th>
               <th class="px-5 py-3">Status</th>
               <th class="px-5 py-3">Price</th>
               <th class="px-5 py-3">Date</th>
@@ -1271,7 +1240,7 @@ function renderSecurityReportsView() {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Security Reports</h1>
-          <p class="text-[14px] text-[#627566]">Completed vulnerability audits, defense recommendations, and Swarm storage references.</p>
+          <p class="text-[14px] text-[#627566]">Completed vulnerability audits, defense recommendations, and deliverable manifests.</p>
         </div>
       </div>
 
@@ -1284,8 +1253,8 @@ function renderSecurityReportsView() {
                   <span class="font-mono text-[12px] text-[#627566]">${r.id}</span>
                   <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">Verified Audit</span>
                 </div>
-                <h3 class="text-[16px] font-semibold text-[#202820] mt-1">${escapeHtml(r.service_title)}</h3>
-                <div class="text-[12.5px] text-[#627566]">
+                <h3 class="text-[15.5px] font-semibold text-[#202820] mt-1">${escapeHtml(r.service_title)}</h3>
+                <div class="text-[12px] text-[#627566]">
                   Audited by: <strong>${escapeHtml(r.provider_name)}</strong> • Order: <span class="font-mono">${r.order_id}</span>
                 </div>
               </div>
@@ -1297,7 +1266,7 @@ function renderSecurityReportsView() {
               </div>
             </div>
 
-            <p class="text-[13.5px] text-[#445246]">${escapeHtml(r.summary)}</p>
+            <p class="text-[13px] text-[#445246]">${escapeHtml(r.summary)}</p>
 
             <!-- Findings Summary Chips -->
             <div class="flex flex-wrap gap-2 pt-1 border-t border-[#E2E9E3]">
@@ -1312,17 +1281,6 @@ function renderSecurityReportsView() {
                 </div>
               `).join('')}
             </div>
-
-            <!-- Swarm Reference Box -->
-            ${r.swarm_reference ? `
-              <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded px-3 py-2 flex items-center justify-between text-[11.5px]">
-                <div class="flex items-center gap-2 font-mono text-[#445246] truncate">
-                  <span class="text-[#176B45] font-semibold">Swarm Bzz Ref:</span>
-                  <span class="truncate">${r.swarm_reference}</span>
-                </div>
-                <span class="text-[10px] text-[#8B9C8E] uppercase shrink-0 font-medium">Decentralized Storage Hash</span>
-              </div>
-            ` : ''}
           </div>
         `).join('')}
       </div>
@@ -1331,57 +1289,60 @@ function renderSecurityReportsView() {
 }
 
 // ---------------------------------------------------------------------------
-// Card & UI Sub-Components
+// Clean Card Sub-Components (Cleaned: no text walls or excessive badges)
 // ---------------------------------------------------------------------------
 
-function renderSpecialistCard(p) {
+function renderCleanProviderCard(p) {
   const isAutomated = p.provider_type === 'automated';
+  // Concise description limited to ~120 chars
+  const shortDesc = p.description.length > 130 ? p.description.slice(0, 130) + '...' : p.description;
+
   return `
-    <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-4">
-      <div class="space-y-3">
-        <div class="flex items-start gap-3.5">
-          <img src="${p.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}" class="w-12 h-12 rounded-lg object-cover border border-[#E2E9E3] shrink-0" />
+    <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-3">
+      <div class="space-y-2.5">
+        <div class="flex items-start gap-3">
+          <img src="${p.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}" class="w-11 h-11 rounded-lg object-cover border border-[#E2E9E3] shrink-0" />
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
-              <h3 class="text-[14.5px] font-semibold text-[#202820] truncate">${escapeHtml(p.display_name)}</h3>
+              <h3 class="text-[14px] font-semibold text-[#202820] truncate">${escapeHtml(p.display_name)}</h3>
               ${p.verified ? `
                 <svg class="w-3.5 h-3.5 text-[#176B45] shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                 </svg>
               ` : ''}
             </div>
-            <p class="text-[12px] text-[#627566] line-clamp-1">${escapeHtml(p.title)}</p>
+            <p class="text-[11.5px] text-[#627566] line-clamp-1">${escapeHtml(p.title)}</p>
             <div class="mt-1">
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-                ${isAutomated ? 'Autonomous AI' : 'Human Specialist'}
+              <span class="text-[10px] font-medium px-2 py-0.5 rounded ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
+                ${isAutomated ? 'Automated AI Security Provider' : 'Human Security Provider'}
               </span>
             </div>
           </div>
         </div>
 
-        <p class="text-[13px] text-[#445246] line-clamp-3 leading-relaxed">
-          ${escapeHtml(p.description)}
+        <p class="text-[12.5px] text-[#445246] line-clamp-2 leading-relaxed">
+          ${escapeHtml(shortDesc)}
         </p>
 
-        <!-- Skills chips -->
+        <!-- Concise Skills chips (max 2) -->
         <div class="flex flex-wrap gap-1">
-          ${(p.skills || []).slice(0, 3).map(s => `
-            <span class="text-[11px] bg-[#FAFBF9] border border-[#E2E9E3] text-[#445246] px-2 py-0.5 rounded">
+          ${(p.skills || []).slice(0, 2).map(s => `
+            <span class="text-[10.5px] bg-[#FAFBF9] border border-[#E2E9E3] text-[#445246] px-2 py-0.5 rounded">
               ${escapeHtml(s)}
             </span>
           `).join('')}
-          ${(p.skills || []).length > 3 ? `<span class="text-[10px] text-[#8B9C8E] self-center">+${p.skills.length - 3}</span>` : ''}
+          ${(p.skills || []).length > 2 ? `<span class="text-[10px] text-[#8B9C8E] self-center">+${p.skills.length - 2}</span>` : ''}
         </div>
       </div>
 
       <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
         <div>
           <span class="text-[11px] text-[#627566] block">Availability</span>
-          <span class="text-[12.5px] font-semibold text-[#176B45] capitalize">${p.availability}</span>
+          <span class="text-[12px] font-semibold text-[#176B45] capitalize">${p.availability}</span>
         </div>
         <button
           onclick="navigateTo('provider_detail', '${p.id}')"
-          class="px-3 py-1.5 bg-[#FAFBF9] hover:bg-[#EAF5EE] border border-[#E2E9E3] text-[#176B45] text-[12.5px] font-medium rounded transition-smooth"
+          class="px-3 py-1.5 bg-[#FAFBF9] hover:bg-[#EAF5EE] border border-[#E2E9E3] text-[#176B45] text-[12px] font-medium rounded transition-smooth"
         >
           View Profile
         </button>
@@ -1390,13 +1351,13 @@ function renderSpecialistCard(p) {
   `;
 }
 
-function renderServiceCard(s, showProvider = true) {
+function renderCleanServiceCard(s, showProvider = true) {
   return `
     <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-3">
       <div class="space-y-2">
         <div class="flex items-start justify-between gap-2">
-          <h3 class="text-[14.5px] font-semibold text-[#202820] tracking-tight leading-snug">${escapeHtml(s.title)}</h3>
-          <span class="font-mono font-bold text-[14px] text-[#176B45] shrink-0">$${s.price.toFixed(2)}</span>
+          <h3 class="text-[14px] font-semibold text-[#202820] tracking-tight leading-snug">${escapeHtml(s.title)}</h3>
+          <span class="font-mono font-bold text-[13.5px] text-[#176B45] shrink-0">$${s.price.toFixed(2)}</span>
         </div>
 
         ${showProvider ? `
@@ -1408,7 +1369,7 @@ function renderServiceCard(s, showProvider = true) {
           </div>
         ` : ''}
 
-        <p class="text-[13px] text-[#445246] line-clamp-2 leading-relaxed">
+        <p class="text-[12.5px] text-[#445246] line-clamp-2 leading-relaxed">
           ${escapeHtml(s.description)}
         </p>
 
@@ -1423,7 +1384,7 @@ function renderServiceCard(s, showProvider = true) {
           onclick="openModal('request_review', { serviceId: '${s.id}', providerId: '${s.provider_id}' })"
           class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth"
         >
-          Request Service
+          Request Review
         </button>
       </div>
     </div>
@@ -1449,19 +1410,18 @@ function renderActivityFeed(activities) {
     return `<div class="py-4 text-center text-[#627566] text-[13px]">No recent orders or reports recorded yet.</div>`;
   }
 
-  return activities.map(act => `
+  return activities.slice(0, 4).map(act => `
     <div class="py-3 flex items-center justify-between text-[13px]">
-      <div class="flex items-center gap-3">
-        <div class="w-2 h-2 rounded-full bg-[#176B45]"></div>
-        <div>
+      <div class="flex items-center gap-2.5 min-w-0 pr-3">
+        <div class="w-2 h-2 rounded-full bg-[#176B45] shrink-0"></div>
+        <div class="truncate">
           <strong class="text-[#202820]">${escapeHtml(act.title)}</strong>
           <span class="text-[#627566]">with ${escapeHtml(act.provider)}</span>
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5 shrink-0">
         ${renderStatusBadge(act.status)}
-        <span class="text-[12px] text-[#627566] font-mono">${new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
     </div>
   `).join('');
@@ -1493,8 +1453,10 @@ function renderModalContent() {
       return renderCreatePromptModal();
     case 'report_viewer':
       return renderReportViewerModal();
-    case 'integrations_info':
-      return renderIntegrationsInfoModal();
+    case 'wallet_modal':
+      return renderWalletModal();
+    case 'settings_modal':
+      return renderSettingsModal();
     case 'add_service_modal':
       return renderAddServiceModal();
     default:
@@ -1511,7 +1473,7 @@ function renderRequestReviewModal() {
   return `
     <div class="p-6 space-y-5">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[17px] font-semibold text-[#202820]">Request a Security Review</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Request a Security Review</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
@@ -1529,7 +1491,7 @@ function renderRequestReviewModal() {
 
         <div>
           <div class="flex items-center justify-between mb-1">
-            <label class="text-[13px] font-medium text-[#202820]">Prompt or System Instructions Under Review *</label>
+            <label class="text-[13px] font-medium text-[#202820]">Prompt Under Review *</label>
             ${prompts.length > 0 ? `
               <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] text-[#176B45] border border-[#E2E9E3] rounded px-2 py-0.5">
                 <option value="">Insert from Saved Prompts...</option>
@@ -1542,25 +1504,19 @@ function renderRequestReviewModal() {
             name="prompt_content"
             rows="5"
             required
-            placeholder="Paste your system prompt, customer agent instructions, or RAG directives here..."
+            placeholder="Paste system instructions or prompt here..."
             class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
           >${payload.promptText || ''}</textarea>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Customer Requirements & Known Attack Vectors</label>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Specific Requirements & Constraints</label>
           <textarea
             name="requirements"
             rows="2"
-            placeholder="e.g. Audit against roleplay injection, SQL exfiltration, or vector similarity abuse..."
+            placeholder="e.g. Test against jailbreaks, indirect injection, or roleplay escapes..."
             class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
           ></textarea>
-        </div>
-
-        <div class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded text-[12px] text-[#445246] space-y-1">
-          <div class="font-medium text-[#202820]">Execution Notice:</div>
-          <div>• Automated AI services execute immediately and generate verified security reports in seconds.</div>
-          <div>• Human specialist orders are submitted to the specialist workspace for acceptance and manual adversarial probing.</div>
         </div>
 
         <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
@@ -1568,7 +1524,7 @@ function renderRequestReviewModal() {
             Cancel
           </button>
           <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
-            Confirm & Place Request
+            Submit Review Request
           </button>
         </div>
       </form>
@@ -1583,45 +1539,43 @@ function renderDeliverModal() {
   return `
     <div class="p-6 space-y-5">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[17px] font-semibold text-[#202820]">Deliver Security Audit & Report</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Submit Audit Deliverable & Report</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
       <form onsubmit="handleDeliverSubmit(event, '${orderId}')" class="space-y-4">
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Executive Summary of Findings *</label>
-          <textarea name="summary" rows="3" required placeholder="Summarize your audit findings, risk profile, and jailbreak resilience..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Executive Summary *</label>
+          <textarea name="summary" rows="3" required placeholder="Summarize findings, risk severity, and remediation..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Vulnerability Findings (Title, Severity, Remediation)</label>
-          <div class="space-y-2" id="findings-inputs">
-            <div class="grid grid-cols-3 gap-2">
-              <input type="text" name="finding_title" placeholder="e.g. Indirect Prompt Injection" class="col-span-2 px-2.5 py-1.5 border border-[#E2E9E3] rounded text-[12.5px]" />
-              <select name="finding_severity" class="px-2 py-1.5 border border-[#E2E9E3] rounded text-[12.5px]">
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Primary Finding (Title & Severity)</label>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="text" name="finding_title" placeholder="e.g. Indirect Injection Surface" class="col-span-2 px-2.5 py-1.5 border border-[#E2E9E3] rounded text-[12.5px]" />
+            <select name="finding_severity" class="px-2 py-1.5 border border-[#E2E9E3] rounded text-[12.5px]">
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
           </div>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Actionable Recommendations (One per line)</label>
-          <textarea name="recommendations_raw" rows="3" placeholder="1. Enforce XML delimiter encapsulation&#10;2. Apply input sanitization filter before LLM inference" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Actionable Recommendations</label>
+          <textarea name="recommendations_raw" rows="3" placeholder="1. Enforce XML delimiter encapsulation&#10;2. Apply input sanitization" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
         </div>
 
         <div>
           <label class="block text-[13px] font-medium text-[#202820] mb-1">Hardened Prompt Deliverable</label>
-          <textarea name="hardened_prompt" rows="4" placeholder="Paste the hardened defense version of the system prompt..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
+          <textarea name="hardened_prompt" rows="3" placeholder="Paste hardened defense prompt..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
         </div>
 
         <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md">Cancel</button>
           <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
-            Complete Delivery & Upload to Swarm
+            Deliver Audit
           </button>
         </div>
       </form>
@@ -1633,13 +1587,13 @@ function renderQuickAnalyzeModal() {
   return `
     <div class="p-6 space-y-4">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[17px] font-semibold text-[#202820]">Analyze Prompt Security</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Analyze Prompt Security</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
       <div class="space-y-3">
-        <label class="block text-[13px] font-medium text-[#202820]">Enter Prompt Text</label>
-        <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against PromptShield's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
+        <label class="block text-[13px] font-medium text-[#202820]">Prompt Text</label>
+        <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against Guardvane's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
 
         <div class="flex justify-end gap-2">
           <button onclick="executeQuickAnalyze()" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md">
@@ -1647,7 +1601,6 @@ function renderQuickAnalyzeModal() {
           </button>
         </div>
 
-        <!-- Result Box -->
         <div id="quick-analyze-results" class="hidden mt-4 p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md space-y-3"></div>
       </div>
     </div>
@@ -1663,7 +1616,7 @@ function renderReportViewerModal() {
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
         <div>
           <span class="text-[11px] font-mono text-[#627566]">${report.id}</span>
-          <h3 class="text-[17px] font-semibold text-[#202820]">${escapeHtml(report.service_title)}</h3>
+          <h3 class="text-[16px] font-semibold text-[#202820]">${escapeHtml(report.service_title)}</h3>
         </div>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
@@ -1675,7 +1628,7 @@ function renderReportViewerModal() {
         </div>
 
         <div>
-          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-2">Vulnerabilities & Findings</div>
+          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-2">Findings</div>
           <div class="space-y-2">
             ${(report.findings || []).map(f => `
               <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9] space-y-1">
@@ -1698,56 +1651,84 @@ function renderReportViewerModal() {
             <pre class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded font-mono text-[12px] text-[#202820] whitespace-pre-wrap">${escapeHtml(report.hardened_prompt)}</pre>
           </div>
         ` : ''}
+      </div>
+    </div>
+  `;
+}
 
-        <div class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded font-mono text-[11px] text-[#627566] break-all">
-          <strong class="text-[#176B45]">Swarm Content Hash:</strong> ${report.swarm_reference || 'Simulated Phase 1 Reference'}
+function renderWalletModal() {
+  return `
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <h3 class="text-[16px] font-semibold text-[#202820]">Wallet Management</h3>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+      </div>
+
+      <div class="space-y-3 text-[13px]">
+        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[#627566]">Wallet Status:</span>
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#EAF5EE] text-[#176B45]">Ready for Connection</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[#627566]">Account ID:</span>
+            <code class="font-mono text-[#202820]">0.0.4829103</code>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[#627566]">Settlement Network:</span>
+            <span class="font-medium text-[#202820]">Hedera Testnet</span>
+          </div>
+        </div>
+
+        <p class="text-[12px] text-[#627566]">
+          Autonomous micropayments and provider payouts will settle via the Hedera x402 payment protocol in Phase 2. Live wallet transactions are currently disabled.
+        </p>
+
+        <div class="pt-3 border-t border-[#E2E9E3] flex justify-end">
+          <button onclick="closeModal()" class="px-4 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md">
+            Close
+          </button>
         </div>
       </div>
     </div>
   `;
 }
 
-function renderIntegrationsInfoModal() {
-  const ints = STATE.data.integrations || {};
-
+function renderSettingsModal() {
   return `
-    <div class="p-6 space-y-5">
+    <div class="p-6 space-y-4">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[17px] font-semibold text-[#202820]">Decentralized Integration Specifications</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Platform Settings</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
       <div class="space-y-4 text-[13px]">
-        <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9]">
-          <div class="flex items-center justify-between">
-            <strong class="text-[#176B45]">0G Private Computer (Zero-G)</strong>
-            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-semibold">INTERFACE READY</span>
-          </div>
-          <p class="text-[12px] text-[#445246] mt-1">Confidential AI reasoning for automated prompt hardening. Client handles sensitive data masking before inference with deterministic local fallback.</p>
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Developer Account</label>
+          <input type="text" disabled value="${STATE.user.name} (${STATE.user.email})" class="w-full px-3 py-2 bg-[#F7F9F7] border border-[#E2E9E3] rounded-md text-[13px] text-[#627566]" />
         </div>
 
-        <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9]">
-          <div class="flex items-center justify-between">
-            <strong class="text-[#176B45]">Arkiv Registry</strong>
-            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-semibold">INTERFACE READY</span>
-          </div>
-          <p class="text-[12px] text-[#445246] mt-1">Decentralized provider discovery and immutable marketplace service publication records with cryptographic content verification.</p>
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Default Analysis Mode</label>
+          <select class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]">
+            <option value="both" selected>Both (Prompt Security + Application Risks)</option>
+            <option value="prompt_security">Prompt Security Only</option>
+            <option value="application_risk">Application Risk Only</option>
+          </select>
         </div>
 
-        <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9]">
-          <div class="flex items-center justify-between">
-            <strong class="text-[#176B45]">Ethereum Swarm</strong>
-            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-semibold">INTERFACE READY</span>
+        <div class="flex items-center justify-between p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md">
+          <div>
+            <div class="font-medium text-[#202820]">Sensitive Data Sanitization</div>
+            <div class="text-[11.5px] text-[#627566]">Mask API keys and database credentials prior to external inference.</div>
           </div>
-          <p class="text-[12px] text-[#445246] mt-1">Content-addressable storage protocol for delivered security audit manifests and hardened prompt diffs using verifiable bzz:// references.</p>
+          <input type="checkbox" checked class="rounded text-[#176B45] focus:ring-[#176B45]" />
         </div>
 
-        <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9]">
-          <div class="flex items-center justify-between">
-            <strong class="text-[#176B45]">Hedera x402 Micropayments</strong>
-            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-semibold">INTERFACE READY</span>
-          </div>
-          <p class="text-[12px] text-[#445246] mt-1">Autonomous machine-to-machine payment protocol for automated security agents using HTTP 402 challenge tokens and testnet account settlement.</p>
+        <div class="pt-3 border-t border-[#E2E9E3] flex justify-end">
+          <button onclick="closeModal()" class="px-4 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md">
+            Save Preferences
+          </button>
         </div>
       </div>
     </div>
@@ -1758,7 +1739,7 @@ function renderCreatePromptModal() {
   return `
     <div class="p-6 space-y-4">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[17px] font-semibold text-[#202820]">Save Prompt to Private Repository</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Save Prompt to Library</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
@@ -1787,7 +1768,7 @@ function renderAddServiceModal() {
   return `
     <div class="p-6 space-y-4">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[17px] font-semibold text-[#202820]">Publish New Security Service</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Publish New Security Service</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
@@ -1836,9 +1817,8 @@ function renderAddServiceModal() {
 
 function handleGlobalSearch(value) {
   STATE.filters.search = value;
-  // If not on discover, switch to discover to see full search
-  if (STATE.activeView !== 'discover' && STATE.activeView !== 'dashboard') {
-    STATE.activeView = 'discover';
+  if (STATE.activeView !== 'opihub' && STATE.activeView !== 'dashboard') {
+    STATE.activeView = 'opihub';
   }
   renderApp();
 }
@@ -1942,7 +1922,7 @@ async function handleDeliverSubmit(e, orderId) {
   }
 }
 
-async function handleBecomeSpecialist(e) {
+async function handleBecomeProvider(e) {
   e.preventDefault();
   const form = e.target;
   const cats = Array.from(form.querySelectorAll('input[name="cat"]:checked')).map(el => el.value);
@@ -1959,7 +1939,7 @@ async function handleBecomeSpecialist(e) {
     portfolio_url: form.portfolio_url.value || null,
     endpoint_url: form.endpoint_url?.value || null,
     io_format: form.io_format?.value || 'JSON / Prompt-in, Hardened-out',
-    x402_supported: Boolean(form.x402_supported?.checked),
+    x402_supported: form.provider_type.value === 'automated',
     availability: 'available',
     status: 'published'
   };
@@ -1970,12 +1950,11 @@ async function handleBecomeSpecialist(e) {
       body: JSON.stringify(payload)
     });
 
-    // Create initial service
     await apiFetch('/marketplace/services', {
       method: 'POST',
       body: JSON.stringify({
         title: form.service_title.value,
-        description: `Specialized security assessment provided by ${prov.display_name}.`,
+        description: `Security assessment delivered by ${prov.display_name}.`,
         category: cats[0] || 'ai_security',
         price: parseFloat(form.service_price.value) || 50.0,
         currency: 'USD',
@@ -1986,11 +1965,11 @@ async function handleBecomeSpecialist(e) {
       })
     });
 
-    alert('Specialist profile and initial service registered successfully!');
+    alert('Provider profile and initial service registered successfully!');
     STATE.user.activeProviderId = prov.id;
     STATE.user.role = 'provider';
     await loadInitialData();
-    navigateTo('workspace');
+    navigateTo('provider_workspace');
   } catch (err) {
     alert(`Registration failed: ${err.message}`);
   }
@@ -2067,7 +2046,7 @@ async function executeQuickAnalyze(promptId = null) {
   }
 
   resultsBox.classList.remove('hidden');
-  resultsBox.innerHTML = `<div class="text-[12px] text-[#627566] animate-pulse">Running PromptShield ML security analysis and OWASP risk detection...</div>`;
+  resultsBox.innerHTML = `<div class="text-[12px] text-[#627566] animate-pulse">Running Guardvane ML security analysis and OWASP risk detection...</div>`;
 
   try {
     const analysis = await apiFetch('/analyze', {
@@ -2114,13 +2093,12 @@ async function executeQuickAnalyze(promptId = null) {
 
         <div class="pt-2 border-t border-[#E2E9E3] flex justify-end">
           <button onclick="closeModal(); openModal('request_review', { promptText: '${escapeForAttr(text)}' })" class="px-3 py-1.5 bg-[#176B45] text-white text-[12px] font-medium rounded">
-            Submit for Specialist Hardening →
+            Submit for Provider Hardening →
           </button>
         </div>
       </div>
     `;
 
-    // Optionally update prompt cached analysis if promptId is known
     if (promptId) {
       await apiFetch(`/marketplace/prompts/${promptId}`, {
         method: 'PUT',
@@ -2174,4 +2152,3 @@ function escapeForAttr(str) {
 window.addEventListener('DOMContentLoaded', () => {
   loadInitialData();
 });
-
