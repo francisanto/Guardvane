@@ -177,6 +177,7 @@ class MarketplaceService:
         # Do not automatically verify: status is 'pending_review' or 'published' without verified badge
         verified_status = 0
         status_val = data.status or "published"
+        wallet_addr = data.wallet_address or (user_id if user_id.startswith("0x") else None)
 
         with conn:
             conn.execute(
@@ -197,7 +198,7 @@ class MarketplaceService:
                     data.avatar_url or "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
                     json.dumps(data.skills),
                     json.dumps(data.categories),
-                    data.wallet_address,
+                    wallet_addr,
                     data.portfolio_url,
                     data.endpoint_url,
                     data.io_format,
@@ -209,6 +210,19 @@ class MarketplaceService:
                     now
                 )
             )
+
+        # Grant provider role in PostgreSQL if user exists
+        try:
+            from db.database import SessionLocal
+            from auth.service import add_user_role
+            from db.models import User
+            with SessionLocal() as db_sess:
+                u = db_sess.query(User).filter((User.id == user_id) | (User.wallet_address == user_id.lower())).first()
+                if u:
+                    add_user_role(u.id, "provider", db_sess)
+                    add_user_role(u.id, f"{data.provider_type.value}_provider", db_sess)
+        except Exception as e:
+            logger.debug(f"Could not add role to user: {e}")
 
         # Hook: publish record to simulated Arkiv decentralized registry
         arkiv_client.publish_provider_record(provider_id, {
@@ -607,8 +621,8 @@ class MarketplaceService:
         # Ownership enforcement:
         # Customers only see their own orders; Specialists only see orders assigned to them!
         if role == "provider":
-            sql += " AND provider_id = ?"
-            params.append(user_id)
+            sql += " AND (provider_id = ? OR provider_id IN (SELECT id FROM providers WHERE wallet_address = ?))"
+            params.extend([user_id, user_id])
         else:
             sql += " AND customer_id = ?"
             params.append(user_id)
@@ -659,8 +673,12 @@ class MarketplaceService:
 
         # Ownership enforcement if user_id is provided
         if user_id:
-            is_customer = (row["customer_id"] == user_id)
-            is_provider = (row["provider_id"] == user_id)
+            cursor.execute("SELECT wallet_address FROM providers WHERE id = ?", (row["provider_id"],))
+            prov_row = cursor.fetchone()
+            prov_wallet = prov_row["wallet_address"] if prov_row else None
+
+            is_customer = (row["customer_id"].lower() == user_id.lower())
+            is_provider = (row["provider_id"] == user_id or (prov_wallet and prov_wallet.lower() == user_id.lower()))
             if not is_customer and not is_provider:
                 raise PermissionError("Access denied: You are not authorized to view this order.")
 
@@ -699,15 +717,23 @@ class MarketplaceService:
         if not order:
             raise ValueError(f"Order '{order_id}' not found.")
 
+        conn = self.db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT wallet_address FROM providers WHERE id = ?", (order.provider_id,))
+        prov_row = cursor.fetchone()
+        prov_wallet = prov_row["wallet_address"] if prov_row else None
+        is_assigned_prov = (order.provider_id == user_id or (prov_wallet and prov_wallet.lower() == user_id.lower()))
+        is_cust = (order.customer_id.lower() == user_id.lower())
+
         # Ownership authorization check
         if role == "customer":
-            if order.customer_id != user_id:
+            if not is_cust:
                 raise PermissionError("Access denied: You do not own this order.")
             # Customers can only cancel or mark completed if delivered
             if new_status not in {OrderStatus.CANCELLED, OrderStatus.COMPLETED}:
                 raise PermissionError(f"Customer cannot transition order to '{new_status.value}'.")
-        elif role == "provider":
-            if order.provider_id != user_id:
+        else:
+            if not is_assigned_prov:
                 raise PermissionError("Access denied: You are not the assigned provider for this order.")
 
         # Lifecycle state machine validation
@@ -750,8 +776,15 @@ class MarketplaceService:
         if not order:
             raise ValueError(f"Order '{order_id}' not found.")
 
-        if order.provider_id != provider_id:
-            raise PermissionError("Access denied: You are not the assigned specialist for this order.")
+        conn = self.db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT wallet_address FROM providers WHERE id = ?", (order.provider_id,))
+        prov_row = cursor.fetchone()
+        prov_wallet = prov_row["wallet_address"] if prov_row else None
+        is_assigned_prov = (order.provider_id == provider_id or (prov_wallet and prov_wallet.lower() == provider_id.lower()))
+
+        if not is_assigned_prov:
+            raise PermissionError("Access denied: You are not the assigned provider for this order.")
 
         if order.status not in {OrderStatus.ACCEPTED, OrderStatus.IN_PROGRESS}:
             raise ValueError(f"Cannot deliver order in '{order.status.value}' state. Must be accepted or in_progress.")
@@ -987,6 +1020,19 @@ class MarketplaceService:
         cursor.execute("SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status = 'completed'", (customer_id,))
         completed_reviews = cursor.fetchone()[0]
 
+        # Specific metrics for Guardvane Dashboard
+        cursor.execute("SELECT COUNT(*) FROM saved_prompts WHERE customer_id = ?", (customer_id,))
+        saved_prompts_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status IN ('requested', 'accepted', 'in_progress')", (customer_id,))
+        active_requests_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status = 'completed'", (customer_id,))
+        completed_audits_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM providers WHERE availability = 'available' AND status = 'published'")
+        available_providers_count = cursor.fetchone()[0]
+
         # Recent activity feed
         cursor.execute(
             """
@@ -1017,6 +1063,10 @@ class MarketplaceService:
             completed_reviews_count=completed_reviews,
             human_specialists_count=human_providers,
             automated_providers_count=automated_providers,
+            saved_prompts_count=saved_prompts_count,
+            active_requests_count=active_requests_count,
+            completed_audits_count=completed_audits_count,
+            available_providers_count=available_providers_count,
             recent_activity=recent_orders
         )
 

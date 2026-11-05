@@ -1,48 +1,196 @@
 """
-SQLite Database Layer for PromptShield Marketplace.
-Provides persistent storage, schema management, and sample demo seed data.
+Database Layer for Guardvane Marketplace.
+Supports PostgreSQL (Supabase / local) with connection pooling and psycopg (v3),
+with seamless fallback to SQLite for offline testing.
 """
 
 import json
 import logging
+import os
 import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from dotenv import load_dotenv
 
-logger = logging.getLogger("promptshield.marketplace.db")
+load_dotenv()
+
+logger = logging.getLogger("guardvane.marketplace.db")
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "marketplace.db"
 
 
+def _smart_row_factory(cursor):
+    """Row factory enabling both dict-like and index-like access."""
+    desc = cursor.description
+    if desc is None:
+        return lambda values: values
+
+    col_map = {col.name: i for i, col in enumerate(desc)}
+    
+    class SmartRow(tuple):
+        def __getitem__(self, key):
+            if isinstance(key, str):
+                return super().__getitem__(col_map[key])
+            return super().__getitem__(key)
+
+        def get(self, key, default=None):
+            if key in col_map:
+                return super().__getitem__(col_map[key])
+            return default
+
+        def keys(self):
+            return col_map.keys()
+
+    return lambda values: SmartRow(values)
+
+
+class PgCursorWrapper:
+    """Cursor wrapper that translates SQLite-style '?' placeholders into PostgreSQL '%s'."""
+    def __init__(self, raw_cur):
+        self._cur = raw_cur
+
+    def execute(self, sql: str, params=None):
+        pg_sql = sql.replace("?", "%s")
+        if params is not None:
+            if isinstance(params, (list, tuple)):
+                self._cur.execute(pg_sql, params)
+            else:
+                self._cur.execute(pg_sql, (params,))
+        else:
+            self._cur.execute(pg_sql)
+        return self
+
+    def executemany(self, sql: str, seq_of_params):
+        pg_sql = sql.replace("?", "%s")
+        self._cur.executemany(pg_sql, seq_of_params)
+        return self
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    @property
+    def rowcount(self):
+        return self._cur.rowcount
+
+    @property
+    def description(self):
+        return self._cur.description
+
+    def __iter__(self):
+        return iter(self._cur)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class PgConnWrapper:
+    """Connection wrapper for PostgreSQL providing SQLite-like interface."""
+    def __init__(self, raw_conn):
+        self._raw = raw_conn
+
+    def cursor(self):
+        return PgCursorWrapper(self._raw.cursor())
+
+    def execute(self, sql: str, params=None):
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def commit(self):
+        self._raw.commit()
+
+    def rollback(self):
+        self._raw.rollback()
+
+    def close(self):
+        self._raw.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self._raw.commit()
+        else:
+            self._raw.rollback()
+
+
 class MarketplaceDB:
     """
-    Thread-safe SQLite database manager for the marketplace.
+    Database manager for Guardvane Marketplace.
+    Uses PostgreSQL by default, with automatic fallback to SQLite.
     """
 
     def __init__(self, db_path: Path = DB_PATH):
         self.db_path = db_path
         self._local = threading.local()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._init_db()
+        self.use_postgres = False
+        self.pg_url = None
+        self._detect_backend()
 
-    def _get_connection(self) -> sqlite3.Connection:
+    def _detect_backend(self):
+        """Attempts connection to PostgreSQL, falling back to SQLite if unreachable."""
+        import psycopg
+        urls_to_try = []
+        env_url = os.getenv("DATABASE_URL")
+        if env_url:
+            # Clean up psycopg scheme prefix if present
+            clean = env_url
+            if clean.startswith("postgresql+psycopg://"):
+                clean = "postgresql://" + clean[len("postgresql+psycopg://"):]
+            urls_to_try.append(clean)
+        urls_to_try.append("postgresql://localhost:5432/guardvane")
+
+        for url in urls_to_try:
+            try:
+                conn = psycopg.connect(url, connect_timeout=3)
+                conn.close()
+                self.use_postgres = True
+                self.pg_url = url
+                logger.info(f"MarketplaceDB successfully connected to PostgreSQL backend.")
+                return
+            except Exception as e:
+                logger.debug(f"PostgreSQL connection to {url} skipped: {e}")
+
+        logger.info("MarketplaceDB using SQLite persistent backend.")
+        self.use_postgres = False
+        self._init_sqlite_db()
+
+    def _get_connection(self):
         if not hasattr(self._local, "conn") or self._local.conn is None:
-            conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            # Enable WAL mode for high concurrency
-            conn.execute("PRAGMA journal_mode=WAL;")
-            conn.execute("PRAGMA foreign_keys=ON;")
-            self._local.conn = conn
+            if self.use_postgres:
+                import psycopg
+                raw_conn = psycopg.connect(
+                    self.pg_url,
+                    row_factory=_smart_row_factory,
+                    autocommit=False
+                )
+                self._local.conn = PgConnWrapper(raw_conn)
+            else:
+                conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+                conn.row_factory = sqlite3.Row
+                conn.execute("PRAGMA journal_mode=WAL;")
+                conn.execute("PRAGMA foreign_keys=ON;")
+                self._local.conn = conn
         return self._local.conn
 
-    def _init_db(self):
+    def _init_sqlite_db(self):
         """
-        Creates tables if they do not exist, and seeds initial demo data if empty.
+        Creates SQLite tables if they do not exist, and seeds initial demo data if empty.
         """
-        conn = self._get_connection()
+        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        conn.row_factory = sqlite3.Row
         with conn:
+
             conn.executescript("""
             CREATE TABLE IF NOT EXISTS providers (
                 id TEXT PRIMARY KEY,

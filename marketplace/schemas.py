@@ -209,6 +209,10 @@ class DashboardStats(BaseModel):
     completed_reviews_count: int
     human_specialists_count: int
     automated_providers_count: int
+    saved_prompts_count: Optional[int] = 0
+    active_requests_count: Optional[int] = 0
+    completed_audits_count: Optional[int] = 0
+    available_providers_count: Optional[int] = 0
     recent_activity: List[Dict[str, Any]] = Field(default_factory=list)
 
 

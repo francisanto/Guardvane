@@ -5,7 +5,9 @@ saved prompts, and integration status queries.
 """
 
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Request, status
+
+from auth.service import decode_session_token
 
 from integrations.arkiv.client import arkiv_client
 from integrations.hedera.client import hedera_client
@@ -34,16 +36,43 @@ router = APIRouter()
 
 
 def get_current_user(
+    request: Request,
     x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
-    x_user_role: Optional[str] = Header(None, alias="X-User-Role")
-) -> Dict[str, str]:
+    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
+    guardvane_session: Optional[str] = Cookie(None)
+) -> Dict[str, Any]:
     """
-    Extracts current authenticated identity and active role from headers.
-    Defaults to customer 'francis' for local exploration and developer console use.
+    Extracts current authenticated identity and active role.
+    Prioritizes MetaMask SIWE HttpOnly cookie and Bearer tokens,
+    with backward compatibility for X-User-Id in development and automated testing.
     """
+    token = guardvane_session
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+
+    if token:
+        payload = decode_session_token(token)
+        if payload and "wallet_address" in payload:
+            roles = payload.get("roles", ["customer"])
+            active_role = x_user_role.lower() if (x_user_role and x_user_role.lower() in roles) else (roles[0] if roles else "customer")
+            return {
+                "user_id": payload["wallet_address"],
+                "sub": payload.get("sub"),
+                "role": active_role,
+                "roles": roles,
+                "wallet_address": payload["wallet_address"]
+            }
+
     user_id = x_user_id or "francis"
     role = (x_user_role or "customer").lower()
-    return {"user_id": user_id, "role": role}
+    return {
+        "user_id": user_id,
+        "role": role,
+        "roles": [role],
+        "wallet_address": user_id if user_id.startswith("0x") else None
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +199,8 @@ def create_order(
     Human specialist requests enter the 'requested' state awaiting specialist acceptance.
     """
     try:
-        cust_id = data.customer_id or auth["user_id"]
-        cust_name = data.customer_name or "Francis"
+        cust_id = auth["user_id"]
+        cust_name = data.customer_name or auth.get("wallet_address") or "Francis"
         return marketplace_service.create_order(
             service_id=data.service_id,
             prompt_content=data.prompt_content,
@@ -185,6 +214,7 @@ def create_order(
 
 @router.get("/orders", response_model=List[OrderResponse])
 def list_orders(
+    role: Optional[str] = Query(None, description="Filter view: 'customer' (my submitted requests) or 'provider' (incoming requests to me)"),
     status: Optional[str] = Query(None, description="Filter by status (requested, accepted, in_progress, delivered, completed)"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -194,9 +224,10 @@ def list_orders(
     List service orders. Enforces ownership:
     Customers view their submitted requests; Providers view assigned work in their workspace.
     """
+    effective_role = role.lower() if role else auth.get("role", "customer")
     return marketplace_service.list_orders(
         user_id=auth["user_id"],
-        role=auth["role"],
+        role=effective_role,
         status=status,
         limit=limit,
         offset=offset
