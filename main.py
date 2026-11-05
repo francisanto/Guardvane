@@ -1,5 +1,8 @@
+from pathlib import Path
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse
 
 from models.schemas import (
     PromptRequest,
@@ -26,17 +29,41 @@ from analyzers.model_comparison import (
     IDEProductMetadata,
     AppBuilderMetadata
 )
+from marketplace.router import router as marketplace_router
 
 app = FastAPI(
     title="PromptShield AI",
-    description="Multi-model AI security analysis and local model/product comparison backend evaluating prompt injection, application risks, token costs, model suitability, and AI coding assistants.",
-    version="1.3.0"
+    description="Multi-model AI security analysis, local model comparison, and decentralized security marketplace connecting customers with automated AI defenses and human security experts.",
+    version="1.4.0"
 )
+
+# Mount marketplace API router
+app.include_router(marketplace_router, prefix="/marketplace", tags=["Marketplace"])
+
+# Static files directory
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/")
 def home():
-    return {"message": "PromptShield AI backend is running"}
+    return {
+        "message": "PromptShield AI backend is running",
+        "dashboard_ui": "/dashboard",
+        "marketplace_api": "/marketplace/services",
+        "docs": "/docs"
+    }
+
+
+@app.get("/dashboard", response_class=FileResponse)
+@app.get("/dashboard/{full_path:path}", response_class=FileResponse)
+@app.get("/console", response_class=FileResponse)
+def serve_dashboard():
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return HTMLResponse("<h1>PromptShield Console</h1><p>UI loading error</p>")
 
 
 @app.post("/analyze")
