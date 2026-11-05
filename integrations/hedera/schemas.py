@@ -46,3 +46,4 @@ class HederaStatus(BaseModel):
     x402_protocol_version: str = "v0.2.0"
     mode: str = "mock_interface"
     notice: str = "Hedera x402 Phase 1 interface initialized. Live HBAR transfers disabled."
+
