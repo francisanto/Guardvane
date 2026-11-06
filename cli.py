@@ -2144,9 +2144,19 @@ def main():
         action="store_true",
         help="Disable ANSI color output."
     )
+    parser.add_argument(
+        "--validate-0g",
+        action="store_true",
+        help="Run safe 0G Private Computer router connectivity and catalog diagnostics (non-billing)."
+    )
 
     args = parser.parse_args()
     colors = Colors(enabled=(not args.no_color and is_color_supported()))
+
+    # Diagnostic mode for 0G router
+    if args.validate_0g:
+        from scripts.validate_zero_g import run_diagnostics
+        sys.exit(run_diagnostics())
 
     # Direct file input (non-interactive mode)
     if args.file:

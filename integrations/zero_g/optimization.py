@@ -1,11 +1,12 @@
 """
-0G-Powered Prompt Optimization Engine for PromptShield AI.
-Enhances raw developer prompts with contextual security guardrails,
-defense-in-depth constraints, and structured specifications using
-0G Private Computer while preserving local rule-based fallback capabilities.
+0G-Powered Prompt Optimization Engine for Guardvane / PromptShield AI.
+Combines empirical security findings with 0G Private Computer AI reasoning and prompt
+synthesis into a single, credit-efficient remote inference call, backed by an in-memory
+cache and offline deterministic rule-based fallback.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import json
 import logging
 import re
@@ -13,11 +14,24 @@ from typing import Any, Dict, List, Optional
 
 from analyzers.prompt_analyzer import analyze_prompt
 from analyzers.prompt_optimizer import prompt_optimizer, LocalPromptOptimizer, OptimizationResult
-from integrations.zero_g.client import ZeroGClient, ZeroGResponse, ZeroGError, ZeroGConfigurationError
+from integrations.zero_g.client import (
+    ZeroGClient,
+    ZeroGResponse,
+    ZeroGError,
+    ZeroGConfigurationError,
+    ZeroGAuthenticationError,
+    ZeroGRateLimitError,
+    ZeroGInsufficientCreditError,
+)
 from integrations.zero_g.reasoning import ZeroGReasoningEngine, ZeroGReasoningResult
-from integrations.zero_g.sanitizer import sanitize_prompt_for_inference
+from integrations.zero_g.sanitizer import (
+    sanitize_prompt_for_inference,
+    sanitize_context_data,
+    SanitizedPromptResult,
+)
+from integrations.zero_g.cache import zero_g_cache, ZeroGCache
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("guardvane.zerog.optimizer")
 
 
 @dataclass
@@ -60,23 +74,25 @@ class ZeroGOptimizationResult:
 
 class ZeroGOptimizer:
     """
-    Prompt Optimization Engine utilizing 0G Private Computer for intelligent
-    specification restructuring and security hardening, backed by PromptShield's
-    offline deterministic optimizer as a reliable fallback.
+    Prompt Optimization Engine utilizing 0G Private Computer.
+    Performs unified security reasoning and prompt synthesis in ONE single 0G call
+    to minimize credit consumption, backed by local caching and deterministic fallback.
     """
 
-    SYSTEM_PROMPT = (
-        "You are PromptShield's Prompt Optimization Engine running inside 0G Private Computer. "
-        "Your mission is to transform a developer's software development or security prompt into "
-        "a production-ready, highly structured, and security-aware prompt specification for AI coding assistants.\n\n"
+    # Unified single-call system prompt returning both contextual reasoning & hardened prompt
+    UNIFIED_SYSTEM_PROMPT = (
+        "You are Guardvane's Security Optimization Engine running inside 0G Private Computer. "
+        "Your mission is to evaluate empirical vulnerability analysis findings and transform a developer's "
+        "raw prompt into a secure, production-ready, hardened prompt specification.\n\n"
         "CORE DIRECTIVES:\n"
-        "1. PRESERVE FUNCTIONALITY & TECH STACK: Retain all user-requested features, frameworks, libraries, "
+        "1. SINGLE INFERENCE: Provide both contextual security reasoning and the hardened prompt in this response.\n"
+        "2. PRESERVE FUNCTIONALITY & TECH STACK: Retain all user-requested features, frameworks, libraries, "
         "and architectural patterns. Never swap requested technologies or invent unstated dependencies.\n"
-        "2. REASONED SECURITY CONSTRAINTS: Seamlessly inject the required security guardrails and missing "
-        "defense-in-depth requirements identified in the security analysis.\n"
-        "3. PREVENT BLOAT: Only include constraints directly relevant to the attack surfaces present in the prompt. "
-        "Avoid adding irrelevant generic checklist items.\n"
-        "4. STRUCTURED FORMAT: Organize the optimized prompt using clear Markdown headings:\n"
+        "3. REASONED SECURITY CONSTRAINTS: Seamlessly inject the required security guardrails and missing "
+        "defense-in-depth requirements identified in the empirical security analysis.\n"
+        "4. PREVENT BLOAT: Only include constraints directly relevant to the attack surfaces present in the prompt. "
+        "Avoid generic, irrelevant checklist items.\n"
+        "5. STRUCTURED FORMAT: Organize the optimized prompt using clear Markdown headings:\n"
         "   ### Core Objective\n"
         "   ### Technical Architecture & Requirements\n"
         "   ### Security Guardrails & Defense-in-Depth Constraints\n"
@@ -84,10 +100,20 @@ class ZeroGOptimizer:
         "   ### Expected Deliverables\n\n"
         "Return a valid JSON object matching this schema:\n"
         "{\n"
+        '  "contextual_summary": "2-3 sentence overview of security posture in this specific context.",\n'
+        '  "risk_explanations": {\n'
+        '    "<risk_label>": "Contextual explanation of how this risk manifests in the prompt..."\n'
+        "  },\n"
+        '  "missing_security_requirements": [\n'
+        '    "Specific defense-in-depth requirement 1...",\n'
+        '    "Specific defense-in-depth requirement 2..."\n'
+        "  ],\n"
+        '  "remaining_risks": [\n'
+        '    "Residual architectural risk 1..."\n'
+        "  ],\n"
         '  "optimized_prompt": "The complete, enhanced prompt text in Markdown...",\n'
         '  "changes_summary": ["List of key improvements and structured sections added..."],\n'
         '  "applied_hardening_rules": ["List of concrete security constraints integrated..."],\n'
-        '  "missing_requirements_addressed": ["Specific architectural security gaps closed..."],\n'
         '  "preserved_intent": "Summary statement describing how user intent and tech stack were preserved."\n'
         "}"
     )
@@ -97,53 +123,71 @@ class ZeroGOptimizer:
         client: Optional[ZeroGClient] = None,
         reasoning_engine: Optional[ZeroGReasoningEngine] = None,
         local_optimizer: Optional[LocalPromptOptimizer] = None,
+        cache: Optional[ZeroGCache] = None,
     ):
         self.client = client or ZeroGClient()
         self.reasoning_engine = reasoning_engine or ZeroGReasoningEngine(client=self.client)
         self.local_optimizer = local_optimizer or prompt_optimizer
+        self.cache = cache or zero_g_cache
 
-    def _build_optimization_input(
+    def _build_unified_input(
         self,
         sanitized_prompt: str,
         security_analysis: Dict[str, Any],
-        reasoning: ZeroGReasoningResult,
         local_baseline: OptimizationResult,
+        existing_reasoning: Optional[ZeroGReasoningResult] = None,
     ) -> str:
-        """Constructs the prompt payload for 0G optimization."""
+        """Constructs the unified single-call prompt payload without leaking raw credentials."""
         app_risk = security_analysis.get("application_risks") or {}
         detected_risks = app_risk.get("detected_risks") or []
         unmitigated_surfaces = app_risk.get("unmitigated_surfaces") or []
+        prompt_sec = security_analysis.get("prompt_security") or {}
 
-        payload = {
+        payload: Dict[str, Any] = {
             "target_prompt": sanitized_prompt,
             "detected_attack_surfaces": detected_risks,
             "unmitigated_risks": unmitigated_surfaces,
-            "missing_security_requirements": reasoning.missing_security_requirements,
-            "reasoning_justifications": reasoning.justifications,
-            "baseline_hardening_rules": local_baseline.applied_hardening_rules,
+            "injection_risk": prompt_sec.get("risk_category", "Low Risk"),
+            "baseline_hardening_rules": sanitize_context_data(local_baseline.applied_hardening_rules),
         }
 
+        if existing_reasoning:
+            payload["precomputed_reasoning"] = {
+                "missing_requirements": existing_reasoning.missing_security_requirements,
+                "justifications": existing_reasoning.justifications,
+            }
+
         return (
-            "Enhance and optimize the following prompt using the provided security context and reasoning:\n\n"
+            "Analyze the target prompt and empirical security findings. "
+            "Synthesize both the security reasoning and the hardened prompt in the required JSON format:\n\n"
             f"{json.dumps(payload, indent=2)}\n\n"
-            "Produce the optimized prompt and metadata in the required JSON format."
+            "Produce the complete JSON response."
         )
 
-    def _parse_optimization_response(
+    def _parse_unified_response(
         self,
         response: ZeroGResponse,
         original_prompt: str,
         sanitized_prompt: Optional[str],
-        reasoning: ZeroGReasoningResult,
         local_baseline: OptimizationResult,
+        detected_risks: List[str],
     ) -> ZeroGOptimizationResult:
-        """Parses the 0G optimization response."""
+        """Parses the unified single-call 0G response into a full ZeroGOptimizationResult."""
         raw_text = response.content.strip()
         metadata = {
+            "provider": "0g",
             "model": response.model,
             "response_id": response.response_id,
             "request_id": response.request_id,
+            "trust_mode": response.trust_mode,
             "usage": response.usage or {},
+            "status": "0g_success",
+            "inference_used": True,
+            "fallback_used": False,
+            "fallback_reason": None,
+            "duration_ms": response.duration_ms,
+            "is_attestation_verified": False,
+            "created_at": response.created_at,
         }
 
         parsed_json: Optional[Dict[str, Any]] = None
@@ -162,8 +206,20 @@ class ZeroGOptimizer:
             opt_text = str(parsed_json.get("optimized_prompt", "")).strip()
             changes = list(parsed_json.get("changes_summary") or local_baseline.changes_summary)
             hardening = list(parsed_json.get("applied_hardening_rules") or local_baseline.applied_hardening_rules)
-            gaps = list(parsed_json.get("missing_requirements_addressed") or reasoning.missing_security_requirements)
+            gaps = list(parsed_json.get("missing_security_requirements") or local_baseline.detected_risks_addressed)
+            remaining = list(parsed_json.get("remaining_risks") or [])
             intent = str(parsed_json.get("preserved_intent") or "Preserved requested architecture and technology choices.")
+
+            reasoning = ZeroGReasoningResult(
+                contextual_summary=str(parsed_json.get("contextual_summary", "Security analysis synthesized by 0G Private Computer.")).strip(),
+                risk_explanations=parsed_json.get("risk_explanations") or {r: f"Evaluated attack surface: {r}" for r in detected_risks},
+                missing_security_requirements=gaps,
+                intent_preservation_notes=intent,
+                justifications=[f"Hardened against {r}" for r in detected_risks],
+                remaining_risks=remaining,
+                raw_content=raw_text,
+                metadata=metadata,
+            )
 
             return ZeroGOptimizationResult(
                 original_prompt=original_prompt,
@@ -176,21 +232,34 @@ class ZeroGOptimizer:
                 preserved_intent=intent,
                 engine="0g_private_computer",
                 fallback_used=False,
+                fallback_reason=None,
                 metadata=metadata,
             )
 
-        # If raw text was returned without JSON wrapper, use the text directly
+        # Fallback text parsing if non-JSON markdown was returned
+        reasoning = ZeroGReasoningResult(
+            contextual_summary="Prompt hardened using 0G Private Computer verified inference.",
+            risk_explanations={r: f"Evaluated attack surface: {r}" for r in detected_risks},
+            missing_security_requirements=local_baseline.detected_risks_addressed,
+            intent_preservation_notes="Preserved functional requirements and architecture context.",
+            justifications=["Enforce defense-in-depth principles."],
+            remaining_risks=["Monitor runtime LLM inputs for adversarial drift."],
+            raw_content=raw_text,
+            metadata=metadata,
+        )
+
         return ZeroGOptimizationResult(
             original_prompt=original_prompt,
             sanitized_prompt=sanitized_prompt,
-            optimized_prompt=raw_text if len(raw_text) > 20 else local_baseline.optimized_prompt,
+            optimized_prompt=raw_text if len(raw_text) > 30 else local_baseline.optimized_prompt,
             reasoning=reasoning,
             applied_hardening_rules=local_baseline.applied_hardening_rules,
             changes_summary=local_baseline.changes_summary,
-            missing_requirements_addressed=reasoning.missing_security_requirements,
+            missing_requirements_addressed=local_baseline.detected_risks_addressed,
             preserved_intent="Preserved core functional scope and tech context.",
             engine="0g_private_computer",
             fallback_used=False,
+            fallback_reason=None,
             metadata=metadata,
         )
 
@@ -200,25 +269,53 @@ class ZeroGOptimizer:
         sanitized_prompt: Optional[str],
         local_baseline: OptimizationResult,
         reason: str,
+        status: str = "local_fallback",
     ) -> ZeroGOptimizationResult:
-        """Creates a result using the local deterministic optimizer when 0G is unavailable."""
+        """Creates a result using the local deterministic optimizer when 0G is unconfigured or failed."""
+        now = datetime.now(timezone.utc).isoformat()
+        metadata = {
+            "provider": "0g",
+            "model": self.client.model,
+            "request_id": None,
+            "trust_mode": self.client.trust_mode,
+            "usage": {},
+            "status": status,
+            "inference_used": False,
+            "fallback_used": (status != "local_only"),
+            "fallback_reason": reason if status != "local_only" else None,
+            "duration_ms": 0.0,
+            "is_attestation_verified": False,
+            "created_at": now,
+        }
+
+        local_reasoning = ZeroGReasoningResult(
+            contextual_summary=f"Analysis executed offline via local deterministic security heuristics.",
+            risk_explanations={r: f"Local rule-based classifier flagged {r}." for r in local_baseline.detected_risks_addressed},
+            missing_security_requirements=local_baseline.detected_risks_addressed,
+            intent_preservation_notes="Maintained user parameters using offline deterministic rules.",
+            justifications=["Protect application attack boundaries without remote dependency."],
+            remaining_risks=["Offline heuristic rules may not cover subtle contextual adversarial drift."],
+            raw_content="Deterministic offline analysis completed without 0G Private Computer inference.",
+            metadata=metadata,
+        )
+
         return ZeroGOptimizationResult(
             original_prompt=original_prompt,
             sanitized_prompt=sanitized_prompt,
             optimized_prompt=local_baseline.optimized_prompt,
-            reasoning=None,
+            reasoning=local_reasoning,
             applied_hardening_rules=local_baseline.applied_hardening_rules,
             changes_summary=local_baseline.changes_summary,
             missing_requirements_addressed=local_baseline.detected_risks_addressed,
             preserved_intent="Preserved core request using PromptShield deterministic rule-based optimizer.",
-            engine="local_rule_based_fallback",
-            fallback_used=True,
-            fallback_reason=reason,
-            metadata={"engine": "PromptShield Local Deterministic Optimizer"},
+            engine="local_rule_based_fallback" if status == "local_fallback" else "local_rule_based",
+            fallback_used=(status != "local_only"),
+            fallback_reason=reason if status != "local_only" else None,
+            metadata=metadata,
         )
 
     # -----------------------------------------------------------------------
-    # Synchronous Optimization
+    # Synchronous Optimization (Single 0G Call Flow)
     # -----------------------------------------------------------------------
 
     def optimize(
@@ -229,18 +326,19 @@ class ZeroGOptimizer:
         fallback_to_local: bool = True,
         temperature: float = 0.5,
         max_tokens: Optional[int] = None,
+        use_cache: bool = True,
     ) -> ZeroGOptimizationResult:
         """
-        Optimizes a prompt using 0G Private Computer.
-        Automatically redacts sensitive credentials prior to transmission.
-        Falls back to PromptShield's local optimizer if 0G is unreachable and fallback_to_local is True.
+        Optimizes a prompt using 0G Private Computer in ONE unified remote inference call.
+        Enforces credit preservation via local caching, sensitive credential redaction,
+        and graceful deterministic fallback.
         """
         # 1. Sanitize sensitive credentials
         sanitization = sanitize_prompt_for_inference(prompt)
         sanitized_prompt_text = sanitization.sanitized_prompt if sanitization.secrets_detected else None
         inference_prompt = sanitization.sanitized_prompt
 
-        # 2. Run security analysis if not already provided
+        # 2. Run security analysis locally if not provided
         if security_analysis is None:
             security_analysis = analyze_prompt(prompt, analysis_mode="both")
 
@@ -250,48 +348,78 @@ class ZeroGOptimizer:
             security_analysis=security_analysis
         )
 
-        # 4. Check if 0G is configured
-        if not self.client.is_configured():
+        # 4. Check global switch: ZG_ENABLED
+        if not self.client.is_enabled:
+            return self._create_fallback_result(
+                original_prompt=prompt,
+                sanitized_prompt=sanitized_prompt_text,
+                local_baseline=local_baseline,
+                reason="0G Private Computer inference is disabled (ZG_ENABLED=false). Ran local-only.",
+                status="local_only",
+            )
+
+        # 5. Check if 0G credentials and endpoints are configured
+        if not self.client.is_configured:
             if fallback_to_local:
                 return self._create_fallback_result(
                     original_prompt=prompt,
                     sanitized_prompt=sanitized_prompt_text,
                     local_baseline=local_baseline,
-                    reason="0G API key is not configured (ZG_API_KEY). Used local rule-based optimizer."
+                    reason="0G API key is not configured (ZG_API_KEY). Used local rule-based optimizer.",
+                    status="local_fallback",
                 )
             self.client.validate_configuration()
 
-        try:
-            # 5. Obtain 0G reasoning if not provided
-            if reasoning is None:
-                reasoning = self.reasoning_engine.reason(
-                    prompt=inference_prompt,
-                    security_analysis=security_analysis,
-                    temperature=0.3,
-                )
+        # 6. Check Credit-Protection Cache
+        detected_risks = (
+            (security_analysis.get("application_risks") or {}).get("detected_risks") or []
+        )
+        cache_key = self.cache.compute_key(
+            sanitized_prompt=inference_prompt,
+            security_findings=security_analysis,
+            model=self.client.model,
+            trust_mode=self.client.trust_mode,
+        )
 
-            # 6. Build optimization payload and execute 0G completion
-            user_msg = self._build_optimization_input(
+        if use_cache:
+            cached_res = self.cache.get(cache_key)
+            if cached_res is not None:
+                # Cache hit: ZERO 0G credits spent!
+                cached_res.metadata["status"] = "0g_success_cached"
+                cached_res.metadata["inference_used"] = False
+                cached_res.metadata["cached"] = True
+                return cached_res
+
+        # 7. Execute ONE Unified 0G Completion Call
+        try:
+            user_msg = self._build_unified_input(
                 sanitized_prompt=inference_prompt,
                 security_analysis=security_analysis,
-                reasoning=reasoning,
                 local_baseline=local_baseline,
+                existing_reasoning=reasoning,
             )
 
+            # SINGLE remote call returning both reasoning and prompt
             response = self.client.complete(
                 prompt=user_msg,
-                system_prompt=self.SYSTEM_PROMPT,
+                system_prompt=self.UNIFIED_SYSTEM_PROMPT,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
 
-            return self._parse_optimization_response(
+            result = self._parse_unified_response(
                 response=response,
                 original_prompt=prompt,
                 sanitized_prompt=sanitized_prompt_text,
-                reasoning=reasoning,
                 local_baseline=local_baseline,
+                detected_risks=detected_risks,
             )
+
+            # Store in cache to protect credits for repeated requests
+            if use_cache:
+                self.cache.set(cache_key, result)
+
+            return result
 
         except Exception as e:
             logger.warning(f"0G Optimization encountered an error: {e}")
@@ -300,12 +428,13 @@ class ZeroGOptimizer:
                     original_prompt=prompt,
                     sanitized_prompt=sanitized_prompt_text,
                     local_baseline=local_baseline,
-                    reason=f"0G Private Computer error: {str(e)}. Fell back to local deterministic optimizer."
+                    reason=f"0G Private Computer error: {str(e)}. Fell back to local deterministic optimizer.",
+                    status="local_fallback",
                 )
             raise
 
     # -----------------------------------------------------------------------
-    # Asynchronous Optimization
+    # Asynchronous Optimization (Single 0G Call Flow)
     # -----------------------------------------------------------------------
 
     async def optimize_async(
@@ -316,9 +445,10 @@ class ZeroGOptimizer:
         fallback_to_local: bool = True,
         temperature: float = 0.5,
         max_tokens: Optional[int] = None,
+        use_cache: bool = True,
     ) -> ZeroGOptimizationResult:
         """
-        Asynchronously optimizes a prompt using 0G Private Computer.
+        Executes asynchronous prompt optimization using 0G Private Computer in ONE call.
         """
         sanitization = sanitize_prompt_for_inference(prompt)
         sanitized_prompt_text = sanitization.sanitized_prompt if sanitization.secrets_detected else None
@@ -332,57 +462,84 @@ class ZeroGOptimizer:
             security_analysis=security_analysis
         )
 
-        if not self.client.is_configured():
+        if not self.client.is_enabled:
+            return self._create_fallback_result(
+                original_prompt=prompt,
+                sanitized_prompt=sanitized_prompt_text,
+                local_baseline=local_baseline,
+                reason="0G Private Computer inference is disabled (ZG_ENABLED=false). Ran local-only.",
+                status="local_only",
+            )
+
+        if not self.client.is_configured:
             if fallback_to_local:
                 return self._create_fallback_result(
                     original_prompt=prompt,
                     sanitized_prompt=sanitized_prompt_text,
                     local_baseline=local_baseline,
-                    reason="0G API key is not configured (ZG_API_KEY). Used local rule-based optimizer."
+                    reason="0G API key is not configured (ZG_API_KEY). Used local rule-based optimizer.",
+                    status="local_fallback",
                 )
             self.client.validate_configuration()
 
-        try:
-            if reasoning is None:
-                reasoning = await self.reasoning_engine.reason_async(
-                    prompt=inference_prompt,
-                    security_analysis=security_analysis,
-                    temperature=0.3,
-                )
+        detected_risks = (
+            (security_analysis.get("application_risks") or {}).get("detected_risks") or []
+        )
+        cache_key = self.cache.compute_key(
+            sanitized_prompt=inference_prompt,
+            security_findings=security_analysis,
+            model=self.client.model,
+            trust_mode=self.client.trust_mode,
+        )
 
-            user_msg = self._build_optimization_input(
+        if use_cache:
+            cached_res = self.cache.get(cache_key)
+            if cached_res is not None:
+                cached_res.metadata["status"] = "0g_success_cached"
+                cached_res.metadata["inference_used"] = False
+                cached_res.metadata["cached"] = True
+                return cached_res
+
+        try:
+            user_msg = self._build_unified_input(
                 sanitized_prompt=inference_prompt,
                 security_analysis=security_analysis,
-                reasoning=reasoning,
                 local_baseline=local_baseline,
+                existing_reasoning=reasoning,
             )
 
             response = await self.client.complete_async(
                 prompt=user_msg,
-                system_prompt=self.SYSTEM_PROMPT,
+                system_prompt=self.UNIFIED_SYSTEM_PROMPT,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
 
-            return self._parse_optimization_response(
+            result = self._parse_unified_response(
                 response=response,
                 original_prompt=prompt,
                 sanitized_prompt=sanitized_prompt_text,
-                reasoning=reasoning,
                 local_baseline=local_baseline,
+                detected_risks=detected_risks,
             )
 
+            if use_cache:
+                self.cache.set(cache_key, result)
+
+            return result
+
         except Exception as e:
-            logger.warning(f"0G Async Optimization encountered an error: {e}")
+            logger.warning(f"0G Async Optimization error: {e}")
             if fallback_to_local:
                 return self._create_fallback_result(
                     original_prompt=prompt,
                     sanitized_prompt=sanitized_prompt_text,
                     local_baseline=local_baseline,
-                    reason=f"0G Private Computer error: {str(e)}. Fell back to local deterministic optimizer."
+                    reason=f"0G Private Computer error: {str(e)}. Fell back to local deterministic optimizer.",
+                    status="local_fallback",
                 )
             raise
 
 
-# Global singleton instance for convenient imports
+# Default singleton instance
 zero_g_optimizer = ZeroGOptimizer()

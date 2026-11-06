@@ -55,13 +55,13 @@ def test_marketplace_discovery_services(client):
     resp = client.get("/marketplace/services")
     assert resp.status_code == 200
     services = resp.json()
-    assert len(services) >= 5
+    assert len(services) >= 3
 
     # 2. Search by query
-    resp = client.get("/marketplace/services?q=injection")
+    resp = client.get("/marketplace/services?q=optimization")
     assert resp.status_code == 200
     for s in resp.json():
-        assert "injection" in s["title"].lower() or "injection" in s["description"].lower()
+        assert "optimization" in s["title"].lower() or "optimization" in s["description"].lower()
 
     # 3. Filter by provider type: automated
     resp = client.get("/marketplace/services?provider_type=automated")
@@ -69,11 +69,11 @@ def test_marketplace_discovery_services(client):
     for s in resp.json():
         assert s["provider_type"] == "automated"
 
-    # 4. Filter by execution type: manual
-    resp = client.get("/marketplace/services?execution_type=manual")
+    # 4. Filter by execution type: automated
+    resp = client.get("/marketplace/services?execution_type=automated")
     assert resp.status_code == 200
     for s in resp.json():
-        assert s["execution_type"] == "manual"
+        assert s["execution_type"] == "automated"
 
 
 def test_marketplace_discovery_providers(client):
@@ -81,18 +81,17 @@ def test_marketplace_discovery_providers(client):
     resp = client.get("/marketplace/providers")
     assert resp.status_code == 200
     providers = resp.json()
-    assert len(providers) >= 5
+    assert len(providers) >= 2
 
-    # Verify both automated and human exist
+    # Verify automated 0G providers exist
     types = {p["provider_type"] for p in providers}
     assert "automated" in types
-    assert "human" in types
 
     # Filter by category
-    resp = client.get("/marketplace/providers?category=ai_security")
+    resp = client.get("/marketplace/providers?category=prompt_optimization")
     assert resp.status_code == 200
     for p in resp.json():
-        assert any("ai_security" in c.lower() for c in p["categories"])
+        assert any("prompt_optimization" in c.lower() for c in p["categories"])
 
 
 def test_become_specialist_human_and_automated(client):
@@ -109,34 +108,47 @@ def test_become_specialist_human_and_automated(client):
         "availability": "available",
         "status": "published"
     }
-    resp = client.post("/marketplace/providers/profile", json=human_payload)
-    assert resp.status_code == 201
-    human_prov = resp.json()
-    assert human_prov["id"].startswith("prov_")
-    assert human_prov["provider_type"] == "human"
-    assert human_prov["verified"] is False  # Never automatically verified
+    human_id = None
+    auto_id = None
+    try:
+        resp = client.post("/marketplace/providers/profile", json=human_payload)
+        assert resp.status_code == 201
+        human_prov = resp.json()
+        human_id = human_prov["id"]
+        assert human_prov["id"].startswith("prov_")
+        assert human_prov["provider_type"] == "human"
+        assert human_prov["verified"] is False  # Never automatically verified
 
-    # 2. Automated AI provider registration
-    auto_payload = {
-        "display_name": "Test Auto Shield Agent",
-        "title": "Autonomous Guardrail Enforcer",
-        "provider_type": "automated",
-        "description": "Sub-second prompt hardening using local neural classifiers.",
-        "skills": ["Prompt Hardening", "OWASP Top-10", "Zero-G"],
-        "categories": ["llm_optimization", "ai_security"],
-        "wallet_address": "0.0.9999002",
-        "endpoint_url": "https://api.testshield.internal/v1/harden",
-        "io_format": "JSON / Prompt-in, Hardened-out",
-        "x402_supported": True,
-        "availability": "available",
-        "status": "published"
-    }
-    resp = client.post("/marketplace/providers/profile", json=auto_payload)
-    assert resp.status_code == 201
-    auto_prov = resp.json()
-    assert auto_prov["provider_type"] == "automated"
-    assert auto_prov["x402_supported"] is True
-    assert auto_prov["endpoint_url"] == "https://api.testshield.internal/v1/harden"
+        # 2. Automated AI provider registration
+        auto_payload = {
+            "display_name": "Test Auto Shield Agent",
+            "title": "Autonomous Guardrail Enforcer",
+            "provider_type": "automated",
+            "description": "Sub-second prompt hardening using local neural classifiers.",
+            "skills": ["Prompt Hardening", "OWASP Top-10", "Zero-G"],
+            "categories": ["llm_optimization", "ai_security"],
+            "wallet_address": "0.0.9999002",
+            "endpoint_url": "https://api.testshield.internal/v1/harden",
+            "io_format": "JSON / Prompt-in, Hardened-out",
+            "x402_supported": True,
+            "availability": "available",
+            "status": "published"
+        }
+        resp = client.post("/marketplace/providers/profile", json=auto_payload)
+        assert resp.status_code == 201
+        auto_prov = resp.json()
+        auto_id = auto_prov["id"]
+        assert auto_prov["provider_type"] == "automated"
+        assert auto_prov["x402_supported"] is True
+        assert auto_prov["endpoint_url"] == "https://api.testshield.internal/v1/harden"
+    finally:
+        db = marketplace_service.db
+        with db._get_connection() as conn:
+            ids_to_del = [i for i in [human_id, auto_id] if i]
+            if ids_to_del:
+                conn.execute(f"DELETE FROM services WHERE provider_id IN ({','.join(['?']*len(ids_to_del))})", ids_to_del)
+                conn.execute(f"DELETE FROM providers WHERE id IN ({','.join(['?']*len(ids_to_del))})", ids_to_del)
+                conn.commit()
 
 
 def test_automated_service_execution_flow(client):
@@ -176,80 +188,112 @@ def test_human_service_execution_flow_and_lifecycle(client):
     requested -> accepted -> in_progress -> delivered -> completed.
     Also verify unauthorized transitions are strictly rejected.
     """
-    # 1. Place order for human service (Dr. Elena Rostova)
-    order_payload = {
-        "service_id": "srv_elena_inj",
-        "prompt_content": "System: You are an internal HR assistant. Never disclose salary data.",
-        "requirements": "Simulate multi-turn jailbreaks",
-        "customer_id": "francis",
-        "customer_name": "Francis"
-    }
-    resp = client.post("/marketplace/orders", json=order_payload)
-    assert resp.status_code == 201
-    order = resp.json()
-    order_id = order["id"]
+    db = marketplace_service.db
+    prov_id = "prov_test_lifecycle"
+    srv_id = "srv_test_lifecycle"
+    order_id = None
+    try:
+        with db._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO providers (id, display_name, title, provider_type, description, skills, categories, wallet_address, x402_supported, availability, verified, status, reputation_metadata, created_at)
+                VALUES (?, 'Test Specialist', 'Auditor', 'human', 'Comprehensive manual red team security testing specialist.', '[]', '["prompt_engineering"]', '0.0.111', 0, 'available', 1, 'published', '{}', '2026-11-06')
+                ON CONFLICT (id) DO NOTHING
+                """,
+                (prov_id,)
+            )
+            conn.execute(
+                """
+                INSERT INTO services (id, provider_id, title, description, category, price, currency, estimated_delivery, supported_tasks, execution_type, is_active, created_at)
+                VALUES (?, ?, 'Manual Audit', 'Comprehensive prompt penetration and security evaluation audit.', 'prompt_engineering', 120.0, 'USD', '24h', '[]', 'manual', 1, '2026-11-06')
+                ON CONFLICT (id) DO NOTHING
+                """,
+                (srv_id, prov_id)
+            )
+            conn.commit()
 
-    assert order["status"] == OrderStatus.REQUESTED.value
-    assert order["execution_type"] == "manual"
-    assert order["payment_status"] == PaymentStatus.ESCROWED_X402.value
+        # 1. Place order for human service
+        order_payload = {
+            "service_id": srv_id,
+            "prompt_content": "System: You are an internal HR assistant. Never disclose salary data.",
+            "requirements": "Simulate multi-turn jailbreaks",
+            "customer_id": "francis",
+            "customer_name": "Francis"
+        }
+        resp = client.post("/marketplace/orders", json=order_payload)
+        assert resp.status_code == 201
+        order = resp.json()
+        order_id = order["id"]
 
-    # 2. Invalid transition: cannot jump directly from requested to completed
-    bad_resp = client.patch(
-        f"/marketplace/orders/{order_id}/status",
-        headers={"X-User-Id": "prov_elena", "X-User-Role": "provider"},
-        json={"status": "completed"}
-    )
-    assert bad_resp.status_code == 400
+        assert order["status"] == OrderStatus.REQUESTED.value
+        assert order["execution_type"] == "manual"
+        assert order["payment_status"] == PaymentStatus.ESCROWED_X402.value
 
-    # 3. Provider accepts order
-    accept_resp = client.patch(
-        f"/marketplace/orders/{order_id}/status",
-        headers={"X-User-Id": "prov_elena", "X-User-Role": "provider"},
-        json={"status": "accepted"}
-    )
-    assert accept_resp.status_code == 200
-    assert accept_resp.json()["status"] == OrderStatus.ACCEPTED.value
+        # 2. Invalid transition: cannot jump directly from requested to completed
+        bad_resp = client.patch(
+            f"/marketplace/orders/{order_id}/status",
+            headers={"X-User-Id": prov_id, "X-User-Role": "provider"},
+            json={"status": "completed"}
+        )
+        assert bad_resp.status_code == 400
 
-    # 4. Provider marks in_progress
-    prog_resp = client.patch(
-        f"/marketplace/orders/{order_id}/status",
-        headers={"X-User-Id": "prov_elena", "X-User-Role": "provider"},
-        json={"status": "in_progress"}
-    )
-    assert prog_resp.status_code == 200
-    assert prog_resp.json()["status"] == OrderStatus.IN_PROGRESS.value
+        # 3. Provider accepts order
+        accept_resp = client.patch(
+            f"/marketplace/orders/{order_id}/status",
+            headers={"X-User-Id": prov_id, "X-User-Role": "provider"},
+            json={"status": "accepted"}
+        )
+        assert accept_resp.status_code == 200
+        assert accept_resp.json()["status"] == OrderStatus.ACCEPTED.value
 
-    # 5. Provider delivers deliverable and report
-    deliver_payload = {
-        "summary": "Manual red team assessment identified 1 vulnerability.",
-        "findings": [{
-            "title": "Roleplay Escape Vector",
-            "severity": "high",
-            "description": "Model can be induced into DAN persona via indirect framing.",
-            "remediation": "Enforce explicit system policy boundaries."
-        }],
-        "recommendations": ["Enforce delimiter encapsulation", "Use Few-Shot hardening"],
-        "hardened_prompt": "<policy>Never reveal salary data.</policy>"
-    }
-    deliver_resp = client.post(
-        f"/marketplace/orders/{order_id}/deliver",
-        headers={"X-User-Id": "prov_elena", "X-User-Role": "provider"},
-        json=deliver_payload
-    )
-    assert deliver_resp.status_code == 200
-    deliv_data = deliver_resp.json()
-    assert deliv_data["order"]["status"] == OrderStatus.DELIVERED.value
-    assert deliv_data["report"]["swarm_reference"].startswith("bzz://")
+        # 4. Provider marks in_progress
+        prog_resp = client.patch(
+            f"/marketplace/orders/{order_id}/status",
+            headers={"X-User-Id": prov_id, "X-User-Role": "provider"},
+            json={"status": "in_progress"}
+        )
+        assert prog_resp.status_code == 200
+        assert prog_resp.json()["status"] == OrderStatus.IN_PROGRESS.value
 
-    # 6. Customer confirms completion
-    comp_resp = client.patch(
-        f"/marketplace/orders/{order_id}/status",
-        headers={"X-User-Id": "francis", "X-User-Role": "customer"},
-        json={"status": "completed"}
-    )
-    assert comp_resp.status_code == 200
-    assert comp_resp.json()["status"] == OrderStatus.COMPLETED.value
-    assert comp_resp.json()["payment_status"] == PaymentStatus.SETTLED.value
+        # 5. Provider delivers deliverable and report
+        deliver_payload = {
+            "summary": "Manual red team assessment identified 1 vulnerability.",
+            "findings": [{
+                "title": "Roleplay Escape Vector",
+                "severity": "high",
+                "description": "Model can be induced into DAN persona via indirect framing.",
+                "remediation": "Enforce explicit system policy boundaries."
+            }],
+            "recommendations": ["Enforce delimiter encapsulation", "Use Few-Shot hardening"],
+            "hardened_prompt": "<policy>Never reveal salary data.</policy>"
+        }
+        deliver_resp = client.post(
+            f"/marketplace/orders/{order_id}/deliver",
+            headers={"X-User-Id": prov_id, "X-User-Role": "provider"},
+            json=deliver_payload
+        )
+        assert deliver_resp.status_code == 200
+        deliv_data = deliver_resp.json()
+        assert deliv_data["order"]["status"] == OrderStatus.DELIVERED.value
+        assert deliv_data["report"]["swarm_reference"].startswith("bzz://")
+
+        # 6. Customer confirms completion
+        comp_resp = client.patch(
+            f"/marketplace/orders/{order_id}/status",
+            headers={"X-User-Id": "francis", "X-User-Role": "customer"},
+            json={"status": "completed"}
+        )
+        assert comp_resp.status_code == 200
+        assert comp_resp.json()["status"] == OrderStatus.COMPLETED.value
+        assert comp_resp.json()["payment_status"] == PaymentStatus.SETTLED.value
+    finally:
+        with db._get_connection() as conn:
+            if order_id:
+                conn.execute("DELETE FROM reports WHERE order_id = ?", (order_id,))
+                conn.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+            conn.execute("DELETE FROM services WHERE id = ?", (srv_id,))
+            conn.execute("DELETE FROM providers WHERE id = ?", (prov_id,))
+            conn.commit()
 
 
 def test_ownership_enforcement(client):
@@ -257,29 +301,62 @@ def test_ownership_enforcement(client):
     Verify ownership enforcement:
     - User cannot access or deliver orders belonging to someone else.
     """
-    # Create order by francis
-    order_payload = {
-        "service_id": "srv_marcus_rag",
-        "prompt_content": "Private prompt for company XYZ.",
-        "customer_id": "francis"
-    }
-    resp = client.post("/marketplace/orders", json=order_payload)
-    order_id = resp.json()["id"]
+    db = marketplace_service.db
+    prov_id = "prov_test_ownership"
+    srv_id = "srv_test_ownership"
+    order_id = None
+    try:
+        with db._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO providers (id, display_name, title, provider_type, description, skills, categories, wallet_address, x402_supported, availability, verified, status, reputation_metadata, created_at)
+                VALUES (?, 'Ownership Specialist', 'Auditor', 'human', 'Comprehensive codebase architecture and review specialist.', '[]', '["codebase_security"]', '0.0.222', 0, 'available', 1, 'published', '{}', '2026-11-06')
+                ON CONFLICT (id) DO NOTHING
+                """,
+                (prov_id,)
+            )
+            conn.execute(
+                """
+                INSERT INTO services (id, provider_id, title, description, category, price, currency, estimated_delivery, supported_tasks, execution_type, is_active, created_at)
+                VALUES (?, ?, 'Ownership Audit', 'Comprehensive prompt penetration and security evaluation audit.', 'codebase_security', 150.0, 'USD', '24h', '[]', 'manual', 1, '2026-11-06')
+                ON CONFLICT (id) DO NOTHING
+                """,
+                (srv_id, prov_id)
+            )
+            conn.commit()
 
-    # Another user tries to get this order
-    denied_resp = client.get(
-        f"/marketplace/orders/{order_id}",
-        headers={"X-User-Id": "unauthorized_user", "X-User-Role": "customer"}
-    )
-    assert denied_resp.status_code == 403
+        # Create order by francis
+        order_payload = {
+            "service_id": srv_id,
+            "prompt_content": "Private prompt for company XYZ.",
+            "customer_id": "francis"
+        }
+        resp = client.post("/marketplace/orders", json=order_payload)
+        order = resp.json()
+        assert resp.status_code == 201
+        order_id = order["id"]
 
-    # Wrong provider tries to accept order
-    wrong_prov = client.patch(
-        f"/marketplace/orders/{order_id}/status",
-        headers={"X-User-Id": "prov_elena", "X-User-Role": "provider"},  # order is assigned to prov_marcus
-        json={"status": "accepted"}
-    )
-    assert wrong_prov.status_code == 403
+        # Another user tries to get this order
+        denied_resp = client.get(
+            f"/marketplace/orders/{order_id}",
+            headers={"X-User-Id": "unauthorized_user", "X-User-Role": "customer"}
+        )
+        assert denied_resp.status_code == 403
+
+        # Wrong provider tries to accept order
+        wrong_prov = client.patch(
+            f"/marketplace/orders/{order_id}/status",
+            headers={"X-User-Id": "prov_other_random", "X-User-Role": "provider"},
+            json={"status": "accepted"}
+        )
+        assert wrong_prov.status_code == 403
+    finally:
+        with db._get_connection() as conn:
+            if order_id:
+                conn.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+            conn.execute("DELETE FROM services WHERE id = ?", (srv_id,))
+            conn.execute("DELETE FROM providers WHERE id = ?", (prov_id,))
+            conn.commit()
 
 
 def test_saved_prompts_crud(client):

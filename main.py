@@ -154,11 +154,24 @@ def optimize(data: OptimizePromptRequest):
 
     metadata_schema = None
     if opt_res.metadata:
+        u = opt_res.metadata.get("usage") or {}
         metadata_schema = ZeroGMetadataSchema(
+            provider="0g",
             model=opt_res.metadata.get("model"),
             response_id=opt_res.metadata.get("response_id"),
             request_id=opt_res.metadata.get("request_id"),
-            usage=opt_res.metadata.get("usage"),
+            trust_mode=opt_res.metadata.get("trust_mode"),
+            status=opt_res.metadata.get("status"),
+            inference_used=bool(opt_res.metadata.get("inference_used", False)),
+            prompt_tokens=u.get("prompt_tokens"),
+            completion_tokens=u.get("completion_tokens"),
+            total_tokens=u.get("total_tokens"),
+            fallback_used=bool(opt_res.fallback_used),
+            fallback_reason=opt_res.fallback_reason,
+            duration_ms=opt_res.metadata.get("duration_ms"),
+            is_attestation_verified=False,
+            created_at=opt_res.metadata.get("created_at"),
+            usage=u,
             finish_reason=opt_res.metadata.get("finish_reason"),
             http_status=opt_res.metadata.get("http_status"),
         )

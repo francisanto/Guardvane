@@ -64,10 +64,22 @@ class OptimizePromptRequest(BaseModel):
 
 
 class ZeroGMetadataSchema(BaseModel):
+    provider: str = "0g"
     model: Optional[str] = None
     response_id: Optional[str] = None
     request_id: Optional[str] = None
-    usage: Optional[Dict[str, int]] = None
+    trust_mode: Optional[str] = None
+    status: Optional[str] = None
+    inference_used: bool = False
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    fallback_used: bool = False
+    fallback_reason: Optional[str] = None
+    duration_ms: Optional[float] = None
+    is_attestation_verified: bool = False
+    created_at: Optional[str] = None
+    usage: Optional[Dict[str, Any]] = None
     finish_reason: Optional[str] = None
     http_status: Optional[int] = None
 
