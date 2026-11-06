@@ -180,6 +180,8 @@ class OrderStatusUpdate(BaseModel):
 
 class PaymentConfirmRequest(BaseModel):
     proof: Optional[str] = Field(default=None, description="Gateway-specific payment proof. Never a wallet signature alone.")
+    paymentRequirements: Optional[Dict[str, Any]] = None
+    paymentPayload: Optional[Dict[str, Any]] = None
 
 
 class DeliverOrderRequest(BaseModel):
@@ -210,6 +212,13 @@ class OrderResponse(BaseModel):
     report_id: Optional[str] = None
     deliverable_notes: Optional[str] = None
     rejection_reason: Optional[str] = None
+    payment_intent_id: Optional[str] = None
+    payment_reference: Optional[str] = None
+    hashscan_url: Optional[str] = None
+    payment_type: Optional[str] = None
+    escrow_tx_hash: Optional[str] = None
+    escrow_state: Optional[str] = None
+    token_usage: Optional[str] = None
     created_at: str
     updated_at: str
 

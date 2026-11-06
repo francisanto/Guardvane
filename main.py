@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Query, Header
+from fastapi import FastAPI, HTTPException, Query, Header, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
@@ -47,6 +47,15 @@ app = FastAPI(
 # Mount authentication and marketplace routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(marketplace_router, prefix="/marketplace", tags=["Marketplace"])
+
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 # Static files directory
 STATIC_DIR = Path(__file__).resolve().parent / "static"

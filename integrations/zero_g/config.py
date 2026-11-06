@@ -17,7 +17,7 @@ DEFAULT_BASE_URL: str = "https://router-api.0g.ai/v1"
 DEFAULT_MODEL: str = "0gm-1.0-35b-a3b"
 DEFAULT_TIMEOUT: float = 120.0
 DEFAULT_MAX_RETRIES: int = 0
-DEFAULT_MAX_TOKENS: int = 3500
+DEFAULT_MAX_TOKENS: int = 4096
 
 MODEL_ALIASES: dict[str, str] = {
     "0gm-1.0": "0gm-1.0-35b-a3b",

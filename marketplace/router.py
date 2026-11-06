@@ -73,7 +73,9 @@ def get_current_user(
     if token:
         payload = decode_session_token(token)
         if payload and "wallet_address" in payload:
-            wallet_addr = payload["wallet_address"]
+            cookie_wallet = payload["wallet_address"]
+            # If user switched accounts in MetaMask, prioritize active header
+            wallet_addr = x_wallet if (x_wallet and x_wallet.lower() != cookie_wallet.lower()) else cookie_wallet
             roles = list(payload.get("roles", ["customer"]))
             try:
                 prov = marketplace_service.get_provider_by_wallet(wallet_addr)
@@ -416,6 +418,47 @@ def deliver_order(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@router.get("/orders/{order_id}/x402-requirements")
+def get_order_x402_requirements(
+    order_id: str,
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Returns Hedera x402 v2 exact payment requirements and mirror node pricing for an order.
+    """
+    ord_item = marketplace_service.get_order(order_id)
+    if not ord_item:
+        raise HTTPException(status_code=404, detail=f"Order '{order_id}' not found.")
+
+    from payments.blocky402 import (
+        calculate_tinybars_for_usd,
+        create_x402_requirements,
+        get_facilitator_fee_payer,
+        get_hbar_usd_rate,
+    )
+    from payments.config import HEDERA_MERCHANT_ACCOUNT_ID, X402_ASSET_ID, X402_NETWORK
+
+    reqs = create_x402_requirements(order_id, ord_item.price)
+    tinybars, hbars = calculate_tinybars_for_usd(ord_item.price)
+    fee_payer = get_facilitator_fee_payer()
+    rate = get_hbar_usd_rate()
+
+    return {
+        "order_id": order_id,
+        "service_title": ord_item.service_title,
+        "provider_name": ord_item.provider_name,
+        "amount_usd": ord_item.price,
+        "amount_hbars": hbars,
+        "amount_tinybars": str(tinybars),
+        "usd_per_hbar": rate,
+        "network": X402_NETWORK,
+        "asset": X402_ASSET_ID,
+        "merchant_account": HEDERA_MERCHANT_ACCOUNT_ID,
+        "fee_payer": fee_payer,
+        "paymentRequirements": reqs,
+    }
+
+
 @router.post("/orders/{order_id}/pay", response_model=OrderResponse)
 def pay_order(
     order_id: str,
@@ -426,7 +469,16 @@ def pay_order(
     Verify payment for an order through backend gateway.
     Activates the request for provider dashboard upon verification.
     """
-    proof = data.proof if data else None
+    proof = None
+    if data:
+        if data.paymentRequirements and data.paymentPayload:
+            proof = {
+                "paymentRequirements": data.paymentRequirements,
+                "paymentPayload": data.paymentPayload,
+            }
+        elif data.proof:
+            proof = data.proof
+
     actor_wallet = auth.get("wallet_address") or auth.get("user_id")
     try:
         return marketplace_service.confirm_order_payment(
@@ -438,6 +490,77 @@ def pay_order(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.get("/orders/{order_id}/escrow-config")
+def get_order_escrow_config(
+    order_id: str,
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Returns MetaMask EVM Escrow parameters (Rabdi Testnet Chain ID 7794095) for human specialist orders.
+    """
+    ord_item = marketplace_service.get_order(order_id)
+    if not ord_item:
+        raise HTTPException(status_code=404, detail=f"Order '{order_id}' not found.")
+
+    provider = marketplace_service.get_provider(ord_item.provider_id)
+    prov_wallet = provider.wallet_address if provider and provider.wallet_address else "0xaf6b2b8df91a6063a35c3f491183ec35d1fbff54"
+
+    from payments.evm_escrow import evm_escrow_service
+    return evm_escrow_service.get_escrow_config(
+        order_id=order_id,
+        amount_usd=ord_item.price,
+        provider_wallet=prov_wallet
+    )
+
+
+@router.post("/orders/{order_id}/escrow-deposit", response_model=OrderResponse)
+def deposit_order_escrow(
+    order_id: str,
+    payload: Dict[str, Any],
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Verifies on-chain depositEscrow transaction on Rabdi Testnet and activates order to requested state.
+    """
+    tx_hash = payload.get("tx_hash") or payload.get("proof")
+    if not tx_hash:
+        raise HTTPException(status_code=400, detail="Transaction hash required for escrow deposit verification.")
+
+    payer_wallet = auth.get("wallet_address") or payload.get("payer_wallet") or "0xpayer"
+    try:
+        return marketplace_service.confirm_escrow_deposit(
+            order_id=order_id,
+            tx_hash=tx_hash,
+            payer_wallet=payer_wallet
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/orders/{order_id}/escrow-release", response_model=OrderResponse)
+def release_order_escrow(
+    order_id: str,
+    payload: Dict[str, Any],
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Verifies on-chain releaseEscrow transaction by customer and completes order.
+    """
+    tx_hash = payload.get("tx_hash") or payload.get("proof")
+    if not tx_hash:
+        raise HTTPException(status_code=400, detail="Transaction hash required for escrow release verification.")
+
+    customer_wallet = auth.get("wallet_address") or auth.get("user_id") or "0xcustomer"
+    try:
+        return marketplace_service.confirm_escrow_release(
+            order_id=order_id,
+            tx_hash=tx_hash,
+            customer_wallet=customer_wallet
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 
