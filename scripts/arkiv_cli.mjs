@@ -232,7 +232,129 @@ export async function getEntity(schemaName, entityKey, accessKey) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. CLI Entrypoint
+// 4. Server-Side Entity Publishing (Section 3 of Specification)
+// ---------------------------------------------------------------------------
+
+export async function publishSpecialist(data, options = {}) {
+  const isMock = Boolean(options.mock || process.env.ARKIV_TEST_MOCK === "1");
+  if (isMock) {
+    const mockHash = "0x" + Buffer.from(`mock_tx_specialist_${data.wallet_address || "addr"}_${Date.now()}`).toString("hex").padEnd(64, "0").slice(0, 64);
+    const mockKey = "0x" + Buffer.from(`mock_key_specialist_${data.wallet_address || "addr"}`).toString("hex").padEnd(64, "0").slice(0, 64);
+    return {
+      success: true,
+      mock: true,
+      entityKey: mockKey,
+      txHash: mockHash,
+      expiresAt: Math.floor(Date.now() / 1000) + 30 * 86400,
+    };
+  }
+
+  const privateKey = options.privateKey || process.env.ARKIV_SIGNER_PRIVATE_KEY || process.env.ARKIV_PRIVATE_KEY;
+  if (!privateKey) {
+    throw new Error("Missing ARKIV_SIGNER_PRIVATE_KEY for backend write.");
+  }
+
+  const { createWalletClient, ExpirationTime } = await import("@arkiv-network/sdk");
+  const { rabdi } = await import("@arkiv-network/sdk/chains");
+  const { http } = await import("viem");
+  const { privateKeyToAccount } = await import("viem/accounts");
+
+  const formattedKey = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+  const account = privateKeyToAccount(formattedKey);
+  const client = createWalletClient({
+    account,
+    chain: rabdi({ accessKey: options.accessKey || process.env.ARKIV_ACCESS_KEY || "" }),
+    transport: http(),
+  });
+
+  const values = {
+    wallet_address: addr(data.wallet_address),
+    display_name: String(data.display_name || "Specialist"),
+    headline: String(data.headline || data.title || ""),
+    expertise_categories: String(Array.isArray(data.categories) ? data.categories.join(",") : (data.expertise_categories || data.category || "ai_security")),
+    skills: String(Array.isArray(data.skills) ? data.skills.join(",") : (data.skills || "")),
+    experience_level: String(data.experience_level || "senior"),
+    availability_status: String(data.availability_status || data.availability || "available"),
+    profile_version: String(data.profile_version || "1.0.0"),
+  };
+
+  const { entityKey, txHash, expiresAt } = await client.createEntity(
+    Specialists,
+    values,
+    { expiration: ExpirationTime.fromDays(30) }
+  );
+
+  return {
+    success: true,
+    entityKey,
+    txHash,
+    expiresAt: Number(expiresAt || 0n),
+  };
+}
+
+export async function publishService(data, options = {}) {
+  const isMock = Boolean(options.mock || process.env.ARKIV_TEST_MOCK === "1");
+  if (isMock) {
+    const mockHash = "0x" + Buffer.from(`mock_tx_service_${data.provider_wallet || "prov"}_${Date.now()}`).toString("hex").padEnd(64, "0").slice(0, 64);
+    const mockKey = "0x" + Buffer.from(`mock_key_service_${data.title || "service"}`).toString("hex").padEnd(64, "0").slice(0, 64);
+    return {
+      success: true,
+      mock: true,
+      entityKey: mockKey,
+      txHash: mockHash,
+      expiresAt: Math.floor(Date.now() / 1000) + 30 * 86400,
+    };
+  }
+
+  const privateKey = options.privateKey || process.env.ARKIV_SIGNER_PRIVATE_KEY || process.env.ARKIV_PRIVATE_KEY;
+  if (!privateKey) {
+    throw new Error("Missing ARKIV_SIGNER_PRIVATE_KEY for backend write.");
+  }
+
+  const { createWalletClient, ExpirationTime } = await import("@arkiv-network/sdk");
+  const { rabdi } = await import("@arkiv-network/sdk/chains");
+  const { http } = await import("viem");
+  const { privateKeyToAccount } = await import("viem/accounts");
+
+  const formattedKey = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+  const account = privateKeyToAccount(formattedKey);
+  const client = createWalletClient({
+    account,
+    chain: rabdi({ accessKey: options.accessKey || process.env.ARKIV_ACCESS_KEY || "" }),
+    transport: http(),
+  });
+
+  const priceStr = (typeof data.indicative_price === "number")
+    ? data.indicative_price.toFixed(2)
+    : (typeof data.price === "number" ? data.price.toFixed(2) : String(data.price || data.indicative_price || "10.00"));
+
+  const values = {
+    provider_wallet: addr(data.provider_wallet || data.wallet_address),
+    service_category: String(data.service_category || data.category || "ai_security"),
+    title: String(data.title || "Security Service"),
+    short_description: String((data.short_description || data.description || "").slice(0, 250)),
+    pricing_type: String(data.pricing_type || "fixed"),
+    indicative_price: dec(priceStr),
+    availability: String(data.availability || "available"),
+    service_version: String(data.service_version || "1.0.0"),
+  };
+
+  const { entityKey, txHash, expiresAt } = await client.createEntity(
+    Services,
+    values,
+    { expiration: ExpirationTime.fromDays(30) }
+  );
+
+  return {
+    success: true,
+    entityKey,
+    txHash,
+    expiresAt: Number(expiresAt || 0n),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 5. CLI Entrypoint
 // ---------------------------------------------------------------------------
 
 async function main() {
@@ -277,6 +399,22 @@ async function main() {
       }
       const entity = await getEntity(schemaName, entityKey, accessKey);
       console.log(JSON.stringify({ success: true, entity }, null, 2));
+    } else if (command === "publish-specialist") {
+      const data = flags.data ? JSON.parse(flags.data) : {};
+      const result = await publishSpecialist(data, {
+        privateKey: flags.privateKey,
+        accessKey,
+        mock: Boolean(flags.mock),
+      });
+      console.log(JSON.stringify(result, null, 2));
+    } else if (command === "publish-service") {
+      const data = flags.data ? JSON.parse(flags.data) : {};
+      const result = await publishService(data, {
+        privateKey: flags.privateKey,
+        accessKey,
+        mock: Boolean(flags.mock),
+      });
+      console.log(JSON.stringify(result, null, 2));
     } else {
       console.error(`Unknown command: ${command}`);
       process.exit(1);
