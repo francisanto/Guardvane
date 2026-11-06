@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
@@ -14,6 +14,11 @@ from models.schemas import (
     OptimizePromptResponse,
     ZeroGMetadataSchema,
     ZeroGReasoningSchema,
+    ZeroGReasoningStructured,
+    ZeroGTaskUnderstanding,
+    ZeroGSecurityAnalysis,
+    ZeroGVulnerabilityFinding,
+    ZeroGChangeMade,
 )
 from analyzers.prompt_analyzer import analyze_prompt
 from integrations.zero_g import zero_g_optimizer, ZeroGOptimizationResult
@@ -111,35 +116,80 @@ def analyze(data: PromptRequest):
 
 
 @app.post("/optimize", response_model=OptimizePromptResponse)
-def optimize(data: OptimizePromptRequest):
+def optimize(data: OptimizePromptRequest, x_user_id: Optional[str] = Header(None)):
     """
-    Optimizes a user prompt using 0G Private Computer AI reasoning and optimization,
-    grounded by PromptShield's local ML security classifiers and sensitive data detection.
-
-    1. Runs local PromptShield security analysis (Prompt Injection, 15 Application Risks, Secrets).
-    2. Sanitizes any detected credentials prior to inference to prevent secret leakage.
-    3. Performs contextual reasoning via 0G Private Computer on detected attack surfaces.
-    4. Synthesizes a structured, production-ready, hardened prompt preserving developer intent.
-    5. Returns the optimized prompt, security analysis, reasoning breakdown, and 0G execution metadata.
+    Performs primary security reasoning, threat modeling, and prompt hardening on 0G Private Computer.
+    1. Stage A: Local preprocessing (sensitive data redaction, input validation, context extraction).
+    2. Stage B: 0G Primary Reasoning (deep application threat modeling & intent-preserving rewrite).
+    3. Stage C: Structured Stage C response (task understanding, findings, hardened prompt, changes, risks).
+    4. Stage D: Local validation (structure verification, post-inference credential scan).
     """
     mode = data.analysis_mode.value if hasattr(data.analysis_mode, "value") else str(data.analysis_mode)
 
-    # 1. Run local PromptShield analysis
-    analysis = analyze_prompt(data.prompt, analysis_mode=mode)
-
-    # 2. Run 0G optimization (which internally handles secret sanitization, reasoning, and fallback)
     try:
         opt_res: ZeroGOptimizationResult = zero_g_optimizer.optimize(
             prompt=data.prompt,
-            security_analysis=analysis,
-            fallback_to_local=data.fallback_to_local if data.fallback_to_local is not None else True,
-            temperature=data.temperature if data.temperature is not None else 0.5,
-            max_tokens=data.max_tokens,
+            user_id=x_user_id,
+            bypass_cache=bool(data.bypass_cache),
+            fallback_to_local=bool(data.fallback_to_local),
+            temperature=data.temperature if data.temperature is not None else 0.3,
+            max_tokens=data.max_tokens or 2000,
         )
     except Exception as exc:
         raise HTTPException(
             status_code=502,
-            detail=f"0G Private Computer optimization failed: {str(exc)}"
+            detail=f"0G Private Computer reasoning failed: {str(exc)}"
+        )
+
+    # Reconstruct local scan analysis from preprocessing or run lightweight scan
+    local_analysis = getattr(opt_res, "local_analysis", None)
+    if not local_analysis:
+        local_analysis = analyze_prompt(data.prompt, analysis_mode=mode)
+
+    # Structured reasoning schemas
+    structured_schema = None
+    if opt_res.structured_reasoning:
+        tu = opt_res.task_understanding or {}
+        tu_schema = ZeroGTaskUnderstanding(
+            application_type=tu.get("application_type", ""),
+            user_intent=tu.get("user_intent", ""),
+            technologies=tu.get("technologies", []),
+        )
+
+        findings_list = []
+        for f in opt_res.security_analysis_findings:
+            if isinstance(f, dict):
+                findings_list.append(ZeroGVulnerabilityFinding(
+                    vulnerability=f.get("vulnerability", ""),
+                    severity=f.get("severity", "medium"),
+                    confidence=float(f.get("confidence", 0.8)),
+                    evidence=f.get("evidence", ""),
+                    attack_scenario=f.get("attack_scenario", ""),
+                    explanation=f.get("explanation", ""),
+                    recommendation=f.get("recommendation", ""),
+                ))
+
+        sec_schema = ZeroGSecurityAnalysis(
+            overall_risk=opt_res.overall_risk,
+            findings=findings_list,
+        )
+
+        changes_list = []
+        for c in opt_res.changes_made:
+            if isinstance(c, dict):
+                changes_list.append(ZeroGChangeMade(
+                    change=c.get("change", ""),
+                    reason=c.get("reason", ""),
+                ))
+
+        structured_schema = ZeroGReasoningStructured(
+            task_understanding=tu_schema,
+            security_analysis=sec_schema,
+            missing_security_requirements=opt_res.missing_requirements_addressed,
+            hardened_prompt=opt_res.optimized_prompt,
+            changes_made=changes_list,
+            assumptions=opt_res.assumptions,
+            remaining_risks=opt_res.remaining_risks,
         )
 
     reasoning_schema = None
@@ -150,18 +200,24 @@ def optimize(data: OptimizePromptRequest):
             missing_security_requirements=opt_res.reasoning.missing_security_requirements,
             intent_preservation_notes=opt_res.reasoning.intent_preservation_notes,
             justifications=opt_res.reasoning.justifications,
+            structured=structured_schema,
+            task_understanding=structured_schema.task_understanding if structured_schema else None,
+            security_analysis=structured_schema.security_analysis if structured_schema else None,
+            changes_made=structured_schema.changes_made if structured_schema else None,
+            assumptions=opt_res.assumptions,
+            remaining_risks=opt_res.remaining_risks,
         )
 
     metadata_schema = None
     if opt_res.metadata:
         u = opt_res.metadata.get("usage") or {}
         metadata_schema = ZeroGMetadataSchema(
-            provider="0g",
+            provider=opt_res.metadata.get("provider", "0g"),
             model=opt_res.metadata.get("model"),
             response_id=opt_res.metadata.get("response_id"),
             request_id=opt_res.metadata.get("request_id"),
             trust_mode=opt_res.metadata.get("trust_mode"),
-            status=opt_res.metadata.get("status"),
+            status=opt_res.metadata.get("status", opt_res.status),
             inference_used=bool(opt_res.metadata.get("inference_used", False)),
             prompt_tokens=u.get("prompt_tokens"),
             completion_tokens=u.get("completion_tokens"),
@@ -174,15 +230,19 @@ def optimize(data: OptimizePromptRequest):
             usage=u,
             finish_reason=opt_res.metadata.get("finish_reason"),
             http_status=opt_res.metadata.get("http_status"),
+            cached=bool(opt_res.metadata.get("cached", False)),
+            error=opt_res.error_message or opt_res.metadata.get("error"),
         )
 
     return OptimizePromptResponse(
-        status="fallback" if opt_res.fallback_used else "success",
+        status=opt_res.status,
         original_prompt=opt_res.original_prompt,
         sanitized_prompt=opt_res.sanitized_prompt,
         optimized_prompt=opt_res.optimized_prompt,
-        security_analysis=analysis,
+        hardened_prompt=opt_res.optimized_prompt,
+        security_analysis=local_analysis,
         reasoning=reasoning_schema,
+        structured_reasoning=structured_schema,
         applied_hardening_rules=opt_res.applied_hardening_rules,
         changes_summary=opt_res.changes_summary,
         missing_requirements_addressed=opt_res.missing_requirements_addressed,
@@ -192,6 +252,7 @@ def optimize(data: OptimizePromptRequest):
         fallback_reason=opt_res.fallback_reason,
         zero_g_metadata=metadata_schema,
         disclaimer=opt_res.disclaimer,
+        error=opt_res.error_message,
     )
 
 
