@@ -6,6 +6,7 @@ automated vs human execution segregation, and decentralized integration hooks.
 
 import json
 import logging
+import math
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -172,7 +173,9 @@ class MarketplaceService:
         cursor.execute(
             """
             SELECT p.*, (SELECT COUNT(*) FROM services s WHERE s.provider_id = p.id AND s.is_active = 1) as services_count
-            FROM providers p WHERE LOWER(p.wallet_address) = LOWER(?)
+            FROM providers p 
+            WHERE LOWER(p.wallet_address) = LOWER(?)
+            LIMIT 1
             """,
             (wallet_address,),
         )
@@ -219,7 +222,6 @@ class MarketplaceService:
         now = datetime.now(timezone.utc).isoformat()
         reputation = {
             "audits_completed": 0,
-            "registered_by": user_id,
             "platform_managed": False,
         }
 
@@ -624,7 +626,6 @@ class MarketplaceService:
         product_link: Optional[str] = None,
         docs_link: Optional[str] = None,
         test_env_notes: Optional[str] = None,
-        is_zero_g_wallet: bool = False,
         customer_id: str = "francis",
         customer_name: str = "Francis"
     ) -> OrderResponse:
@@ -639,83 +640,67 @@ class MarketplaceService:
         # Differentiate execution flows: Automated AI vs Human Specialist
         is_automated = (service.execution_type == ServiceExecutionType.AUTOMATED)
 
-        # Store structured requirements with testing links / 0G wallet info if supplied
+        # Provider cannot audit or order their own service
+        if service.provider_type == ProviderType.HUMAN:
+            prov = self.get_provider(service.provider_id)
+            if prov and prov.wallet_address and customer_id:
+                if prov.wallet_address.lower() == str(customer_id).lower():
+                    raise ValueError("Providers cannot order or request security reviews on their own services.")
+
+        # Store structured requirements with testing links if supplied
         stored_requirements = requirements
-        if product_link or docs_link or test_env_notes or is_zero_g_wallet:
+        if product_link or docs_link or test_env_notes:
             req_data = {
                 "requirements": requirements,
                 "product_link": product_link,
                 "docs_link": docs_link,
                 "test_env_notes": test_env_notes,
-                "is_zero_g_wallet": is_zero_g_wallet,
-                "payment_mode": "0g_credits" if (is_zero_g_wallet and is_automated) else ("x402_autonomous" if is_automated else "evm_escrow")
+                "payment_mode": "x402_autonomous" if is_automated else "evm_escrow"
             }
             stored_requirements = json.dumps(req_data)
 
         if is_automated:
-            # 1. Automated service flow (Hedera x402 Route)
-            # Input tokens estimated + 1024 completion token allowance cap
-            estimated_input = max(50, len(prompt_content) // 4)
+            # 1. Automated AI service flow (Hedera x402 Route)
+            # Dynamic prompt pricing based on prompt token consumption ($0.03 / 1k tokens)
+            estimated_input = max(25, math.ceil(len(prompt_content) / 4))
             max_completion = 1024
             quoted_total = estimated_input + max_completion
+            dynamic_price = round(max(0.015, quoted_total * 0.00003), 3)
+
             quoted_usage = json.dumps({
                 "quoted_input_tokens": estimated_input,
                 "quoted_completion_tokens": max_completion,
                 "quoted_total_tokens": quoted_total,
+                "price_per_token_usd": 0.00003,
+                "quoted_price_usd": dynamic_price,
                 "status": "quoted"
             })
 
-            # Check if using 0G allocation credits (free for 0G registered wallet)
-            if is_zero_g_wallet:
-                # 0G Compute Credits cover inference immediately
-                with conn:
-                    conn.execute(
-                        """
-                        INSERT INTO orders (
-                            id, customer_id, customer_name, provider_id, provider_name,
-                            provider_type, service_id, service_title, service_category,
-                            prompt_content, requirements, price, currency, status,
-                            execution_type, payment_status, report_id, deliverable_notes,
-                            created_at, updated_at, payment_type, escrow_state, token_usage
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            order_id, customer_id, customer_name, service.provider_id,
-                            service.provider_name, service.provider_type.value, service.id,
-                            service.title, service.category, prompt_content, stored_requirements,
-                            0.0, service.currency, OrderStatus.PENDING_PAYMENT.value,
-                            ServiceExecutionType.AUTOMATED.value, PaymentStatus.VERIFIED.value,
-                            None, "Covered under 0G Compute Allocation Credits.", now, now,
-                            "0g_credits", "bypassed", quoted_usage
-                        )
+            # ALL AI executions MUST be paid via Hedera x402
+            # 0G Private Computer AI reasoning executes ONLY after confirmed payment settlement
+            intent = payment_service.create_intent(order_id, dynamic_price, "HBAR")
+            with conn:
+                conn.execute(
+                    """
+                    INSERT INTO orders (
+                        id, customer_id, customer_name, provider_id, provider_name,
+                        provider_type, service_id, service_title, service_category,
+                        prompt_content, requirements, price, currency, status,
+                        execution_type, payment_status, report_id, deliverable_notes,
+                        created_at, updated_at, payment_intent_id, payment_type, escrow_state, token_usage
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        order_id, customer_id, customer_name, service.provider_id,
+                        service.provider_name, service.provider_type.value, service.id,
+                        service.title, service.category, prompt_content, stored_requirements,
+                        dynamic_price, service.currency, OrderStatus.PENDING_PAYMENT.value,
+                        ServiceExecutionType.AUTOMATED.value, PaymentStatus.PENDING.value,
+                        None, f"Awaiting Hedera x402 payment settlement via Blocky402 (${dynamic_price:.3f} USD for {quoted_total} tokens).",
+                        now, now, intent.id, "hedera_x402", "pending", quoted_usage
                     )
-                return self.execute_automated_ai_order(order_id, bypass_payment=True)
-            else:
-                # Standard x402 payment flow: Quote created, order created in PENDING_PAYMENT
-                # 0G Private Computer AI reasoning executes ONLY after confirmed payment settlement
-                intent = payment_service.create_intent(order_id, service.price, "HBAR")
-                with conn:
-                    conn.execute(
-                        """
-                        INSERT INTO orders (
-                            id, customer_id, customer_name, provider_id, provider_name,
-                            provider_type, service_id, service_title, service_category,
-                            prompt_content, requirements, price, currency, status,
-                            execution_type, payment_status, report_id, deliverable_notes,
-                            created_at, updated_at, payment_intent_id, payment_type, escrow_state, token_usage
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            order_id, customer_id, customer_name, service.provider_id,
-                            service.provider_name, service.provider_type.value, service.id,
-                            service.title, service.category, prompt_content, stored_requirements,
-                            service.price, service.currency, OrderStatus.PENDING_PAYMENT.value,
-                            ServiceExecutionType.AUTOMATED.value, PaymentStatus.PENDING.value,
-                            None, f"Awaiting Hedera x402 payment settlement via Blocky402. Quoted token allowance: {quoted_total} tokens.",
-                            now, now, intent.id, "hedera_x402", "pending", quoted_usage
-                        )
-                    )
-                return self.get_order(order_id)
+                )
+            return self.get_order(order_id)
         else:
             # 2. Human Specialist Flow (MetaMask EVM Escrow Route)
             # Order starts in 'pending_payment' state with EVM escrow deposit required
@@ -747,8 +732,7 @@ class MarketplaceService:
     def execute_automated_ai_order(
         self,
         order_id: str,
-        payment_ref: Optional[str] = None,
-        bypass_payment: bool = False
+        payment_ref: Optional[str] = None
     ) -> OrderResponse:
         """
         Executes automated AI security analysis ONLY after verified settlement.
@@ -757,6 +741,14 @@ class MarketplaceService:
         """
         order = self.get_order(order_id)
         if not order:
+            raise ValueError(f"Order '{order_id}' not found.")
+
+        # Payment settlement check: all AI requests MUST be confirmed paid
+        if order.payment_status not in (PaymentStatus.VERIFIED.value, "verified", "settled"):
+            raise PermissionError(
+                f"Order '{order_id}' cannot execute: payment status is '{order.payment_status}'. "
+                "Confirmed Hedera x402 payment settlement via Blocky402 is required."
+            )
             raise ValueError(f"Order '{order_id}' not found.")
 
         findings = []
@@ -1112,16 +1104,30 @@ class MarketplaceService:
         # Ownership enforcement:
         # If role is 'provider', view assigned work; if 'customer', view submitted requests.
         # If role is None, return all orders involving this user (both submitted and assigned).
+        uid_lower = (user_id or "").lower()
         if role == "provider":
-            sql += " AND (provider_id = ? OR provider_id IN (SELECT id FROM providers WHERE wallet_address = ?))"
+            sql += """ AND (
+                LOWER(provider_id) = ? 
+                OR provider_id IN (
+                    SELECT id FROM providers 
+                    WHERE LOWER(wallet_address) = ?
+                )
+            )"""
             sql += " AND (status != 'pending_payment' AND payment_status = 'verified')"
-            params.extend([user_id, user_id])
+            params.extend([uid_lower, uid_lower])
         elif role == "customer":
-            sql += " AND customer_id = ?"
-            params.append(user_id)
+            sql += " AND LOWER(customer_id) = ?"
+            params.append(uid_lower)
         else:
-            sql += " AND (customer_id = ? OR provider_id = ? OR provider_id IN (SELECT id FROM providers WHERE wallet_address = ?))"
-            params.extend([user_id, user_id, user_id])
+            sql += """ AND (
+                LOWER(customer_id) = ? 
+                OR LOWER(provider_id) = ? 
+                OR provider_id IN (
+                    SELECT id FROM providers 
+                    WHERE LOWER(wallet_address) = ?
+                )
+            )"""
+            params.extend([uid_lower, uid_lower, uid_lower])
 
         if status:
             sql += " AND status = ?"
@@ -1235,7 +1241,11 @@ class MarketplaceService:
         is_cust = (order.customer_id.lower() == uid)
 
         # Ownership authorization check: prioritize actual order relationship over client header
-        if is_assigned_prov:
+        if is_assigned_prov and is_cust:
+            # User is both customer and provider (single identity testing / owner)
+            if new_status not in {OrderStatus.ACCEPTED, OrderStatus.IN_PROGRESS, OrderStatus.REJECTED, OrderStatus.DELIVERED, OrderStatus.NEEDS_INFO, OrderStatus.CANCELLED, OrderStatus.COMPLETED}:
+                raise PermissionError(f"Cannot transition order to '{new_status.value}'.")
+        elif is_assigned_prov:
             # User is the assigned provider for this order
             if new_status not in {OrderStatus.ACCEPTED, OrderStatus.IN_PROGRESS, OrderStatus.REJECTED, OrderStatus.DELIVERED, OrderStatus.NEEDS_INFO}:
                 raise PermissionError(f"Provider cannot transition order to '{new_status.value}'.")
@@ -1437,14 +1447,34 @@ class MarketplaceService:
     # Security Reports
     # -----------------------------------------------------------------------
 
-    def list_reports(self, user_id: str = "francis", role: str = "customer") -> List[SecurityReportResponse]:
+    def list_reports(self, user_id: str = "anonymous", role: str = "customer") -> List[SecurityReportResponse]:
         conn = self.db._get_connection()
         cursor = conn.cursor()
+        uid_lower = (user_id or "").lower()
 
         if role == "provider":
-            cursor.execute("SELECT * FROM reports WHERE provider_id = ? ORDER BY created_at DESC", (user_id,))
+            cursor.execute(
+                """
+                SELECT * FROM reports 
+                WHERE LOWER(provider_id) = ? 
+                   OR provider_id IN (SELECT id FROM providers WHERE LOWER(wallet_address) = ?)
+                ORDER BY created_at DESC
+                """, 
+                (uid_lower, uid_lower)
+            )
+        elif role == "customer":
+            cursor.execute("SELECT * FROM reports WHERE LOWER(customer_id) = ? ORDER BY created_at DESC", (uid_lower,))
         else:
-            cursor.execute("SELECT * FROM reports WHERE customer_id = ? ORDER BY created_at DESC", (user_id,))
+            cursor.execute(
+                """
+                SELECT * FROM reports 
+                WHERE LOWER(customer_id) = ? 
+                   OR LOWER(provider_id) = ? 
+                   OR provider_id IN (SELECT id FROM providers WHERE LOWER(wallet_address) = ?)
+                ORDER BY created_at DESC
+                """, 
+                (uid_lower, uid_lower, uid_lower)
+            )
 
         rows = cursor.fetchall()
         return [

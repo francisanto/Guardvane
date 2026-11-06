@@ -80,15 +80,20 @@ async def apple_touch_icon():
     raise HTTPException(status_code=404, detail="Apple touch icon not found")
 
 
-@app.get("/")
+@app.get("/", response_class=FileResponse)
 def home():
-    return {
-        "message": "PromptShield AI backend is running",
-        "dashboard_ui": "/dashboard",
-        "marketplace_api": "/marketplace/services",
-        "health": "/health",
-        "docs": "/docs"
-    }
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return JSONResponse(
+        content={
+            "message": "Guardvane AI Platform is running",
+            "dashboard_ui": "/dashboard",
+            "marketplace_api": "/marketplace/services",
+            "health": "/health",
+            "docs": "/docs"
+        }
+    )
 
 
 @app.get("/health/db")

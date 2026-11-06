@@ -94,7 +94,9 @@ def get_current_user(
                 "wallet_address": wallet_addr
             }
 
-    user_id = x_wallet or x_user_id or "francis"
+    user_id = (x_wallet or x_user_id or "").lower()
+    if not user_id:
+        user_id = "anonymous"
     wallet = x_wallet or (user_id if str(user_id).startswith("0x") else None)
     role = (x_user_role or "customer").lower()
     roles = [role]
@@ -318,7 +320,6 @@ def create_order(
             product_link=data.product_link,
             docs_link=data.docs_link,
             test_env_notes=data.test_env_notes,
-            is_zero_g_wallet=bool(data.is_zero_g_wallet),
             customer_id=cust_id,
             customer_name=cust_name
         )
@@ -744,6 +745,9 @@ def get_integrations_status():
         swarm=swarm_client.get_status().model_dump(),
         hedera=hedera_client.get_status().model_dump()
     )
+
+
+
 
 
 # ---------------------------------------------------------------------------

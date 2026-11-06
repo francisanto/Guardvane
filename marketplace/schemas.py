@@ -54,7 +54,7 @@ class ProviderBase(BaseModel):
     display_name: str = Field(..., min_length=2, max_length=100)
     title: str = Field(..., min_length=2, max_length=150)
     provider_type: ProviderType = Field(default=ProviderType.HUMAN)
-    description: str = Field(..., min_length=10, max_length=3000)
+    description: str = Field(default="", max_length=3000)
     avatar_url: Optional[str] = Field(default="")
     skills: List[str] = Field(default_factory=list)
     categories: List[str] = Field(default_factory=list)
@@ -68,6 +68,7 @@ class ProviderBase(BaseModel):
 
 
 class ProviderCreate(ProviderBase):
+    description: str = Field(..., min_length=5, max_length=3000)
     service_title: Optional[str] = None
     service_price: Optional[float] = Field(default=None, ge=0.0)
     service_delivery: Optional[str] = None
@@ -99,7 +100,7 @@ class ProviderResponse(ProviderBase):
 
 class ServiceBase(BaseModel):
     title: str = Field(..., min_length=3, max_length=200)
-    description: str = Field(..., min_length=10, max_length=4000)
+    description: str = Field(default="", max_length=4000)
     category: str = Field(default="ai_security")
     price: float = Field(..., ge=0.0)
     currency: str = Field(default="USD")
@@ -110,6 +111,7 @@ class ServiceBase(BaseModel):
 
 
 class ServiceCreate(ServiceBase):
+    description: str = Field(..., min_length=5, max_length=4000)
     provider_id: Optional[str] = None
 
 
@@ -145,7 +147,6 @@ class OrderCreate(BaseModel):
     product_link: Optional[str] = Field(default=None, description="Product or application testing URL")
     docs_link: Optional[str] = Field(default=None, description="Documentation or codebase repository URL")
     test_env_notes: Optional[str] = Field(default=None, description="Test credentials or staging environment notes")
-    is_zero_g_wallet: Optional[bool] = Field(default=False, description="Whether customer uses a 0G-registered wallet eligible for 0G credits")
     customer_id: Optional[str] = Field(default="francis")
     customer_name: Optional[str] = Field(default="francis")
 
