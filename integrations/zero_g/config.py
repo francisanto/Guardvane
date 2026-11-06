@@ -15,7 +15,7 @@ VALID_TRUST_MODES: Set[str] = {"standard", "verified", "private"}
 DEFAULT_TRUST_MODE: str = "verified"
 DEFAULT_BASE_URL: str = "https://router-api.0g.ai/v1"
 DEFAULT_MODEL: str = "0gm-1.0-35b-a3b"
-DEFAULT_TIMEOUT: float = 60.0
+DEFAULT_TIMEOUT: float = 120.0
 DEFAULT_MAX_RETRIES: int = 0
 DEFAULT_MAX_TOKENS: int = 3500
 

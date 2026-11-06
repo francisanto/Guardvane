@@ -104,6 +104,7 @@ class ZeroGResponse:
     cost_usd_micro: Optional[str] = None
     e2ee: Optional[str] = None
     provider_address: Optional[str] = None
+    reasoning_content: Optional[str] = None
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -413,9 +414,13 @@ class ZeroGClient:
 
             content = ""
             finish_reason = None
+            reasoning_content = None
             if parsed.choices:
                 choice = parsed.choices[0]
+                reasoning_content = getattr(choice.message, "reasoning_content", None)
                 content = choice.message.content or ""
+                if not content and reasoning_content:
+                    content = reasoning_content
                 finish_reason = choice.finish_reason
 
             # Extract trace, billing, provider address, and e2ee headers
@@ -453,6 +458,7 @@ class ZeroGClient:
                 cost_usd_micro=cost_usd_micro,
                 e2ee=e2ee,
                 provider_address=provider_address,
+                reasoning_content=reasoning_content,
             )
         except Exception as e:
             self._handle_exception(e)
@@ -509,9 +515,13 @@ class ZeroGClient:
 
             content = ""
             finish_reason = None
+            reasoning_content = None
             if parsed.choices:
                 choice = parsed.choices[0]
+                reasoning_content = getattr(choice.message, "reasoning_content", None)
                 content = choice.message.content or ""
+                if not content and reasoning_content:
+                    content = reasoning_content
                 finish_reason = choice.finish_reason
 
             model_extra = getattr(parsed, "model_extra", None)
@@ -547,6 +557,7 @@ class ZeroGClient:
                 cost_usd_micro=cost_usd_micro,
                 e2ee=e2ee,
                 provider_address=provider_address,
+                reasoning_content=reasoning_content,
             )
         except Exception as e:
             self._handle_exception(e)

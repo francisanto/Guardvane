@@ -73,23 +73,43 @@ def get_current_user(
     if token:
         payload = decode_session_token(token)
         if payload and "wallet_address" in payload:
-            roles = payload.get("roles", ["customer"])
-            active_role = x_user_role.lower() if (x_user_role and x_user_role.lower() in roles) else (roles[0] if roles else "customer")
+            wallet_addr = payload["wallet_address"]
+            roles = list(payload.get("roles", ["customer"]))
+            try:
+                prov = marketplace_service.get_provider_by_wallet(wallet_addr)
+                if prov and "provider" not in roles:
+                    roles.append("provider")
+            except Exception:
+                pass
+            active_role = x_user_role.lower() if (x_user_role and x_user_role.lower() in roles) else (
+                "provider" if "provider" in roles and x_user_role == "provider" else (roles[0] if roles else "customer")
+            )
             return {
-                "user_id": payload["wallet_address"],
+                "user_id": wallet_addr,
                 "sub": payload.get("sub"),
                 "role": active_role,
                 "roles": roles,
-                "wallet_address": payload["wallet_address"]
+                "wallet_address": wallet_addr
             }
 
     user_id = x_wallet or x_user_id or "francis"
-    role = (x_user_role or "customer").lower()
     wallet = x_wallet or (user_id if str(user_id).startswith("0x") else None)
+    role = (x_user_role or "customer").lower()
+    roles = [role]
+    if wallet:
+        try:
+            prov = marketplace_service.get_provider_by_wallet(wallet)
+            if prov and "provider" not in roles:
+                roles.append("provider")
+                if x_user_role == "provider":
+                    role = "provider"
+        except Exception:
+            pass
+
     return {
         "user_id": user_id,
         "role": role,
-        "roles": [role],
+        "roles": roles,
         "wallet_address": wallet
     }
 

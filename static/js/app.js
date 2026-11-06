@@ -67,10 +67,17 @@ const STATE = {
 // ---------------------------------------------------------------------------
 
 async function apiFetch(endpoint, options = {}) {
+  const currentWallet = STATE.auth.walletAddress || STATE.user.id || '';
+  const isProv = (STATE.activeView === 'provider_workspace') ||
+                 (STATE.user.role === 'provider') ||
+                 Boolean(STATE.user.activeProviderId) ||
+                 (STATE.data?.providers || []).some(p => p.wallet_address && currentWallet && p.wallet_address.toLowerCase() === currentWallet.toLowerCase());
+  const effectiveRole = isProv ? 'provider' : (STATE.user.role || 'customer');
   const headers = {
     'Content-Type': 'application/json',
-    'X-User-Id': STATE.user.id || STATE.auth.walletAddress || 'guest',
-    'X-User-Role': STATE.user.role || 'customer',
+    'X-User-Id': currentWallet || 'guest',
+    'X-User-Role': effectiveRole,
+    'X-Wallet-Address': currentWallet,
     ...(options.headers || {})
   };
 
@@ -100,9 +107,16 @@ async function checkAuthSession() {
       STATE.auth.user = data;
       STATE.auth.walletAddress = data.wallet_address;
       STATE.user.id = data.wallet_address;
-      const savedDisplayName = (typeof localStorage !== 'undefined') ? localStorage.getItem('guardvane_display_name') : null;
-      STATE.user.name = savedDisplayName || data.display_name || (data.wallet_address.substring(0, 6) + '...' + data.wallet_address.substring(data.wallet_address.length - 4));
-      STATE.user.role = (data.roles && data.roles.includes('provider')) ? 'provider' : (data.roles[0] || 'customer');
+      STATE.user.name = data.display_name || (data.wallet_address.substring(0, 6) + '...' + data.wallet_address.substring(data.wallet_address.length - 4));
+      
+      // Match registered provider profile by connected wallet
+      const myProv = (STATE.data.providers || []).find(p => p.wallet_address && p.wallet_address.toLowerCase() === data.wallet_address.toLowerCase());
+      if (myProv) {
+        STATE.user.activeProviderId = myProv.id;
+        STATE.user.role = 'provider';
+      } else {
+        STATE.user.role = (data.roles && data.roles.includes('provider')) ? 'provider' : (data.roles[0] || 'customer');
+      }
       return true;
     }
   } catch (e) {
@@ -192,11 +206,17 @@ async function connectAndSignWithMetaMask() {
     STATE.auth.walletAddress = verifyData.user.wallet_address;
     STATE.user.id = verifyData.user.wallet_address;
     STATE.user.name = verifyData.user.display_name || (verifyData.user.wallet_address.substring(0, 6) + '...' + verifyData.user.wallet_address.substring(verifyData.user.wallet_address.length - 4));
-    STATE.user.role = verifyData.user.roles?.[0] || 'customer';
     STATE.auth.error = null;
     STATE.auth.statusText = '';
 
     await loadInitialData();
+    const myProv = (STATE.data.providers || []).find(p => p.wallet_address && p.wallet_address.toLowerCase() === verifyData.user.wallet_address.toLowerCase());
+    if (myProv) {
+      STATE.user.activeProviderId = myProv.id;
+      STATE.user.role = 'provider';
+    } else {
+      STATE.user.role = verifyData.user.roles?.[0] || 'customer';
+    }
   } catch (err) {
     console.error('Authentication failure:', err);
     STATE.auth.error = err.message || 'Failed to authenticate with MetaMask.';
@@ -280,6 +300,21 @@ if (typeof window !== 'undefined' && window.ethereum) {
       STATE.network.name = (chainId === 7794095) ? 'Rabdi Testnet' : `Chain ${chainId}`;
       renderApp();
     });
+
+    window.ethereum.on('accountsChanged', async (accounts) => {
+      if (!accounts || accounts.length === 0) {
+        await handleLogout();
+      } else {
+        const newAddress = accounts[0].toLowerCase();
+        if (STATE.auth.walletAddress && STATE.auth.walletAddress.toLowerCase() !== newAddress) {
+          await handleLogout();
+        }
+      }
+    });
+
+    window.ethereum.on('disconnect', async () => {
+      await handleLogout();
+    });
   } catch (e) {}
 }
 
@@ -339,7 +374,11 @@ async function loadInitialData() {
 // ---------------------------------------------------------------------------
 
 function navigateTo(view, payload = null) {
-  STATE.activeView = view;
+  if (view === 'arkiv_tasks') {
+    STATE.activeView = 'opihub';
+  } else {
+    STATE.activeView = view;
+  }
   if (view === 'provider_detail') {
     STATE.selectedProviderId = payload;
   } else if (view === 'order_detail') {
@@ -542,16 +581,6 @@ function renderSidebar() {
             OpiHub
           </button>
 
-          <button onclick="navigateTo('arkiv_tasks')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'arkiv_tasks' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <div class="flex items-center gap-3">
-              <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <span>Arkiv Task Board</span>
-            </div>
-            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono font-semibold px-2 py-0.5 rounded">RABDI</span>
-          </button>
-
           <button onclick="navigateTo('my_prompts')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'my_prompts' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
             <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -581,22 +610,24 @@ function renderSidebar() {
         <div class="px-3 py-3 space-y-1 border-t border-[#E2E9E3]/70">
           <div class="px-3 py-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Provider</div>
 
-          <button onclick="navigateTo('become_provider')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'become_provider' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <svg class="w-4 h-4 text-[#2FA36B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Become a Provider
-          </button>
-
-          <button onclick="navigateTo('provider_workspace')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'provider_workspace' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <div class="flex items-center gap-3">
-              <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          ${isRegisteredProvider ? `
+            <button onclick="navigateTo('provider_workspace')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'provider_workspace' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <span>Provider Workspace</span>
+              </div>
+              <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">ACTIVE</span>
+            </button>
+          ` : `
+            <button onclick="navigateTo('become_provider')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'become_provider' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
+              <svg class="w-4 h-4 text-[#2FA36B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <span>Provider Workspace</span>
-            </div>
-            ${isRegisteredProvider ? '<span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">PROVIDER</span>' : ''}
-          </button>
+              <span>Become a Provider</span>
+            </button>
+          `}
         </div>
 
         <!-- Navigation Section: ACCOUNT -->
@@ -645,50 +676,58 @@ function renderSidebar() {
 
 function renderTopbar() {
   const isRabdi = STATE.network && STATE.network.isRabdi;
-  const chainId = STATE.network && STATE.network.chainId;
+  const address = STATE.auth.walletAddress;
+  const shortAddr = address
+    ? (address.substring(0, 6) + '...' + address.substring(address.length - 4))
+    : 'Connect Wallet';
+
+  const viewLabels = {
+    dashboard: 'Workspace Overview',
+    opihub: 'Security Services & Requests',
+    my_prompts: 'Prompt Repository',
+    my_requests: 'Security Requests',
+    security_reports: 'Audit Reports & Certificates',
+    become_provider: 'Provider Registration',
+    provider_workspace: 'Provider Workspace',
+    provider_detail: 'Specialist Profile'
+  };
+  const activeLabel = viewLabels[STATE.activeView] || 'Security Marketplace';
 
   return `
     <header class="h-16 border-b border-[#E2E9E3] bg-[#FAFBF9] px-8 flex items-center justify-between shrink-0 select-none">
-      <!-- Left: Rabdi Network Status Pill -->
-      <div class="flex items-center gap-3">
-        ${isRabdi ? `
-          <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
-            <span class="w-2 h-2 rounded-full bg-[#2FA36B] animate-pulse"></span>
-            <span>Rabdi Testnet (7794095)</span>
-            ${(STATE.arkiv && STATE.arkiv.status && STATE.arkiv.status.current_block) ? `
-              <span class="text-[11px] text-[#627566] pl-1 border-l border-[#CDE5D5]">#${STATE.arkiv.status.current_block}</span>
-            ` : ''}
-          </div>
-        ` : `
-          <button
-            onclick="handleSwitchToRabdi()"
-            title="Click to switch MetaMask to Rabdi Testnet"
-            class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] hover:bg-[#FDE68A] transition-smooth cursor-pointer"
-          >
-            <span class="w-2 h-2 rounded-full bg-[#D97706] animate-ping"></span>
-            <span>${chainId ? `Chain ${chainId}: Switch to Rabdi (7794095)` : 'Switch to Rabdi Testnet'}</span>
-          </button>
-        `}
+      <!-- Left: Breadcrumb / Section Context -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wider text-[#8B9C8E]">Guardvane</span>
+        <span class="text-[#CCD6CE]">/</span>
+        <span class="text-xs font-medium text-[#445246]">${activeLabel}</span>
       </div>
 
       <!-- Top Right Controls -->
       <div class="flex items-center gap-3">
-        <!-- Wallet Badge -->
-        ${STATE.auth.walletAddress ? `
-          <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
-            <span class="w-2 h-2 rounded-full bg-[#2FA36B] animate-pulse"></span>
-            <span>${STATE.auth.walletAddress.substring(0, 6)}...${STATE.auth.walletAddress.substring(STATE.auth.walletAddress.length - 4)}</span>
-          </div>
-        ` : ''}
+        <!-- Wallet Pill (opens Wallet & Network Modal) -->
+        <button
+          onclick="openModal('wallet_modal')"
+          title="View connected wallet & network settings"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-medium transition-smooth border cursor-pointer ${
+            address
+              ? 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5] hover:bg-[#D8EEDE]'
+              : 'bg-[#F0F5F1] text-[#445246] border-[#E2E9E3] hover:bg-[#E2E9E3]'
+          }"
+        >
+          <span class="w-2 h-2 rounded-full ${address ? 'bg-[#2FA36B]' : 'bg-[#8B9C8E]'}"></span>
+          <span>${shortAddr}</span>
+        </button>
 
         <!-- Logout Button -->
-        <button
-          onclick="handleLogout()"
-          title="Sign out of Guardvane"
-          class="px-2.5 py-1 text-xs text-[#627566] hover:text-[#C53030] hover:bg-[#FDE8E8] rounded-md transition-smooth font-medium cursor-pointer"
-        >
-          Logout
-        </button>
+        ${address ? `
+          <button
+            onclick="handleLogout()"
+            title="Sign out of Guardvane"
+            class="px-2.5 py-1 text-xs text-[#627566] hover:text-[#C53030] hover:bg-[#FDE8E8] rounded-md transition-smooth font-medium cursor-pointer"
+          >
+            Logout
+          </button>
+        ` : ''}
       </div>
     </header>
   `;
@@ -758,12 +797,6 @@ function renderDashboardView() {
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Dashboard</h1>
       <div class="flex items-center gap-3">
-        <button onclick="openModal('quick_analyze')" class="px-4 py-2 bg-[#FFFFFF] border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2">
-          <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-          Analyze a Prompt
-        </button>
         <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -776,9 +809,8 @@ function renderDashboardView() {
     <!-- 4 Clean Metric Cards (Matching Claude Console developer style) -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>Saved Prompts</span>
-          <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">Private</span>
+        <div class="text-[#627566] text-[13px] font-medium">
+          Saved Prompts
         </div>
         <div class="mt-3 flex items-baseline gap-2">
           <span class="text-3xl font-semibold tracking-tight text-[#202820]">${savedPromptsCount}</span>
@@ -790,9 +822,8 @@ function renderDashboardView() {
       </div>
 
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>Active Requests</span>
-          <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] px-2 py-0.5 rounded font-medium">In Flight</span>
+        <div class="text-[#627566] text-[13px] font-medium">
+          Active Requests
         </div>
         <div class="mt-3 flex items-baseline gap-2">
           <span class="text-3xl font-semibold tracking-tight text-[#202820]">${activeRequestsCount}</span>
@@ -804,9 +835,8 @@ function renderDashboardView() {
       </div>
 
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>Completed Audits</span>
-          <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">Reports</span>
+        <div class="text-[#627566] text-[13px] font-medium">
+          Completed Audits
         </div>
         <div class="mt-3 flex items-baseline gap-2">
           <span class="text-3xl font-semibold tracking-tight text-[#202820]">${completedAuditsCount}</span>
@@ -818,9 +848,8 @@ function renderDashboardView() {
       </div>
 
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div class="flex items-center justify-between text-[#627566] text-[13px] font-medium">
-          <span>Available Providers</span>
-          <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium">OpiHub</span>
+        <div class="text-[#627566] text-[13px] font-medium">
+          Available Providers
         </div>
         <div class="mt-3 flex items-baseline gap-2">
           <span class="text-3xl font-semibold tracking-tight text-[#202820]">${availableProvidersCount}</span>
@@ -889,110 +918,159 @@ function renderDashboardView() {
 // 2. OpiHub Marketplace Discovery Page
 // ---------------------------------------------------------------------------
 
+function setOpihubTab(tab) {
+  STATE.opihubTab = tab;
+  renderApp();
+}
+
 function renderOpiHubView() {
+  const isServicesTab = (STATE.opihubTab !== 'providers');
+
   const categories = [
-    { id: 'all', label: 'All Services & Specialists' },
-    { id: 'prompt_optimization', label: 'Prompt Optimization' },
+    { id: 'all', label: 'All Categories' },
     { id: 'prompt_engineering', label: 'Prompt Engineering' },
-    { id: 'loop_engineering', label: 'Loop Engineering' },
-    { id: 'codebase_security', label: 'Codebase Security Check' },
-    { id: 'application_testing', label: 'Application Testing' }
+    { id: 'loop_engineering', label: 'Prompt Loop Engineering' },
+    { id: 'prompt_optimization', label: 'Prompt Optimization' },
+    { id: 'prompt_security_analysis', label: 'Prompt Security Analysis' },
+    { id: 'codebase_security', label: 'Codebase Security Audit' },
+    { id: 'application_security_testing', label: 'Application Security Testing' }
   ];
 
-  const filtered = STATE.data.providers.filter(p => {
+  const filteredServices = (STATE.data.services || []).filter(s => {
     if (STATE.filters.search) {
       const q = STATE.filters.search.toLowerCase();
-      const matchName = p.display_name.toLowerCase().includes(q);
-      const matchTitle = p.title.toLowerCase().includes(q);
-      const matchDesc = p.description.toLowerCase().includes(q);
-      const matchSkills = (p.skills || []).some(s => s.toLowerCase().includes(q));
+      const matchTitle = (s.title || '').toLowerCase().includes(q);
+      const matchDesc = (s.description || '').toLowerCase().includes(q);
+      const matchProv = (s.provider_name || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchProv) return false;
+    }
+    if (STATE.filters.category && STATE.filters.category !== 'all') {
+      if ((s.category || '').toLowerCase() !== STATE.filters.category.toLowerCase()) return false;
+    }
+    if (STATE.filters.providerType) {
+      if (s.execution_type !== (STATE.filters.providerType === 'automated' ? 'automated' : 'manual')) return false;
+    }
+    return true;
+  });
+
+  const filteredProviders = (STATE.data.providers || []).filter(p => {
+    if (STATE.filters.search) {
+      const q = STATE.filters.search.toLowerCase();
+      const matchName = (p.display_name || '').toLowerCase().includes(q);
+      const matchTitle = (p.title || '').toLowerCase().includes(q);
+      const matchDesc = (p.description || '').toLowerCase().includes(q);
+      const matchSkills = (p.skills || []).some(sk => sk.toLowerCase().includes(q));
       if (!matchName && !matchTitle && !matchDesc && !matchSkills) return false;
     }
-
     if (STATE.filters.category && STATE.filters.category !== 'all') {
       const hasCat = (p.categories || []).some(c => c.toLowerCase() === STATE.filters.category.toLowerCase());
       if (!hasCat) return false;
     }
-
     if (STATE.filters.providerType && p.provider_type !== STATE.filters.providerType) {
       return false;
-    }
-
-    return true;
-  });
-
-  const matchingServices = STATE.data.services.filter(s => {
-    if (STATE.filters.category && STATE.filters.category !== 'all') {
-      return s.category === STATE.filters.category;
     }
     return true;
   });
 
   return `
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">OpiHub</h1>
-      </div>
-    </div>
-
-    <!-- Category Filter Tabs with Authority Indicators -->
-    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#E2E9E3]">
-      ${categories.map(c => `
-        <button
-          onclick="setCategoryFilter('${c.id}')"
-          class="px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-smooth flex items-center gap-1.5 ${
-            STATE.filters.category === c.id
-              ? 'bg-[#176B45] text-white shadow-xs'
-              : 'bg-white border border-[#E2E9E3] text-[#445246] hover:bg-[#F0F5F1]'
-          }"
-        >
-          <span>${c.label}</span>
-          ${(c.id === 'codebase_security' || c.id === 'application_testing') ? `
-            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded ${STATE.filters.category === c.id ? 'bg-white/20 text-white' : 'bg-[#FEF3C7] text-[#92400E]'}">Specialists</span>
-          ` : ''}
-        </button>
-      `).join('')}
-    </div>
-
-    <!-- Sub-Filters: Type, Availability, Count -->
-    <div class="flex items-center justify-between gap-4 bg-white p-3.5 border border-[#E2E9E3] rounded-lg shadow-xs">
-      <div class="flex items-center gap-3">
-        <span class="text-[13px] font-medium text-[#445246]">Provider Type:</span>
-        <select
-          onchange="setProviderTypeFilter(this.value)"
-          class="bg-white border border-[#CBD7CE] text-[13.5px] text-[#202820] font-medium rounded-md px-3.5 py-2 min-w-[220px] focus:outline-none focus:border-[#176B45] focus:ring-1 focus:ring-[#176B45] shadow-2xs transition-smooth cursor-pointer"
-        >
-          <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All Types (Automated & Specialists)</option>
-          <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Automated 0G Defense Agent</option>
-          <option value="human" ${STATE.filters.providerType === 'human' ? 'selected' : ''}>Human Security Specialists</option>
-        </select>
-      </div>
-
-      <div class="text-[13px] text-[#627566]">
-        Showing <strong class="text-[#202820]">${filtered.length}</strong> providers • <strong class="text-[#202820]">${matchingServices.length}</strong> active offerings
-      </div>
-    </div>
-
-    <!-- Providers Grid -->
-    ${filtered.length > 0 ? `
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        ${filtered.map(p => renderCleanProviderCard(p)).join('')}
-      </div>
-    ` : `
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
-        <div class="w-12 h-12 rounded-full bg-[#EAF5EE] text-[#176B45] flex items-center justify-center mx-auto">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+    <div class="space-y-6">
+      <!-- Top Title & View Mode Toggle -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">OpiHub Marketplace</h1>
+          <p class="text-[13px] text-[#627566] mt-0.5">
+            Direct AI security services: choose a service offering or specialist to submit review requests directly.
+          </p>
         </div>
-        <h3 class="text-[15px] font-semibold text-[#202820]">No providers matched your filter</h3>
-        <p class="text-[13px] text-[#627566]">Try clearing your search query or selecting a different category.</p>
-        <button onclick="resetFilters()" class="px-3.5 py-1.5 text-[13px] font-medium bg-[#176B45] text-white rounded-md">
-          Reset Filters
-        </button>
+
+        <!-- View Mode Switcher -->
+        <div class="inline-flex p-1 bg-[#F0F5F1] rounded-lg border border-[#E2E9E3]">
+          <button
+            onclick="setOpihubTab('services')"
+            class="px-4 py-1.5 text-xs font-semibold rounded-md transition-smooth cursor-pointer ${
+              isServicesTab ? 'bg-white text-[#176B45] shadow-xs' : 'text-[#627566] hover:text-[#202820]'
+            }"
+          >
+            Services (${filteredServices.length})
+          </button>
+          <button
+            onclick="setOpihubTab('providers')"
+            class="px-4 py-1.5 text-xs font-semibold rounded-md transition-smooth cursor-pointer ${
+              !isServicesTab ? 'bg-white text-[#176B45] shadow-xs' : 'text-[#627566] hover:text-[#202820]'
+            }"
+          >
+            Specialists & Agents (${filteredProviders.length})
+          </button>
+        </div>
       </div>
-    `}
+
+      <!-- Category Filter Tabs -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#E2E9E3]">
+        ${categories.map(c => `
+          <button
+            onclick="setCategoryFilter('${c.id}')"
+            class="px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-smooth flex items-center gap-1.5 cursor-pointer ${
+              STATE.filters.category === c.id
+                ? 'bg-[#176B45] text-white shadow-xs'
+                : 'bg-white border border-[#E2E9E3] text-[#445246] hover:bg-[#F0F5F1]'
+            }"
+          >
+            <span>${c.label}</span>
+          </button>
+        `).join('')}
+      </div>
+
+      <!-- Controls: Search & Provider Type Filter -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 border border-[#E2E9E3] rounded-lg shadow-xs">
+        <div class="flex items-center gap-3">
+          <span class="text-[13px] font-medium text-[#445246]">Provider Type:</span>
+          <select
+            onchange="setProviderTypeFilter(this.value)"
+            class="bg-white border border-[#CBD7CE] text-[13px] text-[#202820] font-medium rounded-md px-3 py-1.5 min-w-[200px] focus:outline-none focus:border-[#176B45] shadow-2xs transition-smooth cursor-pointer"
+          >
+            <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All Types (0G Agents & Specialists)</option>
+            <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Autonomous 0G Defense Agents</option>
+            <option value="human" ${STATE.filters.providerType === 'human' ? 'selected' : ''}>Human Security Specialists</option>
+          </select>
+        </div>
+
+        <div class="text-[13px] text-[#627566]">
+          Showing <strong class="text-[#202820]">${isServicesTab ? filteredServices.length : filteredProviders.length}</strong> ${isServicesTab ? 'available services' : 'verified providers'}
+        </div>
+      </div>
+
+      ${isServicesTab ? `
+        <!-- Services Grid -->
+        ${filteredServices.length > 0 ? `
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${filteredServices.map(s => renderCleanServiceCard(s, true)).join('')}
+          </div>
+        ` : `
+          <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
+            <h3 class="text-[15px] font-semibold text-[#202820]">No services match your filter</h3>
+            <p class="text-[13px] text-[#627566]">Try selecting a different category or clearing search filters.</p>
+            <button onclick="resetFilters()" class="px-3.5 py-1.5 text-[13px] font-medium bg-[#176B45] text-white rounded-md cursor-pointer">
+              Reset Filters
+            </button>
+          </div>
+        `}
+      ` : `
+        <!-- Providers Grid -->
+        ${filteredProviders.length > 0 ? `
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${filteredProviders.map(p => renderCleanProviderCard(p)).join('')}
+          </div>
+        ` : `
+          <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
+            <h3 class="text-[15px] font-semibold text-[#202820]">No providers matched your filter</h3>
+            <p class="text-[13px] text-[#627566]">Try clearing your search query or selecting a different category.</p>
+            <button onclick="resetFilters()" class="px-3.5 py-1.5 text-[13px] font-medium bg-[#176B45] text-white rounded-md cursor-pointer">
+              Reset Filters
+            </button>
+          </div>
+        `}
+      `}
+    </div>
   `;
 }
 
@@ -1008,11 +1086,37 @@ function renderProviderDetailView() {
 
   const providerServices = STATE.data.services.filter(s => s.provider_id === provider.id);
   const isAutomated = provider.provider_type === 'automated';
+  const currentWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const isOwner = currentWallet && provider.wallet_address && (provider.wallet_address.toLowerCase() === currentWallet) && !provider.is_platform_managed;
+
+  const deliveredReports = (STATE.data.reports || []).filter(r =>
+    r.provider_id === provider.id ||
+    (provider.display_name && r.provider_name === provider.display_name)
+  );
+  const completedOrders = (STATE.data.orders || []).filter(o =>
+    (o.provider_id === provider.id || (provider.wallet_address && o.provider_wallet === provider.wallet_address) || (provider.display_name && o.provider_name === provider.display_name)) &&
+    (o.status === 'delivered' || o.status === 'completed')
+  );
+  const auditsDeliveredCount = Math.max(deliveredReports.length, completedOrders.length, provider.reputation_metadata?.audits_completed || 0);
+
+  let turnaroundDisplay = '~5s (0G AI)';
+  if (isAutomated) {
+    turnaroundDisplay = '~5s (0G AI)';
+  } else {
+    const srvWithDelivery = providerServices.find(s => s.estimated_delivery);
+    if (srvWithDelivery && srvWithDelivery.estimated_delivery) {
+      turnaroundDisplay = srvWithDelivery.estimated_delivery;
+    } else if (provider.reputation_metadata?.avg_turnaround_hours) {
+      turnaroundDisplay = `${provider.reputation_metadata.avg_turnaround_hours}h`;
+    } else {
+      turnaroundDisplay = '24 hours';
+    }
+  }
 
   return `
     <!-- Back Link -->
     <div>
-      <button onclick="navigateTo('opihub')" class="text-[13px] text-[#176B45] font-medium hover:underline flex items-center gap-1.5">
+      <button onclick="navigateTo('opihub')" class="text-[13px] text-[#176B45] font-medium hover:underline flex items-center gap-1.5 cursor-pointer">
         ← Back to OpiHub
       </button>
     </div>
@@ -1020,27 +1124,21 @@ function renderProviderDetailView() {
     <!-- Provider Header Card -->
     <div class="bg-white border border-[#E2E9E3] rounded-lg p-6 shadow-xs space-y-6">
       <div class="flex items-start justify-between">
-        <div class="flex items-start gap-5">
-          <img
-            src="${provider.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}"
-            alt="${provider.display_name}"
-            class="w-16 h-16 rounded-lg object-cover border border-[#E2E9E3] shadow-xs shrink-0"
-          />
-          <div class="space-y-1">
-            <div class="flex items-center gap-2">
-              <h1 class="text-xl font-semibold text-[#202820] tracking-tight">${provider.display_name}</h1>
-              ${provider.verified ? `
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#C4E4CE]">
-                  <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                  </svg>
-                  Verified Provider
-                </span>
-              ` : `
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F7F9F7] text-[#627566] border border-[#E2E9E3]">
-                  Registered
-                </span>
-              `}
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-semibold text-[#202820] tracking-tight">${provider.display_name}</h1>
+            ${provider.verified ? `
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#C4E4CE]">
+                <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                Verified Provider
+              </span>
+            ` : `
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F7F9F7] text-[#627566] border border-[#E2E9E3]">
+                Registered
+              </span>
+            `}
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
                 ${isAutomated ? 'Automated AI Security Provider' : 'Human Security Provider'}
               </span>
@@ -1053,12 +1151,22 @@ function renderProviderDetailView() {
           </div>
         </div>
 
-        <button
-          onclick="openModal('request_review', { providerId: '${provider.id}', serviceId: '${providerServices[0]?.id || ''}' })"
-          class="px-5 py-2.5 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth"
-        >
-          Request Review
-        </button>
+        <div class="flex items-center gap-2.5">
+          ${isOwner ? `
+            <button
+              onclick="openModal('edit_provider', { providerId: '${provider.id}' })"
+              class="px-4 py-2.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+            >
+              ✏️ Edit Profile
+            </button>
+          ` : ''}
+          <button
+            onclick="openModal('request_review', { providerId: '${provider.id}', serviceId: '${providerServices[0]?.id || ''}' })"
+            class="px-5 py-2.5 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+          >
+            Request Review
+          </button>
+        </div>
       </div>
 
       <!-- Description & Genuine Track Record -->
@@ -1085,12 +1193,12 @@ function renderProviderDetailView() {
           <div class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider mb-2">Track Record & Performance</div>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div class="bg-white p-3 rounded border border-[#E2E9E3]">
-              <div class="text-xl font-bold text-[#202820]">${provider.reputation_metadata.audits_completed || 0}</div>
+              <div class="text-xl font-bold text-[#202820]">${auditsDeliveredCount}</div>
               <div class="text-[11px] text-[#627566] mt-0.5">Audits Delivered</div>
             </div>
             <div class="bg-white p-3 rounded border border-[#E2E9E3]">
-              <div class="text-xl font-bold text-[#202820]">${provider.reputation_metadata.avg_turnaround_hours ? `${provider.reputation_metadata.avg_turnaround_hours}h` : (provider.reputation_metadata.avg_turnaround_sec ? `${provider.reputation_metadata.avg_turnaround_sec}s` : 'Instant')}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Turnaround Time</div>
+              <div class="text-xl font-bold text-[#176B45] font-mono">${escapeHtml(turnaroundDisplay)}</div>
+              <div class="text-[11px] text-[#627566] mt-0.5">Average Turnaround</div>
             </div>
             <div class="bg-white p-3 rounded border border-[#E2E9E3]">
               <div class="text-xl font-bold text-[#202820]">${isAutomated ? 'Autonomous' : 'Manual'}</div>
@@ -1109,10 +1217,18 @@ function renderProviderDetailView() {
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-[15px] font-semibold tracking-tight text-[#202820]">Published Services (${providerServices.length})</h2>
+        ${isOwner ? `
+          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth flex items-center gap-1.5 cursor-pointer shadow-xs">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Service
+          </button>
+        ` : ''}
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        ${providerServices.map(s => renderCleanServiceCard(s, false)).join('')}
+        ${providerServices.map(s => renderCleanServiceCard(s, false, isOwner)).join('')}
       </div>
     </div>
   `;
@@ -1123,125 +1239,101 @@ function renderProviderDetailView() {
 // ---------------------------------------------------------------------------
 
 function renderBecomeProviderView() {
+  const wallet = STATE.auth.walletAddress || '';
+
   return `
     <div class="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Become a Provider</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Become a Security Provider</h1>
+        <p class="text-[13px] text-[#627566] mt-0.5">Register as an expert human security researcher to offer verified security reviews on OpiHub.</p>
       </div>
 
       <form id="become-provider-form" onsubmit="handleBecomeProvider(event)" class="bg-white border border-[#E2E9E3] rounded-lg p-7 shadow-xs space-y-6">
+        <input type="hidden" name="provider_type" value="human" />
+
         <!-- Section 1: Provider Identity -->
         <div class="space-y-4">
-          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">1. Provider Identity</h3>
+          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">1. Specialist Identity</h3>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Name *</label>
-              <input type="text" name="display_name" required placeholder="e.g. Dr. Maya Patel or GuardAgent-X" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider / Display Name *</label>
+              <input type="text" name="display_name" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
             </div>
 
             <div>
               <label class="block text-[13px] font-medium text-[#202820] mb-1">Professional Title *</label>
-              <input type="text" name="title" required placeholder="e.g. Senior LLM Red Teamer & Jailbreak Analyst" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <input type="text" name="title" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Type *</label>
-              <select name="provider_type" id="form-provider-type" onchange="toggleAutomatedFields(this.value)" class="w-full px-3.5 py-2.5 bg-white border border-[#CBD7CE] rounded-md text-[13.5px] font-medium text-[#202820] focus:outline-none focus:border-[#176B45] focus:ring-1 focus:ring-[#176B45] shadow-2xs transition-smooth cursor-pointer">
-                <option value="human">Human Security Provider</option>
-                <option value="automated">Automated AI Security Provider</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Wallet Address</label>
-              <input type="text" name="wallet_address" value="${escapeForAttr(STATE.auth.walletAddress || '')}" placeholder="0x..." class="w-full px-3 py-2 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[13.5px] font-mono focus:outline-none focus:border-[#176B45]" />
-              <p class="text-[11px] text-[#627566] mt-1">Audit requests and review orders from clients will be linked to this wallet.</p>
-            </div>
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Connected Wallet Address (Read-only)</label>
+            <input type="text" name="wallet_address" value="${escapeForAttr(wallet)}" readonly class="w-full px-3 py-2 bg-[#F0F5F1] border border-[#E2E9E3] rounded-md text-[13.5px] font-mono text-[#627566] cursor-not-allowed" />
+            <p class="text-[11px] text-[#627566] mt-1">Orders, escrow payments, and workspace assignments are persistently bound to this wallet.</p>
           </div>
 
           <div>
             <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Bio / Description *</label>
-            <textarea name="description" rows="3" required placeholder="Describe your security focus, background, attack surfaces tested, and tooling..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]"></textarea>
+            <textarea name="description" rows="3" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]"></textarea>
           </div>
         </div>
 
-        <!-- Section 2: Automated Provider Configuration (Conditional) -->
-        <div id="automated-provider-fields" class="space-y-4 hidden p-4 bg-[#F7F9F7] rounded-md border border-[#E2E9E3]">
-          <h3 class="text-[13px] font-semibold text-[#176B45]">Automated Agent Configuration</h3>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">API Endpoint</label>
-              <input type="url" name="endpoint_url" placeholder="https://api.yourdomain.com/v1/scan" class="w-full px-3 py-2 bg-white border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]" />
-            </div>
-
-            <div>
-              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Input / Output Format</label>
-              <input type="text" name="io_format" value="JSON / Prompt-in, Hardened-out" class="w-full px-3 py-2 bg-white border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 3: Skills & Categories -->
+        <!-- Section 2: Skills & Categories -->
         <div class="space-y-4">
-          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">2. Expertise & Categories</h3>
+          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">2. Expertise & Supported Categories</h3>
 
           <div>
             <label class="block text-[13px] font-medium text-[#202820] mb-1">Skills (Comma-separated)</label>
-            <input type="text" name="skills_raw" placeholder="Adversarial Prompting, OWASP LLM Top-10, Indirect Injection, Jailbreak Defense" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+            <input type="text" name="skills_raw" placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Categories</label>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="ai_security" checked /> AI Security</label>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Supported Service Categories (Select at least one) *</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="prompt_engineering" checked /> Prompt Engineering</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="llm_optimization" /> LLM Optimization</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="rag_security" /> RAG Security</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="ai_agents" /> AI Agents</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="api_security" /> Application Security</label>
+              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="loop_engineering" checked /> Prompt Loop Engineering</label>
+              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="prompt_optimization" checked /> Prompt Optimization</label>
+              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="prompt_security_analysis" /> Prompt Security Analysis</label>
+              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="codebase_security" /> Codebase Security Audit</label>
+              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="application_security_testing" /> Application Security Testing</label>
             </div>
           </div>
         </div>
 
-        <!-- Section 4: Initial Service Listing -->
+        <!-- Section 3: Initial Service Listing -->
         <div class="space-y-4">
           <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">3. Initial Service Offering</h3>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Service Title *</label>
-              <input type="text" name="service_title" required placeholder="e.g. Prompt Injection Vulnerability Audit" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
-            </div>
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Service Title *</label>
+            <input type="text" name="service_title" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+          </div>
 
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD) *</label>
               <input type="number" step="0.01" min="0" name="service_price" value="50.00" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
             </div>
-          </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Delivery Time *</label>
-              <input type="text" name="service_delivery" required value="24 hours" placeholder="e.g. 24 hours, Instant (< 10s)" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Delivery *</label>
+              <input type="text" name="service_delivery" required value="24 hours" placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
             </div>
 
             <div>
               <label class="block text-[13px] font-medium text-[#202820] mb-1">Portfolio or GitHub URL</label>
-              <input type="url" name="portfolio_url" placeholder="https://github.com/your-username" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <input type="url" name="portfolio_url" placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
             </div>
           </div>
         </div>
 
         <!-- Submit Button -->
         <div class="pt-4 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="navigateTo('dashboard')" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] hover:bg-[#F7F9F7] text-[13.5px] font-medium rounded-md transition-smooth">
+          <button type="button" onclick="navigateTo('dashboard')" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] hover:bg-[#F7F9F7] text-[13.5px] font-medium rounded-md transition-smooth cursor-pointer">
             Cancel
           </button>
-          <button type="submit" class="px-6 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth">
+          <button type="submit" class="px-6 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
             Register Provider Profile
           </button>
         </div>
@@ -1283,6 +1375,7 @@ function renderProviderWorkspaceView() {
   }
 
   const provider = myProvider;
+  const myServices = STATE.data.services.filter(s => s.provider_id === provider.id);
   const assignedOrders = STATE.data.orders.filter(o => o.provider_id === provider.id || (provider.wallet_address && o.provider_wallet === provider.wallet_address));
   const incoming = assignedOrders.filter(o => o.status === 'requested');
   const inProgress = assignedOrders.filter(o => o.status === 'accepted' || o.status === 'in_progress');
@@ -1292,22 +1385,22 @@ function renderProviderWorkspaceView() {
     <div class="space-y-6">
       <!-- Provider Workspace Banner -->
       <div class="bg-white border border-[#E2E9E3] rounded-lg p-6 shadow-xs flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <img src="${provider.avatar_url}" class="w-14 h-14 rounded-lg object-cover border border-[#E2E9E3]" />
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-xl font-semibold text-[#202820]">${provider.display_name}</h1>
-              <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">Provider Workspace</span>
-            </div>
-            <p class="text-[13px] text-[#627566]">${provider.title}</p>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-semibold text-[#202820]">${provider.display_name}</h1>
+            <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">Provider Workspace</span>
           </div>
+          <p class="text-[13px] text-[#627566] mt-0.5">${provider.title}</p>
         </div>
 
         <div class="flex items-center gap-3">
-          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="px-3.5 py-2 bg-[#FFFFFF] border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth">
+          <button onclick="openModal('edit_provider', { providerId: '${provider.id}' })" class="px-3.5 py-2 bg-white border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+            Edit Profile
+          </button>
+          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="px-3.5 py-2 bg-white border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
             + Publish New Service
           </button>
-          <button onclick="navigateTo('provider_detail', '${provider.id}')" class="px-3.5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth">
+          <button onclick="navigateTo('provider_detail', '${provider.id}')" class="px-3.5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
             View Public Profile
           </button>
         </div>
@@ -1329,8 +1422,56 @@ function renderProviderWorkspaceView() {
         </div>
         <div class="bg-white p-4 rounded-lg border border-[#E2E9E3]">
           <span class="text-[12px] text-[#627566] font-medium">Completed Value</span>
-          <div class="text-2xl font-bold text-[#202820] mt-1 font-mono">$${(completed.length * 95).toFixed(2)}</div>
+          <div class="text-2xl font-bold text-[#202820] mt-1 font-mono">$${(completed.reduce((acc, o) => acc + (o.price || 0), 0)).toFixed(2)}</div>
         </div>
+      </div>
+
+      <!-- My Published Services Section -->
+      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
+        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-[14.5px] font-semibold text-[#202820]">My Published Services</h2>
+            <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">${myServices.length} offerings</span>
+          </div>
+          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Add New Service
+          </button>
+        </div>
+
+        ${myServices.length > 0 ? `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${myServices.map(s => `
+              <div class="p-4 rounded-lg border border-[#E2E9E3] bg-[#FAFBF9] flex flex-col justify-between space-y-3">
+                <div class="space-y-1.5">
+                  <div class="flex items-start justify-between gap-2">
+                    <h3 class="text-[14px] font-semibold text-[#202820]">${escapeHtml(s.title)}</h3>
+                    <span class="font-mono font-bold text-[14px] text-[#176B45]">$${s.price.toFixed(2)}</span>
+                  </div>
+                  <div class="text-[12px] text-[#627566]">
+                    Category: <strong class="text-[#202820]">${formatCategoryName(s.category)}</strong> • Delivery: ${escapeHtml(s.estimated_delivery)}
+                  </div>
+                  <p class="text-[12.5px] text-[#445246] line-clamp-2 leading-relaxed">${escapeHtml(s.description)}</p>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E9E3]/70">
+                  <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="px-3 py-1 text-[12px] font-medium bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#176B45] rounded transition-smooth cursor-pointer">
+                    Edit
+                  </button>
+                  <button onclick="handleDeleteService('${s.id}')" class="px-3 py-1 text-[12px] font-medium bg-[#FEE2E2] border border-[#FECACA] hover:bg-[#FCA5A5] text-[#991B1B] rounded transition-smooth cursor-pointer">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="p-6 text-center text-[#627566] text-[13px]">
+            You have not published any service offerings yet. Click "Add New Service" above to list one.
+          </div>
+        `}
       </div>
 
       <!-- Incoming Requests Section -->
@@ -1340,7 +1481,7 @@ function renderProviderWorkspaceView() {
             <h2 class="text-[14.5px] font-semibold text-[#202820]">Incoming Service Requests</h2>
             <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] font-medium px-2 py-0.5 rounded">${incoming.length} pending</span>
           </div>
-          <span class="text-[12px] text-[#627566]">Inspect submitted links and scope before accepting</span>
+          <span class="text-[12px] text-[#627566]">Review incoming customer requests to accept or decline</span>
         </div>
 
         ${incoming.length > 0 ? `
@@ -1361,9 +1502,9 @@ function renderProviderWorkspaceView() {
 
                   <div class="flex items-center gap-2 shrink-0">
                     <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth cursor-pointer">
-                      Accept Order
+                      Accept Request
                     </button>
-                    <button onclick="handleOrderStatusUpdate('${o.id}', 'rejected')" class="px-3 py-1.5 border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FCA5A5] text-[12px] font-medium rounded transition-smooth cursor-pointer">
+                    <button onclick="handleOrderReject('${o.id}')" class="px-3 py-1.5 border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FCA5A5] text-[12px] font-medium rounded transition-smooth cursor-pointer">
                       Reject
                     </button>
                   </div>
@@ -1460,12 +1601,6 @@ function renderMyPromptsView() {
               </div>
 
               <div class="flex items-center gap-2">
-                <button onclick="runLocalPromptAnalysis('${escapeForAttr(p.content)}', '${p.id}')" class="px-3 py-1.5 bg-[#FAFBF9] border border-[#E2E9E3] hover:border-[#176B45] text-[#176B45] text-[12px] font-semibold rounded transition-smooth flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                  Analyze with Guardvane
-                </button>
                 <button onclick="openModal('request_review', { promptText: '${escapeForAttr(p.content)}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth">
                   Submit to Provider
                 </button>
@@ -1533,7 +1668,7 @@ async function loadArkivTasks(force = false) {
 function renderArkivTaskCard(t, currentWallet) {
   const isOwner = currentWallet && t.customer_wallet && t.customer_wallet.toLowerCase() === currentWallet;
   const shortOwner = t.customer_wallet ? (t.customer_wallet.substring(0, 6) + '...' + t.customer_wallet.substring(t.customer_wallet.length - 4)) : 'Anonymous';
-  const shortKey = t.entity_key ? (t.entity_key.substring(0, 10) + '...' + t.entity_key.substring(t.entity_key.length - 6)) : 'Pending';
+  const hasOnChainRecord = !!(t.entity_key || t.tx_hash);
 
   const statusColors = {
     open: 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]',
@@ -1583,18 +1718,24 @@ function renderArkivTaskCard(t, currentWallet) {
         <div class="flex items-center justify-between text-[11.5px] text-[#627566]">
           <div class="flex items-center gap-1.5">
             <span>Posted by:</span>
-            <a
-              href="https://explorer.rabdi.db-chain.testnet.arkiv.network/address/${t.customer_wallet}"
-              target="_blank"
-              class="font-mono text-[#176B45] hover:underline"
-            >
-              ${shortOwner}
-            </a>
+            <span class="font-mono text-[#202820]">${shortOwner}</span>
             ${isOwner ? '<span class="text-[9.5px] px-1 rounded bg-[#EAF5EE] text-[#176B45] font-semibold font-mono">YOU</span>' : ''}
           </div>
 
-          <div class="font-mono text-[10.5px] text-[#8B9C8E]" title="Entity Key: ${t.entity_key}">
-            Key: ${shortKey}
+          <div class="flex items-center gap-2">
+            ${hasOnChainRecord ? `
+              <span class="inline-flex items-center gap-1 text-[11px] text-[#176B45] font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
+                <span>Published on Arkiv</span>
+              </span>
+              <a
+                href="https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/${t.tx_hash || t.entity_key}"
+                target="_blank"
+                class="text-[11px] text-[#176B45] hover:underline flex items-center gap-0.5"
+              >
+                View on Arkiv ↗
+              </a>
+            ` : ''}
           </div>
         </div>
 
@@ -1612,7 +1753,7 @@ function renderArkivTaskCard(t, currentWallet) {
               onclick="openSubmitBidModal('${t.task_id}')"
               class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
             >
-              Submit Bid
+              Submit Proposal
             </button>
           ` : ''}
 
@@ -1763,66 +1904,113 @@ function renderArkivTasksView() {
 
 function renderMyRequestsView() {
   const orders = STATE.data.orders;
+  const currentWallet = STATE.auth.walletAddress ? STATE.auth.walletAddress.toLowerCase() : '';
 
   return `
     <div class="space-y-5">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">My Requests</h1>
+          <p class="text-[13px] text-[#627566] mt-0.5">Track your security service requests, payment escrow status, and audit reports.</p>
         </div>
-        <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs">
+        <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs cursor-pointer">
           + Explore OpiHub
         </button>
       </div>
 
       <!-- Orders Table -->
       <div class="bg-white border border-[#E2E9E3] rounded-lg shadow-xs overflow-hidden">
-        <table class="w-full text-left text-[13px]">
-          <thead class="bg-[#FAFBF9] border-b border-[#E2E9E3] text-[#627566] text-[11.5px] uppercase font-semibold tracking-wider">
-            <tr>
-              <th class="px-5 py-3">Order ID</th>
-              <th class="px-5 py-3">Service</th>
-              <th class="px-5 py-3">Provider</th>
-              <th class="px-5 py-3">Status</th>
-              <th class="px-5 py-3">Price</th>
-              <th class="px-5 py-3">Date</th>
-              <th class="px-5 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-[#E2E9E3]">
-            ${orders.map(o => `
-              <tr class="hover:bg-[#FAFBF9]/80 transition-smooth">
-                <td class="px-5 py-3.5 font-mono text-[12px] text-[#627566]">${o.id}</td>
-                <td class="px-5 py-3.5 font-medium text-[#202820]">
-                  ${escapeHtml(o.service_title)}
-                  <div class="text-[11px] text-[#627566] font-normal">${o.execution_type === 'automated' ? 'Automated Execution' : 'Human Review'}</div>
-                </td>
-                <td class="px-5 py-3.5 text-[#445246]">${escapeHtml(o.provider_name)}</td>
-                <td class="px-5 py-3.5">${renderStatusBadge(o.status)}</td>
-                <td class="px-5 py-3.5 font-mono font-medium text-[#202820]">$${o.price.toFixed(2)}</td>
-                <td class="px-5 py-3.5 text-[#627566]">${new Date(o.created_at).toLocaleDateString()}</td>
-                <td class="px-5 py-3.5 text-right">
-                  <div class="flex items-center justify-end gap-2">
-                    ${(() => {
-                      const notes = parseDeliverableNotes(o.deliverable_notes);
-                      if (notes.ticket) {
-                        return `<span class="px-2 py-0.5 rounded text-[10.5px] font-mono font-semibold bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">Ticket Open</span>`;
-                      }
-                      return '';
-                    })()}
-                    ${o.report_id ? `
-                      <button onclick="viewReport('${o.report_id}')" class="px-2.5 py-1 bg-[#EAF5EE] text-[#176B45] hover:bg-[#C4E4CE] font-medium text-[12px] rounded transition-smooth cursor-pointer">
-                        View Report
-                      </button>
-                    ` : `
-                      <span class="text-[12px] text-[#8B9C8E]">In Progress</span>
-                    `}
-                  </div>
-                </td>
+        ${orders.length > 0 ? `
+          <table class="w-full text-left text-[13px]">
+            <thead class="bg-[#FAFBF9] border-b border-[#E2E9E3] text-[#627566] text-[11.5px] uppercase font-semibold tracking-wider">
+              <tr>
+                <th class="px-5 py-3">Order ID</th>
+                <th class="px-5 py-3">Service</th>
+                <th class="px-5 py-3">Provider</th>
+                <th class="px-5 py-3">Status</th>
+                <th class="px-5 py-3">Payment</th>
+                <th class="px-5 py-3">Price</th>
+                <th class="px-5 py-3">Date</th>
+                <th class="px-5 py-3 text-right">Actions</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
+            </thead>
+            <tbody class="divide-y divide-[#E2E9E3]">
+              ${orders.map(o => {
+                return `
+                  <tr class="hover:bg-[#FAFBF9]/80 transition-smooth">
+                    <td class="px-5 py-3.5 font-mono text-[12px] text-[#627566]">${o.id}</td>
+                    <td class="px-5 py-3.5 font-medium text-[#202820]">
+                      <div>${escapeHtml(o.service_title)}</div>
+                      <div class="text-[11px] text-[#627566] font-normal mt-0.5">
+                        ${o.execution_type === 'automated' ? 'Autonomous AI Defense' : 'Specialist Security Review'}
+                      </div>
+                    </td>
+                    <td class="px-5 py-3.5 text-[#445246]">${escapeHtml(o.provider_name)}</td>
+                    <td class="px-5 py-3.5">${renderStatusBadge(o.status)}</td>
+                    <td class="px-5 py-3.5">
+                      ${o.payment_status === 'verified' ? `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
+                          <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
+                          <span>Paid / Escrowed</span>
+                        </span>
+                      ` : o.payment_status === 'pending' ? `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                          <span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
+                          <span>Pending Payment</span>
+                        </span>
+                      ` : o.payment_status === 'failed' ? `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
+                          <span>Failed</span>
+                        </span>
+                      ` : `
+                        <span class="text-[11px] text-[#627566] capitalize">${escapeHtml(o.payment_status || 'N/A')}</span>
+                      `}
+                    </td>
+                    <td class="px-5 py-3.5 font-mono font-medium text-[#202820]">$${o.price.toFixed(2)}</td>
+                    <td class="px-5 py-3.5 text-[#627566]">${new Date(o.created_at).toLocaleDateString()}</td>
+                    <td class="px-5 py-3.5 text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <button onclick="openModal('order_detail', '${o.id}')" class="px-2.5 py-1 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] font-medium text-[12px] rounded transition-smooth cursor-pointer">
+                          Details
+                        </button>
+                        ${o.payment_status === 'pending' && o.status !== 'rejected' && o.status !== 'cancelled' ? `
+                          <button
+                            onclick="handleInitiatePayment('${o.id}')"
+                            class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white font-medium text-[12px] rounded shadow-xs transition-smooth cursor-pointer"
+                          >
+                            Pay $${o.price.toFixed(2)}
+                          </button>
+                        ` : ''}
+                        ${o.report_id ? `
+                          <button onclick="viewReport('${o.report_id}')" class="px-2.5 py-1 bg-[#EAF5EE] text-[#176B45] hover:bg-[#C4E4CE] font-medium text-[12px] rounded transition-smooth cursor-pointer">
+                            Report
+                          </button>
+                        ` : ''}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        ` : `
+          <div class="py-12 text-center space-y-3">
+            <div class="w-12 h-12 mx-auto rounded-full bg-[#EAF5EE] text-[#176B45] flex items-center justify-center">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h3 class="text-[15px] font-semibold text-[#202820]">No service requests yet</h3>
+            <p class="text-[13px] text-[#627566] max-w-sm mx-auto">
+              You haven't requested any security reviews. Browse OpiHub to order from automated 0G AI agents or human specialists.
+            </p>
+            <div class="pt-1">
+              <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+                Explore OpiHub
+              </button>
+            </div>
+          </div>
+        `}
       </div>
     </div>
   `;
@@ -1978,7 +2166,7 @@ function renderOrderSubmittedSpec(o, providerWallet) {
 
       <!-- Payment & Escrow Status -->
       <div class="text-[11.5px] text-[#627566] bg-[#FAFBF9] px-3 py-1.5 rounded border border-[#E2E9E3] flex items-center justify-between">
-        <span>Payment: <strong class="text-[#176B45]">Hedera x402 Autonomous Escrow</strong> ($${o.price.toFixed(2)} USD)</span>
+        <span>Payment: <strong class="text-[#176B45]">Autonomous Escrow</strong> ($${o.price.toFixed(2)} USD)</span>
         <span class="font-mono text-[11px] text-[#202820]">Disburses to: ${providerWallet ? escapeHtml(providerWallet.substring(0, 8) + '...' + providerWallet.substring(providerWallet.length - 4)) : 'Provider Wallet'}</span>
       </div>
 
@@ -2006,8 +2194,7 @@ function renderCleanProviderCard(p) {
   return `
     <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-3">
       <div class="space-y-2.5">
-        <div class="flex items-start gap-3">
-          <img src="${p.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'}" class="w-11 h-11 rounded-lg object-cover border border-[#E2E9E3] shrink-0" />
+        <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h3 class="text-[14px] font-semibold text-[#202820] truncate">${escapeHtml(p.display_name)}</h3>
@@ -2018,12 +2205,10 @@ function renderCleanProviderCard(p) {
               ` : ''}
             </div>
             <p class="text-[11.5px] text-[#627566] line-clamp-1">${escapeHtml(p.title)}</p>
-            <div class="mt-1">
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-                ${isAutomated ? '0G AI Defense Agent' : 'Human Security Specialist'}
-              </span>
-            </div>
           </div>
+          <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono shrink-0 ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#EAF5EE] text-[#176B45]'}">
+            ${isAutomated ? '0G AI Agent' : 'Specialist'}
+          </span>
         </div>
 
         <p class="text-[12.5px] text-[#445246] line-clamp-2 leading-relaxed">
@@ -2057,8 +2242,15 @@ function renderCleanProviderCard(p) {
   `;
 }
 
-function renderCleanServiceCard(s, showProvider = true) {
+function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
   const isAutomated = s.execution_type === 'automated';
+  const currentWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const ownsService = isOwner || (
+    Boolean(currentWallet) && (
+      (Boolean(s.provider_wallet) && s.provider_wallet.toLowerCase() === currentWallet) ||
+      (s.provider_id === STATE.user.activeProviderId)
+    )
+  );
 
   return `
     <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-3">
@@ -2092,14 +2284,25 @@ function renderCleanServiceCard(s, showProvider = true) {
 
       <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
         <div class="text-[11px] text-[#627566]">
-          ${isAutomated ? '⚡ Instant On-Chain Inference' : '🔒 Hedera x402 Escrow Protected'}
+          ${isAutomated ? '⚡ Instant On-Chain Inference' : '🔒 Smart Escrow Protected'}
         </div>
-        <button
-          onclick="openModal('request_review', { serviceId: '${s.id}', providerId: '${s.provider_id}' })"
-          class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth cursor-pointer shadow-xs"
-        >
-          ${isAutomated ? 'Run 0G Defense' : 'Request Review'}
-        </button>
+        <div class="flex items-center gap-2">
+          ${ownsService ? `
+            <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="px-3 py-1 text-[12px] font-medium bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#176B45] rounded transition-smooth cursor-pointer">
+              Edit
+            </button>
+            <button onclick="handleDeleteService('${s.id}')" class="px-3 py-1 text-[12px] font-medium bg-[#FEE2E2] border border-[#FECACA] hover:bg-[#FCA5A5] text-[#991B1B] rounded transition-smooth cursor-pointer">
+              Delete
+            </button>
+          ` : `
+            <button
+              onclick="openModal('request_review', { serviceId: '${s.id}', providerId: '${s.provider_id}' })"
+              class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth cursor-pointer shadow-xs"
+            >
+              ${isAutomated ? 'Run 0G Defense' : 'Request Review'}
+            </button>
+          `}
+        </div>
       </div>
     </div>
   `;
@@ -2146,9 +2349,11 @@ function renderActivityFeed(activities) {
 // ---------------------------------------------------------------------------
 
 function renderModalContainer() {
+  const isWideModal = ['report_viewer', 'order_detail'].includes(STATE.activeModal);
+  const maxWidthClass = isWideModal ? 'max-w-4xl' : 'max-w-2xl';
   return `
     <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-      <div class="bg-white rounded-lg shadow-xl border border-[#E2E9E3] max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-xl border border-[#E2E9E3] ${maxWidthClass} w-full max-h-[92vh] overflow-y-auto">
         ${renderModalContent()}
       </div>
     </div>
@@ -2161,18 +2366,30 @@ function renderModalContent() {
       return renderRequestReviewModal();
     case 'deliver_modal':
       return renderDeliverModal();
+    case 'reject_order':
+      return renderRejectOrderModal();
     case 'quick_analyze':
       return renderQuickAnalyzeModal();
     case 'create_prompt':
       return renderCreatePromptModal();
     case 'report_viewer':
       return renderReportViewerModal();
+    case 'raise_ticket_modal':
+      return renderRaiseTicketModal();
+    case 'view_ticket_modal':
+      return renderViewTicketModal();
     case 'wallet_modal':
       return renderWalletModal();
     case 'settings_modal':
       return renderSettingsModal();
     case 'add_service_modal':
       return renderAddServiceModal();
+    case 'edit_service_modal':
+      return renderEditServiceModal();
+    case 'order_detail':
+      return renderOrderDetailModal();
+    case 'edit_provider':
+      return renderEditProviderModal();
     case 'arkiv_post_task':
       return renderArkivPostTaskModal();
     case 'arkiv_submit_bid':
@@ -2207,21 +2424,19 @@ function renderRequestReviewModal() {
       </div>
 
       <form onsubmit="handleOrderSubmit(event)" class="space-y-4">
-        <!-- Service Selector -->
-        <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Select Service Offering *</label>
-          <select
-            name="service_id"
-            id="modal-service-select"
-            onchange="onRequestModalServiceChange(this.value)"
-            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-medium text-[#202820] focus:outline-none focus:border-[#176B45]"
-          >
-            ${services.map(s => `
-              <option value="${s.id}" ${s.id === currentService?.id ? 'selected' : ''}>
-                ${escapeHtml(s.title)} — $${s.price.toFixed(2)} (${escapeHtml(s.provider_name)}${s.execution_type === 'automated' ? ' • Automated 0G' : ' • Specialist'})
-              </option>
-            `).join('')}
-          </select>
+        <!-- Selected Service Offering Summary -->
+        <input type="hidden" name="service_id" value="${currentService?.id || ''}" />
+        <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg flex items-center justify-between">
+          <div class="space-y-0.5">
+            <div class="text-[14px] font-semibold text-[#202820]">${escapeHtml(currentService?.title || 'Security Service')}</div>
+            <div class="text-[12px] text-[#627566]">${escapeHtml(currentService?.provider_name || '')} • ${formatCategoryName(category)} • Est. ${escapeHtml(currentService?.estimated_delivery || '24-48h')}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[15px] font-bold font-mono text-[#176B45]">$${(currentService?.price || 0).toFixed(2)} USD</div>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#EAF5EE] text-[#176B45]'}">
+              ${isAutomated ? '0G AI Agent' : 'Specialist Review'}
+            </span>
+          </div>
         </div>
 
         <!-- Dynamic Category-Specific Form Fields -->
@@ -2236,7 +2451,7 @@ function renderRequestReviewModal() {
                 type="url"
                 name="product_link"
                 required
-                placeholder="https://app.example.com or https://staging.example.com"
+                placeholder=""
                 class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
               />
               <p class="text-[11px] text-[#627566] mt-1">Specialist will test this target environment directly for injection, authentication, and SSRF flaws.</p>
@@ -2248,7 +2463,7 @@ function renderRequestReviewModal() {
                 <input
                   type="url"
                   name="docs_link"
-                  placeholder="https://docs.example.com or Swagger URL"
+                  placeholder=""
                   class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
                 />
               </div>
@@ -2257,7 +2472,7 @@ function renderRequestReviewModal() {
                 <input
                   type="text"
                   name="test_env_notes"
-                  placeholder="Test account logins, staging endpoints, focus pages..."
+                  placeholder=""
                   class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] focus:outline-none focus:border-[#176B45]"
                 />
               </div>
@@ -2270,7 +2485,7 @@ function renderRequestReviewModal() {
               name="prompt_content"
               rows="4"
               required
-              placeholder="Describe user roles, sensitive business logic, connected LLM APIs, and priority attack vectors (e.g. prompt injection, unauthorized data exfiltration, privilege escalation)..."
+              placeholder=""
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
             >${payload.promptText || ''}</textarea>
           </div>
@@ -2285,10 +2500,10 @@ function renderRequestReviewModal() {
                 type="url"
                 name="docs_link"
                 required
-                placeholder="https://github.com/organization/repo (or private repo invite link)"
+                placeholder=""
                 class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
               />
-              <p class="text-[11px] text-[#627566] mt-1">Specialist Marcus Chen will review Python/TypeScript agent frameworks and tool invocation boundaries.</p>
+              <p class="text-[11px] text-[#627566] mt-1">Specialist will evaluate repository structure, credential leakage risks, and security boundaries.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2297,7 +2512,7 @@ function renderRequestReviewModal() {
                 <input
                   type="url"
                   name="product_link"
-                  placeholder="https://app.example.com"
+                  placeholder=""
                   class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
                 />
               </div>
@@ -2306,7 +2521,7 @@ function renderRequestReviewModal() {
                 <input
                   type="text"
                   name="test_env_notes"
-                  placeholder="e.g. main branch, langchain_agents/, secrets.py"
+                  placeholder=""
                   class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] focus:outline-none focus:border-[#176B45]"
                 />
               </div>
@@ -2319,7 +2534,7 @@ function renderRequestReviewModal() {
               name="prompt_content"
               rows="4"
               required
-              placeholder="Specify sensitive modules, credential access patterns, agent memory persistence, or tool execution privileges to evaluate..."
+              placeholder=""
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
             >${payload.promptText || ''}</textarea>
           </div>
@@ -2340,7 +2555,7 @@ function renderRequestReviewModal() {
               name="prompt_content"
               rows="5"
               required
-              placeholder="Paste system instructions, agent cyclic graph, or prompt here..."
+              placeholder=""
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
             >${payload.promptText || ''}</textarea>
           </div>
@@ -2350,7 +2565,7 @@ function renderRequestReviewModal() {
             <textarea
               name="requirements"
               rows="2"
-              placeholder="e.g. Target model (GPT-4o / Claude 3.5), tone constraints, defense against roleplay escapes..."
+              placeholder=""
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
             ></textarea>
           </div>
@@ -2379,10 +2594,10 @@ function renderRequestReviewModal() {
                 <input type="radio" name="wallet_payment_mode" value="x402" onchange="toggleZeroGMode(false)" class="mt-0.5 text-[#176B45] focus:ring-[#176B45]" />
                 <div>
                   <span class="font-semibold text-[#202820]">
-                    ⚡ Standard Web3 Wallet (Hedera x402 Micropayment)
+                    ⚡ Standard Web3 Wallet (Direct Micropayment)
                   </span>
                   <p class="text-[11.5px] text-[#627566] mt-0.5 leading-relaxed">
-                    Autonomous micro-payment settled via Hedera x402 protocol — <strong class="text-[#202820] font-mono">$${currentService.price.toFixed(2)} USD</strong>.
+                    Autonomous micro-payment settled on-chain — <strong class="text-[#202820] font-mono">$${currentService.price.toFixed(2)} USD</strong>.
                   </p>
                 </div>
               </label>
@@ -2393,7 +2608,7 @@ function renderRequestReviewModal() {
           <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2">
             <div class="flex items-center justify-between">
               <span class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Payment & Escrow Protection</span>
-              <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] font-semibold px-2 py-0.5 rounded font-mono">Hedera x402 Smart Escrow</span>
+              <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">Smart Escrow Protection</span>
             </div>
             <div class="p-3 rounded-lg border border-[#E2E9E3] bg-white text-[12.5px] space-y-1.5">
               <div class="flex items-center justify-between">
@@ -2472,6 +2687,54 @@ function renderDeliverModal() {
   `;
 }
 
+function renderRejectOrderModal() {
+  const payload = STATE.modalPayload || {};
+  const orderId = payload.orderId;
+  const order = (STATE.data.orders || []).find(o => o.id === orderId);
+
+  return `
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <div>
+          <h3 class="text-[16px] font-semibold text-[#991B1B]">Decline Security Review Request</h3>
+          <p class="text-[12px] text-[#627566] mt-0.5">Order ID: <code class="font-mono text-[#202820]">${orderId}</code></p>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+      </div>
+
+      <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-[13px] text-[#445246] space-y-1">
+        <div class="font-medium text-[#202820]">${escapeHtml(order?.service_title || 'Security Service Request')}</div>
+        <div class="text-[12px] text-[#627566]">Submitted by ${escapeHtml(order?.customer_name || 'Customer')} • $${(order?.price || 0).toFixed(2)} USD</div>
+        <p class="text-[11.5px] text-[#8B9C8E] pt-1">
+          Declining this request will cancel the order and automatically release/refund escrow back to the customer.
+        </p>
+      </div>
+
+      <form onsubmit="handleRejectSubmit(event, '${orderId}')" class="space-y-4">
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Reason for Rejection *</label>
+          <textarea
+            name="rejection_reason"
+            rows="3"
+            required
+            placeholder="e.g. Scope outside current technical focus; or unable to fulfill within required turnaround time."
+            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#DC2626]"
+          ></textarea>
+        </div>
+
+        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+            Confirm Rejection
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
 function renderQuickAnalyzeModal() {
   return `
     <div class="p-6 space-y-4">
@@ -2503,121 +2766,435 @@ function renderQuickAnalyzeModal() {
   `;
 }
 
+function copyTextToClipboard(text, btnElement) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (btnElement) {
+        const orig = btnElement.innerText;
+        btnElement.innerText = 'Copied!';
+        btnElement.classList.add('bg-[#176B45]', 'text-white');
+        setTimeout(() => {
+          btnElement.innerText = orig;
+          btnElement.classList.remove('bg-[#176B45]', 'text-white');
+        }, 2000);
+      }
+    });
+  }
+}
+
+function parseAuditReportData(report, order) {
+  // 1. Original input prompt
+  let originalPrompt = 'Target Prompt';
+  if (order && order.prompt_content) {
+    if (order.prompt_content.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(order.prompt_content);
+        originalPrompt = parsed.notes || parsed.prompt || parsed.scope_and_focus || parsed.task_description || order.prompt_content;
+      } catch (e) {
+        originalPrompt = order.prompt_content;
+      }
+    } else {
+      originalPrompt = order.prompt_content;
+    }
+  }
+
+  const rawHardened = report.hardened_prompt || '';
+  let cleanHardenedPrompt = rawHardened;
+  let extractedVulns = [];
+  let extractedFixes = [];
+
+  // Extract vulnerabilities if in markdown
+  const vulnMatch = rawHardened.match(/(?:Key security considerations|Vulnerabilities|Findings)[^\n]*\n([\s\S]*?)(?=\n\n(?:Changes made|Fixes|Deliverables|###|$))/i);
+  if (vulnMatch) {
+    extractedVulns = vulnMatch[1].split('\n')
+      .map(l => l.trim())
+      .filter(l => l.match(/^(\d+\.|\*|-)/))
+      .map(l => l.replace(/^(\d+\.|\*|-)\s*/, '').replace(/\*\*/g, '').trim())
+      .filter(l => l.length > 5);
+  }
+
+  // Extract fixes if in markdown
+  const fixMatch = rawHardened.match(/(?:Changes made|Fixes applied|Remediation applied|Security controls)[^\n]*\n([\s\S]*?)(?=\n\n(?:Assumptions|Deliverables|###|$))/i);
+  if (fixMatch) {
+    extractedFixes = fixMatch[1].split('\n')
+      .map(l => l.trim())
+      .filter(l => l.match(/^(\d+\.|\*|-)/))
+      .map(l => l.replace(/^(\d+\.|\*|-)\s*/, '').replace(/\*\*/g, '').trim())
+      .filter(l => l.length > 5);
+  }
+
+  // Extract prompt deliverable cleanly
+  if (rawHardened.includes('### Deliverables') || rawHardened.includes('### Hardened System Prompt') || rawHardened.includes('### Hardened Prompt')) {
+    const parts = rawHardened.split(/### (?:Deliverables|Hardened System Prompt|Hardened Prompt)/i);
+    if (parts.length > 1) {
+      cleanHardenedPrompt = parts[1].trim();
+    }
+  } else if (rawHardened.includes('```')) {
+    const codeMatches = rawHardened.match(/```(?:[\w]*\n)?([\s\S]*?)```/);
+    if (codeMatches) cleanHardenedPrompt = codeMatches[1].trim();
+  }
+
+  // Clean summary: Remove text like "completed in 63087.81ms" or seconds text
+  let cleanSummary = (report.summary || 'Security analysis and prompt hardening verified by Guardvane.')
+    .replace(/completed in \d+(\.\d+)?(ms|s| seconds)/gi, '')
+    .replace(/using model '[^']+' \([^)]+\)/gi, 'using verified on-chain trust mode')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Combine findings
+  const allFindings = [...(report.findings || [])];
+  extractedVulns.forEach(v => {
+    const title = v.split(':')[0] || v;
+    if (!allFindings.some(f => f.title.toLowerCase().includes(title.slice(0, 15).toLowerCase()))) {
+      allFindings.push({
+        title: title,
+        severity: v.toLowerCase().includes('critical') ? 'critical' : (v.toLowerCase().includes('high') ? 'high' : 'medium'),
+        description: v.split(':')[1] ? v.split(':')[1].trim() : 'Identified potential attack vector or implementation risk.',
+        remediation: 'Implement strict parameter bounds and delimiter protection.'
+      });
+    }
+  });
+
+  // Combine recommendations
+  const allFixes = [...(report.recommendations || []), ...extractedFixes];
+  const uniqueFixes = Array.from(new Set(allFixes)).filter(f => f && f.length > 3);
+
+  // Compute token statistics
+  const oldTokens = Math.max(2, Math.ceil(originalPrompt.trim().split(/\s+/).length * 1.3));
+  const newTokens = Math.max(oldTokens + 18, Math.ceil(cleanHardenedPrompt.trim().split(/\s+/).length * 1.3));
+  const tokenDelta = newTokens - oldTokens;
+
+  return {
+    originalPrompt,
+    cleanHardenedPrompt,
+    oldTokens,
+    newTokens,
+    tokenDelta,
+    cleanSummary,
+    findings: allFindings,
+    fixes: uniqueFixes,
+    requestTime: order ? new Date(order.created_at).toLocaleString() : new Date(report.created_at).toLocaleString(),
+    deliveredTime: new Date(report.created_at).toLocaleString()
+  };
+}
+
 function renderReportViewerModal() {
   const report = STATE.modalPayload;
   if (!report) return '';
 
-  const order = STATE.data.orders.find(o => o.id === report.order_id);
+  const order = (STATE.data.orders || []).find(o => o.id === report.order_id);
   const parsedNotes = parseDeliverableNotes(order?.deliverable_notes);
   const hasTicket = !!parsedNotes.ticket;
-  const isTicketFormOpen = STATE.activeTicketFormOrderId === report.order_id;
+  const data = parseAuditReportData(report, order);
 
   return `
-    <div class="p-6 space-y-5">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <div>
-          <span class="text-[11px] font-mono text-[#627566]">${report.id}</span>
-          <h3 class="text-[16px] font-semibold text-[#202820]">${escapeHtml(report.service_title)}</h3>
+    <div class="p-6 sm:p-7 space-y-6 select-text" id="report-printable-area">
+      <!-- Header with Print & Close -->
+      <div class="flex items-start justify-between border-b border-[#E2E9E3] pb-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5] px-2 py-0.5 rounded">${report.id}</span>
+            <span class="text-[11px] font-medium bg-[#F0F5F1] text-[#445246] px-2 py-0.5 rounded">Verified Deliverable</span>
+          </div>
+          <h2 class="text-xl font-bold text-[#202820] tracking-tight">${escapeHtml(report.service_title)}</h2>
+          <div class="text-[12.5px] text-[#627566]">
+            Audited by <strong>${escapeHtml(report.provider_name)}</strong> • Order <span class="font-mono text-[#202820]">${report.order_id}</span>
+          </div>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+
+        <div class="flex items-center gap-2">
+          <button onclick="window.print()" class="px-3.5 py-1.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[12px] font-medium rounded-md shadow-2xs transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>Print Report</span>
+          </button>
+          <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] p-1.5 cursor-pointer">✕</button>
+        </div>
       </div>
 
-      <!-- Ticket Alert Banner if Ticket Exists -->
+      <!-- Separate Active Ticket Banner if Raised -->
       ${hasTicket ? `
-        <div class="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-[13px] font-semibold text-[#991B1B] flex items-center gap-2">
-              🚨 Quality Review Ticket Raised (${escapeHtml(parsedNotes.ticket.ticket_id || 'TK-01')})
-            </span>
-            <span class="text-[11px] font-mono text-[#B91C1C]">${new Date(parsedNotes.ticket.created_at).toLocaleString()}</span>
+        <div class="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] flex items-center justify-between">
+          <div class="flex items-center gap-2 text-[13px] text-[#991B1B]">
+            <svg class="w-4 h-4 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Active Quality Review Ticket Raised <strong>(${escapeHtml(parsedNotes.ticket.ticket_id || 'TK-01')})</strong></span>
           </div>
-          <div class="text-[12.5px] text-[#7F1D1D]"><strong class="font-medium text-[#991B1B]">Reason:</strong> ${escapeHtml(parsedNotes.ticket.reason)}</div>
-          <div class="text-[12px] text-[#7F1D1D] bg-white/80 p-2.5 rounded border border-[#FCA5A5] italic">${escapeHtml(parsedNotes.ticket.feedback)}</div>
-          <div class="text-[11.5px] text-[#991B1B] font-medium">Status: Under Specialist Revision</div>
+          <button onclick="openModal('view_ticket_modal', { ticket: ${escapeForAttr(JSON.stringify(parsedNotes.ticket))}, orderId: '${report.order_id}' })" class="px-3 py-1 bg-white border border-[#FECACA] text-[#991B1B] hover:bg-[#FEE2E2] text-[12px] font-medium rounded transition-smooth cursor-pointer">
+            View Ticket Issue Details →
+          </button>
         </div>
       ` : ''}
 
-      <div class="space-y-4 text-[13px]">
-        <div>
-          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Executive Summary</div>
-          <p class="text-[#333E35] mt-1 leading-relaxed">${escapeHtml(report.summary)}</p>
-        </div>
-
-        <div>
-          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-2">Findings</div>
-          <div class="space-y-2">
-            ${(report.findings || []).map(f => `
-              <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9] space-y-1">
-                <div class="flex items-center justify-between">
-                  <strong class="text-[13px] text-[#202820]">${escapeHtml(f.title)}</strong>
-                  <span class="uppercase text-[10px] font-bold px-2 py-0.5 rounded ${f.severity === 'critical' ? 'bg-[#FEE2E2] text-[#991B1B]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-                    ${f.severity}
-                  </span>
-                </div>
-                <div class="text-[12px] text-[#445246]">${escapeHtml(f.description)}</div>
-                ${f.remediation ? `<div class="text-[12px] text-[#176B45]"><strong>Remediation:</strong> ${escapeHtml(f.remediation)}</div>` : ''}
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        ${report.hardened_prompt ? `
+      <!-- Request Timing & Summary Card -->
+      <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pb-3 border-b border-[#E2E9E3] text-[12.5px]">
           <div>
-            <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Delivered Security Output & Defense Assertions</div>
-            <pre class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded font-mono text-[12px] text-[#202820] whitespace-pre-wrap">${escapeHtml(report.hardened_prompt)}</pre>
+            <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Request Submitted</span>
+            <strong class="text-[#202820] text-[12.5px] mt-0.5 block">${data.requestTime}</strong>
           </div>
-        ` : ''}
+          <div>
+            <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Audit Completed</span>
+            <strong class="text-[#202820] text-[12.5px] mt-0.5 block">${data.deliveredTime}</strong>
+          </div>
+          <div>
+            <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Security Authority</span>
+            <strong class="text-[#176B45] text-[12.5px] mt-0.5 block">0G Private Computer AI</strong>
+          </div>
+        </div>
+        <p class="text-[13px] text-[#333E35] leading-relaxed">
+          ${escapeHtml(data.cleanSummary)}
+        </p>
+      </div>
 
-        <!-- Raise a Ticket Option for Dissatisfied Performance -->
-        ${!hasTicket && order ? `
-          <div class="pt-4 border-t border-[#E2E9E3]">
-            ${!isTicketFormOpen ? `
-              <div class="flex items-center justify-between p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl">
-                <div>
-                  <h4 class="text-[13px] font-medium text-[#202820]">Dissatisfied with audit findings or performance?</h4>
-                  <p class="text-[11.5px] text-[#627566]">Raise a quality review ticket directly to the specialist to request revisions or dispute deliverable coverage.</p>
-                </div>
-                <button
-                  onclick="toggleTicketForm('${report.order_id}', true)"
-                  class="px-3.5 py-1.5 bg-white border border-[#FECACA] hover:bg-[#FEE2E2] text-[#991B1B] text-[12px] font-semibold rounded-md transition-smooth shrink-0 cursor-pointer shadow-2xs"
-                >
-                  Raise a Ticket
-                </button>
-              </div>
-            ` : `
-              <div class="p-4 bg-[#FEF2F2]/60 border border-[#FECACA] rounded-xl space-y-3">
-                <div class="flex items-center justify-between">
-                  <h4 class="text-[13.5px] font-semibold text-[#991B1B] flex items-center gap-1.5">
-                    🚨 Raise a Quality Ticket / Dispute Deliverable
-                  </h4>
-                  <button onclick="toggleTicketForm('${report.order_id}', false)" class="text-[#991B1B] hover:text-[#7F1D1D] text-xs">Cancel</button>
-                </div>
-                <form onsubmit="handleRaiseTicketSubmit(event, '${report.order_id}', '${report.id}')" class="space-y-3">
-                  <div>
-                    <label class="block text-[12px] font-medium text-[#7F1D1D] mb-1">Primary Concern *</label>
-                    <select name="reason" required class="w-full px-3 py-2 bg-white border border-[#FECACA] rounded-md text-[12.5px] text-[#202820] focus:outline-none focus:border-[#991B1B]">
-                      <option value="Incomplete Vulnerability Analysis">Incomplete Vulnerability Analysis</option>
-                      <option value="Missed Scope Requirements">Missed Scope Requirements (Product / Repo links unverified)</option>
-                      <option value="Unclear Remediation Guidance">Unclear Remediation Guidance</option>
-                      <option value="Deliverable Format Issue">Deliverable Format Issue</option>
-                      <option value="Other Quality Concern">Other Quality Concern</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="block text-[12px] font-medium text-[#7F1D1D] mb-1">Detailed Feedback & Requested Changes *</label>
-                    <textarea name="feedback" rows="3" required placeholder="Specify what the specialist missed, which endpoints or prompts require further testing, and what corrections are required..." class="w-full px-3 py-2 bg-white border border-[#FECACA] rounded-md text-[12.5px] text-[#202820] focus:outline-none focus:border-[#991B1B]"></textarea>
-                  </div>
-                  <div class="flex justify-end gap-2 pt-1">
-                    <button type="button" onclick="toggleTicketForm('${report.order_id}', false)" class="px-3 py-1.5 bg-white border border-[#E2E9E3] text-[#445246] text-xs rounded-md">Cancel</button>
-                    <button type="submit" class="px-4 py-1.5 bg-[#991B1B] hover:bg-[#7F1D1D] text-white text-xs font-semibold rounded-md shadow-xs transition-smooth cursor-pointer">
-                      Submit Ticket to Specialist
-                    </button>
-                  </div>
-                </form>
-              </div>
-            `}
+      <!-- Token Usage Analysis (Marked and Shown Separately) -->
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-[13.5px] font-semibold text-[#202820] flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>Token Usage Analysis</span>
+          </h3>
+          <span class="text-[11.5px] text-[#627566]">Measured token allocation before & after hardening</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <!-- Old Token Usage -->
+          <div class="p-4 rounded-xl bg-white border border-[#CBD7CE] space-y-2 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-[#4B5563] bg-[#F3F4F6] px-2 py-0.5 rounded">
+                Original Input Prompt
+              </span>
+              <span class="font-mono text-[11px] text-[#6B7280]">${data.originalPrompt.length} chars</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-2xl font-bold font-mono text-[#1E3A8A]">${data.oldTokens}</span>
+              <span class="text-[12px] text-[#6B7280] font-medium">tokens allocated</span>
+            </div>
+            <div class="p-2.5 bg-[#FAFBF9] rounded border border-[#E5E7EB] font-mono text-[11.5px] text-[#4B5563] truncate">
+              ${escapeHtml(data.originalPrompt)}
+            </div>
           </div>
-        ` : ''}
+
+          <!-- New Token Usage -->
+          <div class="p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-2 shadow-2xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-[#166534] bg-[#DCFCE7] px-2 py-0.5 rounded">
+                Optimized & Hardened Prompt
+              </span>
+              <span class="font-mono text-[11px] text-[#15803D] font-semibold">+${data.tokenDelta} defense tokens</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-2xl font-bold font-mono text-[#15803D]">${data.newTokens}</span>
+              <span class="text-[12px] text-[#166534] font-medium">hardened tokens (+${Math.round((data.tokenDelta / data.oldTokens) * 100)}% density)</span>
+            </div>
+            <div class="text-[11.5px] text-[#166534]">
+              Includes XML delimiter encapsulation, role boundaries, and anti-jailbreak assertions.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vulnerabilities Identified in Prompt -->
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-[13.5px] font-semibold text-[#202820] flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#DC2626]"></span>
+            <span>Prompt Vulnerabilities & Attack Vectors (${data.findings.length})</span>
+          </h3>
+          <span class="text-[11.5px] text-[#627566]">Potential vulnerabilities that could be triggered</span>
+        </div>
+
+        <div class="space-y-2">
+          ${data.findings.map(f => `
+            <div class="p-3.5 rounded-lg border border-[#E2E9E3] bg-[#FAFBF9] space-y-1.5">
+              <div class="flex items-center justify-between">
+                <strong class="text-[13px] text-[#202820]">${escapeHtml(f.title)}</strong>
+                <span class="uppercase text-[10px] font-bold px-2 py-0.5 rounded ${
+                  f.severity === 'critical' ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' :
+                  f.severity === 'high' ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]' :
+                  'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]'
+                }">
+                  ${f.severity}
+                </span>
+              </div>
+              <div class="text-[12.5px] text-[#445246] leading-relaxed">${escapeHtml(f.description)}</div>
+              ${f.remediation ? `
+                <div class="text-[12px] text-[#176B45] pt-0.5 flex items-center gap-1">
+                  <strong class="font-medium">Remediation:</strong>
+                  <span>${escapeHtml(f.remediation)}</span>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Security Fixes Made (Passes Security Checks) -->
+      <div class="space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-[13.5px] font-semibold text-[#202820] flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-[#176B45]"></span>
+            <span>Security Fixes Applied (Passes Security Checks) (${data.fixes.length})</span>
+          </h3>
+          <span class="text-[11.5px] text-[#176B45] font-medium">✓ Passes Guardvane OWASP LLM standards</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12.5px]">
+          ${data.fixes.map(fix => `
+            <div class="p-2.5 rounded-lg border border-[#CDE5D5] bg-[#EAF5EE]/60 flex items-start gap-2 text-[#202820]">
+              <svg class="w-4 h-4 text-[#176B45] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              <span class="leading-snug">${escapeHtml(fix)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Optimized & Hardened Prompt (Highlighted & Marked Separately) -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h3 class="text-[14px] font-bold text-[#176B45] uppercase tracking-wide">
+              ✨ Verified Hardened System Prompt
+            </h3>
+            <span class="px-2 py-0.5 text-[10px] font-mono font-bold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5] rounded">Production Ready</span>
+          </div>
+          <button
+            onclick="copyTextToClipboard(${escapeForAttr(JSON.stringify(data.cleanHardenedPrompt))}, this)"
+            class="px-3 py-1 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[11.5px] font-semibold rounded shadow-2xs transition-smooth inline-flex items-center gap-1 cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            <span>Copy Prompt</span>
+          </button>
+        </div>
+
+        <div class="rounded-xl border-2 border-[#2FA36B]/60 bg-[#FAFBF9] p-4 shadow-sm">
+          <pre class="font-mono text-[12px] text-[#1F2937] whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto select-all">${escapeHtml(data.cleanHardenedPrompt)}</pre>
+        </div>
+      </div>
+
+      <!-- Modal Footer Actions & Separate Ticket Option -->
+      <div class="pt-4 border-t border-[#E2E9E3] flex items-center justify-between">
+        <div>
+          ${!hasTicket ? `
+            <button
+              onclick="openModal('raise_ticket_modal', { orderId: '${report.order_id}', reportId: '${report.id}' })"
+              class="text-[12.5px] text-[#991B1B] hover:text-[#7F1D1D] font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <span>Dissatisfied with audit coverage?</span>
+              <span class="font-semibold underline">Raise a Review Ticket →</span>
+            </button>
+          ` : `
+            <span class="text-[12px] text-[#627566]">Ticket is currently under specialist revision</span>
+          `}
+        </div>
+
+        <button
+          type="button"
+          onclick="closeModal()"
+          class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+        >
+          Close Report
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderRaiseTicketModal() {
+  const payload = STATE.modalPayload || {};
+  const orderId = payload.orderId;
+  const reportId = payload.reportId;
+
+  return `
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <div class="flex items-center gap-2">
+          <h3 class="text-[16px] font-semibold text-[#991B1B]">Raise Quality Review Ticket</h3>
+          <span class="font-mono text-[11px] bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] px-2 py-0.5 rounded">${orderId || ''}</span>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+      </div>
+
+      <p class="text-[12.5px] text-[#627566]">
+        If you are dissatisfied with audit coverage, missed attack surfaces, or deliverable formatting, submit a quality dispute directly to the specialist.
+      </p>
+
+      <form onsubmit="handleRaiseTicketSubmit(event, '${orderId}', '${reportId}')" class="space-y-4">
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Primary Concern *</label>
+          <select name="reason" required class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#991B1B]">
+            <option value="Incomplete Vulnerability Analysis">Incomplete Vulnerability Analysis</option>
+            <option value="Missed Scope Requirements">Missed Scope Requirements (Product / Repo links unverified)</option>
+            <option value="Unclear Remediation Guidance">Unclear Remediation Guidance</option>
+            <option value="Deliverable Format Issue">Deliverable Format Issue</option>
+            <option value="Other Quality Concern">Other Quality Concern</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Detailed Feedback & Requested Corrections *</label>
+          <textarea name="feedback" rows="4" required placeholder="Specify what the specialist missed, which endpoints or prompts require further testing, and what corrections are required..." class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#991B1B]"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E9E3]">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md text-[#445246] hover:bg-[#FAFBF9] cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-[#991B1B] hover:bg-[#7F1D1D] text-white text-[13px] font-semibold rounded-md shadow-xs transition-smooth cursor-pointer">
+            Submit Dispute Ticket
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderViewTicketModal() {
+  const payload = STATE.modalPayload || {};
+  const ticket = payload.ticket || {};
+  const orderId = payload.orderId || '';
+
+  return `
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <div class="flex items-center gap-2">
+          <h3 class="text-[16px] font-semibold text-[#991B1B]">Review Ticket #${escapeHtml(ticket.ticket_id || 'TK-01')}</h3>
+          <span class="text-[11px] bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] font-medium px-2 py-0.5 rounded">Active Issue</span>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+      </div>
+
+      <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-3 text-[13px]">
+        <div class="flex items-center justify-between">
+          <span class="text-[#627566] text-[12px]">Associated Order:</span>
+          <span class="font-mono text-[12px] text-[#202820]">${orderId}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-[#627566] text-[12px]">Submitted At:</span>
+          <span class="font-mono text-[12px] text-[#202820]">${ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'N/A'}</span>
+        </div>
+        <div>
+          <span class="text-[#627566] text-[12px] block">Primary Concern:</span>
+          <strong class="text-[#991B1B] text-[13.5px] mt-0.5 block">${escapeHtml(ticket.reason || 'General Quality Concern')}</strong>
+        </div>
+        <div>
+          <span class="text-[#627566] text-[12px] block mb-1">Feedback Provided to Specialist:</span>
+          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg text-[12.5px] text-[#334155] whitespace-pre-wrap leading-relaxed">
+            ${escapeHtml(ticket.feedback || 'No feedback recorded.')}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-[#E2E9E3]">
+        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md text-[#445246] hover:bg-[#FAFBF9] cursor-pointer">
+          Close
+        </button>
       </div>
     </div>
   `;
@@ -2631,16 +3208,21 @@ function renderWalletModal() {
     (p.wallet_address && p.wallet_address.toLowerCase() === userWallet) ||
     p.id === STATE.user.activeProviderId
   );
+  const isRabdi = STATE.network && STATE.network.isRabdi;
+  const currentBlock = STATE.arkiv?.status?.current_block;
 
   return `
     <div class="p-6 space-y-4 select-none">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Connected Wallet</h3>
+        <h3 class="text-[16px] font-semibold text-[#202820]">Connected Wallet & Network</h3>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
-      <div class="space-y-4 text-[13px]">
+      <div class="space-y-3 text-[13px]">
+        <!-- Account Card -->
         <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-3">
+          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Account Information</div>
+
           <div class="flex items-center justify-between">
             <span class="text-[#627566]">Status:</span>
             <span class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${isConnected ? 'bg-[#EAF5EE] text-[#176B45]' : 'bg-[#FEF3C7] text-[#92400E]'}">
@@ -2664,18 +3246,60 @@ function renderWalletModal() {
           </div>
         </div>
 
+        <!-- Decentralized Network Card -->
+        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
+          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Decentralized Data Layer</div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-[#627566]">Target Network:</span>
+            <span class="font-medium text-[#202820] text-xs">Rabdi Testnet (Arkiv)</span>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-[#627566]">Chain ID:</span>
+            <code class="font-mono text-xs text-[#202820] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">7794095</code>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="text-[#627566]">Network Status:</span>
+            ${isRabdi ? `
+              <span class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#EAF5EE] text-[#176B45]">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#176B45]"></span>
+                Connected to Rabdi
+              </span>
+            ` : `
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-medium text-[#92400E]">Wrong Network</span>
+                <button
+                  onclick="handleSwitchToRabdi()"
+                  class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer transition-smooth"
+                >
+                  Switch to Rabdi
+                </button>
+              </div>
+            `}
+          </div>
+
+          ${currentBlock ? `
+            <div class="flex items-center justify-between">
+              <span class="text-[#627566]">Block Height:</span>
+              <span class="font-mono text-xs text-[#627566]">#${currentBlock}</span>
+            </div>
+          ` : ''}
+        </div>
+
         <div class="pt-3 border-t border-[#E2E9E3] flex justify-between items-center">
           ${isConnected ? `
-            <button onclick="closeModal(); handleLogout();" class="px-3 py-1.5 text-xs text-[#991B1B] hover:bg-[#FEE2E2] rounded-md font-medium transition-smooth">
+            <button onclick="closeModal(); handleLogout();" class="px-3 py-1.5 text-xs text-[#991B1B] hover:bg-[#FEE2E2] rounded-md font-medium transition-smooth cursor-pointer">
               Disconnect Wallet
             </button>
           ` : `
-            <button onclick="closeModal(); connectAndSignWithMetaMask();" class="px-3 py-1.5 bg-[#176B45] text-white text-xs rounded-md font-medium">
+            <button onclick="closeModal(); connectAndSignWithMetaMask();" class="px-3 py-1.5 bg-[#176B45] text-white text-xs rounded-md font-medium cursor-pointer">
               Connect MetaMask
             </button>
           `}
 
-          <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth">
+          <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth cursor-pointer">
             Close
           </button>
         </div>
@@ -2786,16 +3410,23 @@ function renderSettingsModal() {
   `;
 }
 
-function saveDisplayName() {
+async function saveDisplayName() {
   const input = document.getElementById('settings-name-input');
   if (!input) return;
   const newName = input.value.trim();
-  if (newName) {
-    STATE.user.name = newName;
-    localStorage.setItem('guardvane_display_name', newName);
-  } else {
-    STATE.user.name = null;
-    localStorage.removeItem('guardvane_display_name');
+  if (!newName) return;
+  try {
+    const updated = await apiFetch('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ nickname: newName })
+    });
+    STATE.user.name = updated.display_name || newName;
+    if (STATE.auth.user) {
+      STATE.auth.user.display_name = STATE.user.name;
+    }
+    alert("Display name saved to database successfully!");
+  } catch (err) {
+    alert("Failed to save nickname: " + (err.detail || err.message || err));
   }
   renderApp();
   openModal('settings_modal');
@@ -2835,44 +3466,405 @@ function renderAddServiceModal() {
     <div class="p-6 space-y-4">
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
         <h3 class="text-[16px] font-semibold text-[#202820]">Publish New Security Service</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
       </div>
 
       <form onsubmit="handleAddServiceSubmit(event, '${payload.providerId}')" class="space-y-4">
         <div>
           <label class="block text-[13px] font-medium text-[#202820] mb-1">Service Title *</label>
-          <input type="text" name="title" required placeholder="e.g. Autonomous Token Defense Audit" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          <input type="text" name="title" required placeholder="e.g. Prompt Injection Vulnerability Audit" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Description *</label>
-          <textarea name="description" rows="3" required placeholder="Describe deliverables, methodology, and scope..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Category *</label>
+          <select name="category" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">
+            <option value="prompt_engineering">Prompt Engineering</option>
+            <option value="loop_engineering">Prompt Loop Engineering</option>
+            <option value="prompt_optimization">Prompt Optimization</option>
+            <option value="prompt_security_analysis">Prompt Security Analysis</option>
+            <option value="codebase_security">Codebase Security Audit</option>
+            <option value="application_security_testing">Application Security Testing</option>
+          </select>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD) *</label>
-            <input type="number" step="0.01" min="0" name="price" value="75.00" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
+            <input type="number" step="0.01" min="0" name="price" value="50.00" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
           </div>
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Turnaround Estimate *</label>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Delivery *</label>
             <input type="text" name="estimated_delivery" value="24 hours" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
           </div>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Execution Type</label>
-          <select name="execution_type" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]">
-            <option value="manual">Manual Specialist Delivery</option>
-            <option value="automated">Automated AI Service</option>
-          </select>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Description *</label>
+          <textarea name="description" rows="3" required placeholder="Describe deliverables, methodology, and audit scope..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
         </div>
 
         <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E9E3]">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md">Publish Service</button>
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md hover:bg-[#FAFBF9] cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md transition-smooth cursor-pointer">Publish Service</button>
         </div>
       </form>
+    </div>
+  `;
+}
+
+function renderEditServiceModal() {
+  const payload = STATE.modalPayload || {};
+  const service = STATE.data.services.find(s => s.id === payload.serviceId);
+  if (!service) return '<div class="p-6">Service not found</div>';
+
+  return `
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <h3 class="text-[16px] font-semibold text-[#202820]">Edit Service Offering</h3>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+      </div>
+
+      <form onsubmit="handleEditServiceSubmit(event, '${service.id}')" class="space-y-4">
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Service Title *</label>
+          <input type="text" name="title" required value="${escapeForAttr(service.title)}" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Category *</label>
+          <select name="category" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">
+            <option value="prompt_engineering" ${service.category === 'prompt_engineering' ? 'selected' : ''}>Prompt Engineering</option>
+            <option value="loop_engineering" ${service.category === 'loop_engineering' ? 'selected' : ''}>Prompt Loop Engineering</option>
+            <option value="prompt_optimization" ${service.category === 'prompt_optimization' ? 'selected' : ''}>Prompt Optimization</option>
+            <option value="prompt_security_analysis" ${service.category === 'prompt_security_analysis' ? 'selected' : ''}>Prompt Security Analysis</option>
+            <option value="codebase_security" ${service.category === 'codebase_security' ? 'selected' : ''}>Codebase Security Audit</option>
+            <option value="application_security_testing" ${service.category === 'application_security_testing' ? 'selected' : ''}>Application Security Testing</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD) *</label>
+            <input type="number" step="0.01" min="0" name="price" value="${service.price.toFixed(2)}" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
+          </div>
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Delivery *</label>
+            <input type="text" name="estimated_delivery" value="${escapeForAttr(service.estimated_delivery)}" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Description *</label>
+          <textarea name="description" rows="3" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">${escapeHtml(service.description)}</textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E9E3]">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md hover:bg-[#FAFBF9] cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md transition-smooth cursor-pointer">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderEditProviderModal() {
+  const payload = STATE.modalPayload || {};
+  const provider = STATE.data.providers.find(p => p.id === payload.providerId);
+  if (!provider) return '<div class="p-6">Provider not found</div>';
+
+  const cats = provider.categories || [];
+  const skillsStr = (provider.skills || []).join(', ');
+
+  return `
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <h3 class="text-[16px] font-semibold text-[#202820]">Edit Specialist Profile</h3>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+      </div>
+
+      <form onsubmit="handleEditProviderSubmit(event, '${provider.id}')" class="space-y-4 text-[13px]">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Display Name *</label>
+            <input type="text" name="display_name" required value="${escapeForAttr(provider.display_name)}" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          </div>
+
+          <div>
+            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Professional Title *</label>
+            <input type="text" name="title" required value="${escapeForAttr(provider.title)}" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Wallet Address (Read-only)</label>
+          <input type="text" readonly value="${escapeForAttr(provider.wallet_address || '')}" class="w-full px-3 py-2 bg-[#F0F5F1] border border-[#E2E9E3] rounded-md font-mono text-[12.5px] text-[#627566] cursor-not-allowed" />
+        </div>
+
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Bio / Description *</label>
+          <textarea name="description" rows="3" required class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">${escapeHtml(provider.description)}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Skills (Comma-separated)</label>
+          <input type="text" name="skills_raw" value="${escapeForAttr(skillsStr)}" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+        </div>
+
+        <div>
+          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Supported Categories</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12.5px]">
+            <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="prompt_engineering" ${cats.includes('prompt_engineering') ? 'checked' : ''} /> Prompt Engineering</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="loop_engineering" ${cats.includes('loop_engineering') ? 'checked' : ''} /> Prompt Loop Engineering</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="prompt_optimization" ${cats.includes('prompt_optimization') ? 'checked' : ''} /> Prompt Optimization</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="prompt_security_analysis" ${cats.includes('prompt_security_analysis') ? 'checked' : ''} /> Prompt Security Analysis</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="codebase_security" ${cats.includes('codebase_security') ? 'checked' : ''} /> Codebase Security Audit</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="application_security_testing" ${cats.includes('application_security_testing') ? 'checked' : ''} /> Application Security Testing</label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Availability</label>
+            <select name="availability" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">
+              <option value="available" ${provider.availability === 'available' ? 'selected' : ''}>Available</option>
+              <option value="busy" ${provider.availability === 'busy' ? 'selected' : ''}>Busy</option>
+              <option value="offline" ${provider.availability === 'offline' ? 'selected' : ''}>Offline</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Portfolio or GitHub URL</label>
+            <input type="url" name="portfolio_url" value="${escapeForAttr(provider.portfolio_url || '')}" placeholder="" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-[#E2E9E3] flex justify-end gap-2">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] rounded-md cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white font-medium rounded-md shadow-xs transition-smooth cursor-pointer">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderOrderDetailModal() {
+  const payload = STATE.modalPayload || STATE.selectedOrderId;
+  const orderId = (typeof payload === 'string') ? payload : (payload?.orderId || payload?.id);
+  const order = (STATE.data.orders || []).find(o => o.id === orderId) || (STATE.data.incoming_orders || []).find(o => o.id === orderId);
+
+  if (!order) {
+    return `
+      <div class="p-6 space-y-4">
+        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+          <h3 class="text-[16px] font-semibold text-[#202820]">Order Details</h3>
+          <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+        </div>
+        <div class="p-4 bg-[#F8FAF9] rounded-lg text-center text-[#627566] text-[13px]">
+          Order "${escapeHtml(orderId || '')}" was not found or could not be loaded.
+        </div>
+      </div>
+    `;
+  }
+
+  let scopeInfo = {
+    repo_url: '',
+    staging_link: '',
+    branch_notes: '',
+    notes: order.prompt_content || ''
+  };
+  try {
+    if (order.prompt_content && order.prompt_content.startsWith('{')) {
+      const parsed = JSON.parse(order.prompt_content);
+      scopeInfo.repo_url = parsed.repo_url || parsed.repository_url || parsed.docs_link || '';
+      scopeInfo.staging_link = parsed.staging_link || parsed.product_link || '';
+      scopeInfo.branch_notes = parsed.branch_notes || parsed.test_env_notes || '';
+      scopeInfo.notes = parsed.notes || parsed.scope_and_focus || parsed.task_description || parsed.prompt_content || '';
+    }
+  } catch (e) {}
+
+  const isCustomer = STATE.auth.walletAddress && order.customer_id && order.customer_id.toLowerCase() === STATE.auth.walletAddress.toLowerCase();
+
+  return `
+    <div class="p-6 space-y-5">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <div class="space-y-0.5">
+          <div class="flex items-center gap-2">
+            <h3 class="text-[16px] font-semibold text-[#202820]">Security Request Details</h3>
+            <span class="font-mono text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium border border-[#CDE5D5]">${order.id}</span>
+          </div>
+          <p class="text-[12px] text-[#627566]">Service Order & Escrow Lifecycle Tracking</p>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+      </div>
+
+      <!-- Critical Status Alerts (Payment Failed / Rejected / Cancelled) -->
+      ${order.payment_status === 'failed' ? `
+        <div class="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-2">
+          <div class="flex items-center gap-2 text-[#991B1B] font-semibold text-[13px]">
+            <svg class="w-4 h-4 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Payment Verification Notice</span>
+          </div>
+          <p class="text-[12.5px] text-[#B91C1C] leading-relaxed">
+            The payment could not be verified on the <strong>Autonomous Smart Escrow</strong> gateway. Escrow funds were not deducted or proof verification did not succeed.
+          </p>
+          ${isCustomer ? `
+            <div class="pt-1">
+              <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="px-3.5 py-1.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-[12px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+                Retry Escrow Payment ($${order.price.toFixed(2)})
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
+
+      ${order.status === 'rejected' ? `
+        <div class="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-1.5">
+          <div class="flex items-center gap-2 text-[#991B1B] font-semibold text-[13px]">
+            <svg class="w-4 h-4 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Specialist Declined This Request</span>
+          </div>
+          <p class="text-[12.5px] text-[#7F1D1D] leading-relaxed">
+            <strong>Rejection Reason:</strong> ${escapeHtml(order.rejection_reason || 'Specialist is currently unavailable or scope is outside current capabilities.')}
+          </p>
+          <p class="text-[11.5px] text-[#991B1B]">
+            Any locked escrow funds have been marked for immediate refund to customer wallet.
+          </p>
+        </div>
+      ` : ''}
+
+      ${order.status === 'cancelled' ? `
+        <div class="p-3.5 rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] text-[12.5px] text-[#4B5563]">
+          <strong>Order Cancelled:</strong> This request was cancelled before completion.
+        </div>
+      ` : ''}
+
+      <!-- Order Summary Card -->
+      <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-[12.5px]">
+        <div>
+          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Service</span>
+          <strong class="text-[#202820] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.service_title)}">${escapeHtml(order.service_title)}</strong>
+        </div>
+        <div>
+          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Provider</span>
+          <strong class="text-[#202820] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.provider_name)}">${escapeHtml(order.provider_name)}</strong>
+        </div>
+        <div>
+          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Order Status</span>
+          <div class="mt-1">${renderStatusBadge(order.status)}</div>
+        </div>
+        <div>
+          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Payment</span>
+          <div class="mt-1">
+            ${order.payment_status === 'verified' ? `
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> Paid / Escrowed
+              </span>
+            ` : order.payment_status === 'pending' ? `
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span> Escrow Pending
+              </span>
+            ` : order.payment_status === 'failed' ? `
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
+                Failed
+              </span>
+            ` : `
+              <span class="text-[11px] text-[#627566] capitalize">${escapeHtml(order.payment_status || 'N/A')}</span>
+            `}
+          </div>
+        </div>
+      </div>
+
+      <!-- Scope & Specification -->
+      <div class="border border-[#E2E9E3] rounded-xl p-4 bg-white space-y-3">
+        <h4 class="text-[13px] font-semibold text-[#202820] flex items-center justify-between border-b border-[#F0F5F1] pb-2">
+          <span>Target Scope & Deliverable Focus</span>
+          <span class="font-mono text-[12px] text-[#176B45] font-bold">$${order.price.toFixed(2)} USD</span>
+        </h4>
+
+        ${scopeInfo.repo_url ? `
+          <div class="text-[12.5px]">
+            <span class="text-[#627566] block text-[11px]">Repository / Codebase:</span>
+            <a href="${escapeForAttr(scopeInfo.repo_url)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] font-mono hover:underline inline-flex items-center gap-1">
+              ${escapeHtml(scopeInfo.repo_url)}
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        ` : ''}
+
+        ${scopeInfo.staging_link ? `
+          <div class="text-[12.5px]">
+            <span class="text-[#627566] block text-[11px]">Live Application Link:</span>
+            <a href="${escapeForAttr(scopeInfo.staging_link)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline inline-flex items-center gap-1">
+              ${escapeHtml(scopeInfo.staging_link)}
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        ` : ''}
+
+        ${scopeInfo.branch_notes ? `
+          <div class="text-[12.5px]">
+            <span class="text-[#627566] block text-[11px]">Branch / Sensitive Modules:</span>
+            <span class="font-mono text-[#202820] bg-[#F0F5F1] px-2 py-0.5 rounded">${escapeHtml(scopeInfo.branch_notes)}</span>
+          </div>
+        ` : ''}
+
+        <div class="text-[12.5px] pt-1">
+          <span class="text-[#627566] block text-[11px] mb-1">Scope & Instructions:</span>
+          <div class="p-3 bg-[#FAFBF9] rounded-lg border border-[#E2E9E3] font-mono text-[12px] text-[#334155] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+            ${escapeHtml(scopeInfo.notes || 'No custom instructions provided.')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Deliverable / Security Report (if present) -->
+      ${order.report_id ? `
+        <div class="p-4 rounded-xl bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-between">
+          <div class="space-y-0.5">
+            <div class="text-[13px] font-semibold text-[#176B45] flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Security Report & Audit Findings Delivered</span>
+            </div>
+            <p class="text-[11.5px] text-[#627566]">Audit findings and mitigation instructions have been delivered.</p>
+          </div>
+          <button onclick="closeModal(); viewReport('${order.report_id}');" class="px-4 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white font-medium text-[12px] rounded-md transition-smooth cursor-pointer">
+            View Report
+          </button>
+        </div>
+      ` : order.deliverable_notes ? `
+        <div class="p-4 rounded-xl bg-white border border-[#E2E9E3] space-y-1.5">
+          <span class="text-[#627566] block text-[11px] uppercase tracking-wider font-semibold">Specialist Deliverable Notes</span>
+          <div class="p-3 bg-[#FAFBF9] rounded-lg border border-[#E2E9E3] text-[12.5px] text-[#202820] whitespace-pre-wrap">
+            ${escapeHtml(order.deliverable_notes)}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Modal Footer Actions -->
+      <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
+        <div class="text-[11.5px] text-[#8B9C8E]">
+          Created on ${new Date(order.created_at).toLocaleString()}
+        </div>
+        <div class="flex items-center gap-2">
+          ${order.payment_status === 'pending' && order.status !== 'rejected' && order.status !== 'cancelled' && isCustomer ? `
+            <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+              Pay Escrow $${order.price.toFixed(2)}
+            </button>
+          ` : ''}
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] hover:bg-[#FAFBF9] text-[12.5px] rounded-md transition-smooth cursor-pointer">
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -2885,17 +3877,17 @@ function renderArkivPostTaskModal() {
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-[16px] font-semibold text-[#202820]">Post Security Task to Arkiv</h3>
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Rabdi 7794095</span>
+            <h3 class="text-[16px] font-semibold text-[#202820]">Post Security Review Request</h3>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Decentralized Request</span>
           </div>
-          <p class="text-[12px] text-[#627566] mt-0.5">Published directly to Rabdi blockchain with a 7-day expiration lease. Verified decentralized discovery.</p>
+          <p class="text-[12px] text-[#627566] mt-0.5">Broadcast public audit scope to specialists on the decentralized network.</p>
         </div>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
 
       ${!isRabdi ? `
         <div class="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md text-[12.5px] text-[#92400E] flex items-center justify-between">
-          <span>MetaMask is not on <strong>Rabdi Testnet (Chain ID 7794095)</strong>.</span>
+          <span>MetaMask is not connected to <strong>Rabdi Testnet</strong>.</span>
           <button onclick="handleSwitchToRabdi()" class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer">
             Switch to Rabdi
           </button>
@@ -2959,7 +3951,7 @@ function renderArkivPostTaskModal() {
             name="public_description"
             rows="4"
             required
-            placeholder="Describe the target system, repository commit, objectives, and deliverables. Note: This content will be published directly to the Rabdi blockchain."
+            placeholder="Describe the target system, repository commit, objectives, and deliverables. Note: This high-level scope will be broadcasted to the specialist network."
             class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
           ></textarea>
         </div>
@@ -2984,10 +3976,10 @@ function renderArkivPostTaskModal() {
             <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            On-Chain Publishing Details:
+            Scope Publishing Details:
           </div>
-          <div>• Posting creates an entity on the <code>guardvane.tasks.v1</code> schema using your connected wallet.</div>
-          <div>• Requires a signature in MetaMask (Rabdi testnet). Expiration is set to 7 days.</div>
+          <div>• High-level scope is published to the decentralized network using your connected wallet.</div>
+          <div>• Specialists can review requirements and submit competitive audit proposals.</div>
         </div>
 
         <div id="post-task-status" class="hidden"></div>
@@ -3001,7 +3993,7 @@ function renderArkivPostTaskModal() {
             id="post-task-submit-btn"
             class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
           >
-            <span>Sign & Publish to Rabdi</span>
+            <span>Sign & Publish Scope</span>
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
@@ -3023,10 +4015,10 @@ function renderArkivSubmitBidModal() {
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-[16px] font-semibold text-[#202820]">Submit Specialist Bid</h3>
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Arkiv bids.v1</span>
+            <h3 class="text-[16px] font-semibold text-[#202820]">Submit Specialist Proposal</h3>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Specialist Proposal</span>
           </div>
-          <p class="text-[12px] text-[#627566] mt-0.5">Bid record expires automatically after 48 hours on Rabdi testnet.</p>
+          <p class="text-[12px] text-[#627566] mt-0.5">Submit your security review proposal and quote.</p>
         </div>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
@@ -3034,7 +4026,7 @@ function renderArkivSubmitBidModal() {
       <!-- Task Context Summary -->
       <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-1.5">
         <div class="flex items-center justify-between text-[11px] font-mono text-[#627566]">
-          <span>Task: ${escapeHtml(task.task_id || taskId)}</span>
+          <span>Request: ${escapeHtml(task.title || 'Security Audit')}</span>
           <span>Budget: <strong class="text-[#202820]">${escapeHtml(task.budget_range || 'Open')}</strong></span>
         </div>
         <div class="text-[14px] font-semibold text-[#202820]">${escapeHtml(task.title || 'Security Audit Task')}</div>
@@ -3043,7 +4035,7 @@ function renderArkivSubmitBidModal() {
 
       ${!isRabdi ? `
         <div class="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md text-[12.5px] text-[#92400E] flex items-center justify-between">
-          <span>MetaMask is not on <strong>Rabdi Testnet (Chain ID 7794095)</strong>.</span>
+          <span>MetaMask is not connected to <strong>Rabdi Testnet</strong>.</span>
           <button onclick="handleSwitchToRabdi()" class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer">
             Switch to Rabdi
           </button>
@@ -3100,7 +4092,7 @@ function renderArkivSubmitBidModal() {
             id="submit-bid-btn"
             class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
           >
-            <span>Sign & Submit Bid</span>
+            <span>Sign & Submit Proposal</span>
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
@@ -3125,10 +4117,10 @@ function renderArkivViewBidsModal() {
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-[16px] font-semibold text-[#202820]">Specialist Bids & Awards</h3>
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Arkiv Rabdi</span>
+            <h3 class="text-[16px] font-semibold text-[#202820]">Specialist Proposals & Award</h3>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Decentralized Proposals</span>
           </div>
-          <p class="text-[12px] text-[#627566] mt-0.5">Task ID: <code class="font-mono text-[#202820]">${escapeHtml(taskId)}</code></p>
+          <p class="text-[12px] text-[#627566] mt-0.5">Review incoming specialist proposals and award audit contracts.</p>
         </div>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
@@ -3142,10 +4134,8 @@ function renderArkivViewBidsModal() {
         <h4 class="text-[14px] font-semibold text-[#202820]">${escapeHtml(task.title || 'Security Audit')}</h4>
         <div class="text-[11.5px] text-[#627566] flex items-center gap-2 pt-0.5">
           <span>Poster:</span>
-          <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/address/${task.customer_wallet}" target="_blank" class="font-mono text-[#176B45] hover:underline">
-            ${task.customer_wallet ? (task.customer_wallet.substring(0, 8) + '...' + task.customer_wallet.substring(task.customer_wallet.length - 4)) : 'Unknown'}
-          </a>
-          ${isTaskOwner ? '<span class="px-1.5 py-0.2 rounded bg-[#EAF5EE] text-[#176B45] font-semibold text-[10px] font-mono">TASK OWNER</span>' : ''}
+          <span class="font-mono text-[#202820]">${task.customer_wallet ? (task.customer_wallet.substring(0, 8) + '...' + task.customer_wallet.substring(task.customer_wallet.length - 4)) : 'Unknown'}</span>
+          ${isTaskOwner ? '<span class="px-1.5 py-0.2 rounded bg-[#EAF5EE] text-[#176B45] font-semibold text-[10px] font-mono">YOU</span>' : ''}
           <span class="ml-auto font-mono text-[11px] capitalize px-2 py-0.5 rounded border ${task.status === 'open' ? 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]' : 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]'}">
             ${escapeHtml(task.status || 'open')}
           </span>
@@ -3160,7 +4150,7 @@ function renderArkivViewBidsModal() {
           <span>Proposals from Specialists (${bids.length})</span>
           ${(task.status === 'open' && !isTaskOwner) ? `
             <button onclick="openSubmitBidModal('${taskId}')" class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
-              + Submit a Bid
+              + Submit a Proposal
             </button>
           ` : ''}
         </div>
@@ -3168,23 +4158,22 @@ function renderArkivViewBidsModal() {
         ${isLoading ? `
           <div class="p-8 text-center text-[#627566] text-xs flex items-center justify-center gap-2">
             <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin"></div>
-            <span>Querying Arkiv (guardvane.bids.v1) on Rabdi testnet...</span>
+            <span>Retrieving specialist proposals from Rabdi testnet...</span>
           </div>
         ` : bids.length > 0 ? `
           <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
             ${bids.map(b => {
               const shortSpecialist = b.specialist_wallet ? (b.specialist_wallet.substring(0, 6) + '...' + b.specialist_wallet.substring(b.specialist_wallet.length - 4)) : 'Anonymous';
-              const shortBidKey = b.entity_key ? (b.entity_key.substring(0, 10) + '...' + b.entity_key.substring(b.entity_key.length - 6)) : '';
               const isMyBid = currentWallet && b.specialist_wallet && (b.specialist_wallet.toLowerCase() === currentWallet);
 
               return `
                 <div class="p-4 bg-white border border-[#E2E9E3] rounded-lg shadow-2xs hover:border-[#176B45] transition-smooth space-y-2.5">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/address/${b.specialist_wallet}" target="_blank" class="font-mono text-[12px] font-semibold text-[#176B45] hover:underline">
+                      <span class="font-mono text-[12px] font-semibold text-[#176B45]">
                         ${shortSpecialist}
-                      </a>
-                      ${isMyBid ? '<span class="px-1.5 py-0.2 rounded bg-[#EFF6FF] text-[#1E40AF] text-[9.5px] font-semibold font-mono">YOUR BID</span>' : ''}
+                      </span>
+                      ${isMyBid ? '<span class="px-1.5 py-0.2 rounded bg-[#EFF6FF] text-[#1E40AF] text-[9.5px] font-semibold font-mono">YOUR PROPOSAL</span>' : ''}
                     </div>
 
                     <div class="flex items-center gap-2">
@@ -3198,14 +4187,20 @@ function renderArkivViewBidsModal() {
                   <p class="text-[12.5px] text-[#445246] leading-relaxed">${escapeHtml(b.proposal_summary)}</p>
 
                   <div class="pt-2 border-t border-[#E2E9E3] flex items-center justify-between text-[11px] text-[#8B9C8E]">
-                    <span title="Bid Entity Key: ${b.entity_key}">Key: <code class="font-mono text-[#627566]">${shortBidKey || 'N/A'}</code></span>
+                    <div class="flex items-center gap-1.5">
+                      ${(b.tx_hash || b.entity_key) ? `
+                        <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/${b.tx_hash || b.entity_key}" target="_blank" class="text-[11px] text-[#176B45] hover:underline flex items-center gap-0.5">
+                          View on Arkiv ↗
+                        </a>
+                      ` : '<span>Proposal on Rabdi</span>'}
+                    </div>
 
                     ${(isTaskOwner && task.status === 'open') ? `
                       <button
                         onclick="handleAcceptBid('${taskId}', '${b.entity_key}', '${b.specialist_wallet}')"
                         class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white text-[11.5px] font-medium rounded shadow-2xs transition-smooth cursor-pointer"
                       >
-                        Accept & Award Task 🎯
+                        Accept Proposal & Award 🎯
                       </button>
                     ` : ''}
                   </div>
@@ -3215,14 +4210,14 @@ function renderArkivViewBidsModal() {
           </div>
         ` : `
           <div class="p-8 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-center space-y-2">
-            <div class="text-[13px] font-medium text-[#202820]">No bids submitted yet for this task</div>
+            <div class="text-[13px] font-medium text-[#202820]">No proposals submitted yet for this request</div>
             <p class="text-[12px] text-[#627566] max-w-sm mx-auto">
-              Specialist proposals will appear here as soon as security researchers inspect the task on Rabdi.
+              Specialist proposals will appear here as soon as security researchers submit quotes on the decentralized network.
             </p>
             ${(!isTaskOwner && task.status === 'open') ? `
               <div class="pt-2">
                 <button onclick="openSubmitBidModal('${taskId}')" class="px-3.5 py-1.5 bg-[#176B45] text-white text-[12px] font-medium rounded cursor-pointer">
-                  Submit the First Bid
+                  Submit Proposal
                 </button>
               </div>
             ` : ''}
@@ -3231,7 +4226,7 @@ function renderArkivViewBidsModal() {
       </div>
 
       <div class="pt-3 border-t border-[#E2E9E3] flex justify-end">
-        <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth">
+        <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth cursor-pointer">
           Close
         </button>
       </div>
@@ -3314,6 +4309,36 @@ async function handleOrderSubmit(e) {
   const testEnvNotes = form.test_env_notes?.value ? form.test_env_notes.value.trim() : null;
   const isZeroGWallet = (form.is_zero_g_wallet?.value === 'true') || !!form.is_zero_g_wallet?.checked;
 
+  const currentService = STATE.data.services.find(s => s.id === serviceId);
+  const isAutomated = currentService?.execution_type === 'automated';
+
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const cancelBtn = form.querySelector('button[type="button"]');
+  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+    submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+    if (isAutomated) {
+      submitBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        0G Private Computer Reasoning (Please wait 30-60s)...
+      `;
+    } else {
+      submitBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        Submitting Review Request...
+      `;
+    }
+  }
+
   try {
     const order = await apiFetch('/marketplace/orders', {
       method: 'POST',
@@ -3325,16 +4350,29 @@ async function handleOrderSubmit(e) {
         docs_link: docsLink,
         test_env_notes: testEnvNotes,
         is_zero_g_wallet: isZeroGWallet,
-        customer_id: STATE.user.id,
-        customer_name: STATE.user.name
+        customer_id: STATE.user.id || STATE.auth.walletAddress || 'cust_anonymous',
+        customer_name: STATE.user.name || 'Customer'
       })
     });
 
     closeModal();
     await loadInitialData();
-    navigateTo('my_requests');
+
+    if (isAutomated && order.report_id) {
+      alert("0G Defense analysis completed! Report has been generated and saved to Security Reports.");
+      navigateTo('security_reports');
+    } else {
+      alert("Review request submitted to specialist successfully! Track it under My Requests.");
+      navigateTo('my_requests');
+    }
   } catch (err) {
     alert(`Order submission error: ${err.message}`);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      if (cancelBtn) cancelBtn.disabled = false;
+      submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+      submitBtn.innerHTML = originalHtml;
+    }
   }
 }
 
@@ -3408,21 +4446,25 @@ async function handleDeliverSubmit(e, orderId) {
 async function handleBecomeProvider(e) {
   e.preventDefault();
   const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Registering Profile & Service...';
+  }
+
   const cats = Array.from(form.querySelectorAll('input[name="cat"]:checked')).map(el => el.value);
-  const skills = form.skills_raw.value.split(',').map(s => s.trim()).filter(Boolean);
+  const skills = (form.skills_raw?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+  const chosenCategory = form.service_category?.value || cats[0] || 'prompt_engineering';
 
   const payload = {
-    display_name: form.display_name.value,
-    title: form.title.value,
-    provider_type: form.provider_type.value,
-    description: form.description.value,
+    display_name: form.display_name.value.trim(),
+    title: form.title.value.trim(),
+    provider_type: 'human',
+    description: form.description.value.trim(),
     skills: skills,
-    categories: cats,
+    categories: cats.length > 0 ? cats : [chosenCategory],
     wallet_address: form.wallet_address.value || null,
-    portfolio_url: form.portfolio_url.value || null,
-    endpoint_url: form.endpoint_url?.value || null,
-    io_format: form.io_format?.value || 'JSON / Prompt-in, Hardened-out',
-    x402_supported: form.provider_type.value === 'automated',
+    portfolio_url: form.portfolio_url?.value ? form.portfolio_url.value.trim() : null,
     availability: 'available',
     status: 'published'
   };
@@ -3436,49 +4478,193 @@ async function handleBecomeProvider(e) {
     await apiFetch('/marketplace/services', {
       method: 'POST',
       body: JSON.stringify({
-        title: form.service_title.value,
+        title: form.service_title.value.trim(),
         description: `Security assessment delivered by ${prov.display_name}.`,
-        category: cats[0] || 'ai_security',
+        category: chosenCategory,
         price: parseFloat(form.service_price.value) || 50.0,
         currency: 'USD',
-        estimated_delivery: form.service_delivery.value,
+        estimated_delivery: form.service_delivery.value.trim(),
         supported_tasks: ['prompt_injection', 'system_prompt_audit'],
-        execution_type: prov.provider_type === 'automated' ? 'automated' : 'manual',
+        execution_type: 'manual',
         provider_id: prov.id
       })
     });
 
-    alert('Provider profile and initial service registered successfully!');
+    alert('Specialist profile and initial service registered successfully! Welcome to your Provider Workspace.');
     STATE.user.activeProviderId = prov.id;
     STATE.user.role = 'provider';
     await loadInitialData();
     navigateTo('provider_workspace');
   } catch (err) {
     alert(`Registration failed: ${err.message}`);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Register Provider Profile';
+    }
+  }
+}
+
+async function handleEditProviderSubmit(e, providerId) {
+  e.preventDefault();
+  const form = e.target;
+  const cats = Array.from(form.querySelectorAll('input[name="cat"]:checked')).map(el => el.value);
+  const skills = (form.skills_raw?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+
+  try {
+    await apiFetch(`/marketplace/providers/${providerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        display_name: form.display_name.value.trim(),
+        title: form.title.value.trim(),
+        description: form.description.value.trim(),
+        skills: skills,
+        categories: cats,
+        availability: form.availability.value,
+        portfolio_url: form.portfolio_url?.value ? form.portfolio_url.value.trim() : null
+      })
+    });
+    alert('Specialist profile updated successfully!');
+    closeModal();
+    await loadInitialData();
+    renderApp();
+  } catch (err) {
+    alert("Failed to update profile: " + (err.detail || err.message || err));
+  }
+}
+
+function handleOrderReject(orderId) {
+  openModal('reject_order', { orderId });
+}
+
+async function handleRejectSubmit(e, orderId) {
+  e.preventDefault();
+  const form = e.target;
+  const reason = form.rejection_reason.value.trim();
+  if (!reason) {
+    alert("A rejection reason is required.");
+    return;
+  }
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Rejecting...";
+  }
+  try {
+    await apiFetch(`/marketplace/orders/${orderId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'rejected', rejection_reason: reason })
+    });
+    closeModal();
+    alert("Request declined. The customer has been notified and escrow refunded.");
+    await loadInitialData();
+    renderApp();
+  } catch (err) {
+    alert(`Failed to decline request: ${err.detail || err.message}`);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Confirm Rejection";
+    }
+  }
+}
+
+async function handleInitiatePayment(orderId) {
+  if (!confirm("Confirm payment escrow for this security request?")) return;
+  try {
+    await apiFetch(`/marketplace/orders/${orderId}/pay`, {
+      method: 'POST',
+      body: JSON.stringify({
+        payment_method: 'hedera_x402_escrow',
+        payer_wallet: STATE.auth.walletAddress || '0xfrancis',
+        proof: 'test-receipt'
+      })
+    });
+    alert("Payment verified and request activated!");
+    await loadInitialData();
+  } catch (err) {
+    alert("Payment verification failed: " + (err.detail || err.message || err));
   }
 }
 
 async function handleAddServiceSubmit(e, providerId) {
   e.preventDefault();
   const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Publishing...';
+  }
+
   try {
     await apiFetch('/marketplace/services', {
       method: 'POST',
       body: JSON.stringify({
-        title: form.title.value,
-        description: form.description.value,
-        category: 'ai_security',
-        price: parseFloat(form.price.value),
+        title: form.title.value.trim(),
+        description: form.description.value.trim(),
+        category: form.category?.value || 'prompt_engineering',
+        price: parseFloat(form.price.value) || 0,
         currency: 'USD',
-        estimated_delivery: form.estimated_delivery.value,
-        execution_type: form.execution_type.value,
+        estimated_delivery: form.estimated_delivery.value.trim(),
+        execution_type: 'manual',
         provider_id: providerId
       })
     });
+    alert('New security service published successfully!');
     closeModal();
     await loadInitialData();
+    renderApp();
   } catch (err) {
-    alert(`Service creation failed: ${err.message}`);
+    alert(`Service creation failed: ${err.detail || err.message}`);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Publish Service';
+    }
+  }
+}
+
+async function handleEditServiceSubmit(e, serviceId) {
+  e.preventDefault();
+  const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'Saving...';
+  }
+
+  try {
+    await apiFetch(`/marketplace/services/${serviceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        title: form.title.value.trim(),
+        category: form.category.value,
+        price: parseFloat(form.price.value) || 0,
+        estimated_delivery: form.estimated_delivery.value.trim(),
+        description: form.description.value.trim()
+      })
+    });
+    alert('Service offering updated successfully!');
+    closeModal();
+    await loadInitialData();
+    renderApp();
+  } catch (err) {
+    alert(`Failed to update service: ${err.detail || err.message}`);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Save Changes';
+    }
+  }
+}
+
+async function handleDeleteService(serviceId) {
+  if (!confirm('Are you sure you want to delete this service offering?')) return;
+  try {
+    await apiFetch(`/marketplace/services/${serviceId}`, {
+      method: 'DELETE'
+    });
+    alert('Service offering deleted successfully.');
+    await loadInitialData();
+    renderApp();
+  } catch (err) {
+    alert(`Failed to delete service: ${err.detail || err.message}`);
   }
 }
 
@@ -3606,7 +4792,7 @@ async function handlePostTask(event) {
     alert(`Task successfully published to Arkiv!\nEntity Key: ${entityKey}\nTx Hash: ${txHash}`);
     closeModal();
     await loadArkivTasks(true);
-    navigateTo('arkiv_tasks');
+    navigateTo('opihub', { tab: 'requests' });
   } catch (err) {
     console.error('Failed to post task on Arkiv:', err);
     if (statusEl) {

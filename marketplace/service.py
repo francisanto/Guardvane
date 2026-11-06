@@ -285,16 +285,32 @@ class MarketplaceService:
         except Exception as e:
             logger.debug(f"Could not add role to user: {e}")
 
-        arkiv_server_writer.publish_public_entity(
+        pub_res = arkiv_server_writer.publish_public_entity(
             schema_tag="guardvane.specialists.v1",
             entity_id=provider_id,
             owner_wallet=wallet_addr or user_id,
             public_payload={
                 "display_name": data.display_name,
-                "provider_type": ProviderType.HUMAN.value,
+                "headline": data.title,
                 "categories": categories,
+                "skills": data.skills or [],
+                "availability": data.availability or "available",
             },
         )
+        if pub_res.get("status") == "confirmed" and pub_res.get("entity_key") and pub_res.get("tx_hash"):
+            try:
+                self.save_arkiv_record(
+                    entity_key=pub_res["entity_key"],
+                    schema_tag=pub_res["schema_tag"],
+                    entity_id=pub_res["entity_id"],
+                    owner_wallet=pub_res["owner_wallet"],
+                    tx_hash=pub_res["tx_hash"],
+                    payload=pub_res["payload"],
+                    status="confirmed"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save arkiv reconciliation record for provider {provider_id}: {e}")
+
         return self.get_provider(provider_id)
 
     def update_provider_profile(
@@ -496,7 +512,7 @@ class MarketplaceService:
                 )
             )
 
-        arkiv_server_writer.publish_public_entity(
+        pub_res = arkiv_server_writer.publish_public_entity(
             schema_tag="guardvane.services.v1",
             entity_id=service_id,
             owner_wallet=provider.wallet_address or provider_id,
@@ -504,9 +520,24 @@ class MarketplaceService:
                 "title": data.title,
                 "category": category,
                 "price": data.price,
+                "description": data.description,
                 "provider_id": provider_id,
             },
         )
+        if pub_res.get("status") == "confirmed" and pub_res.get("entity_key") and pub_res.get("tx_hash"):
+            try:
+                self.save_arkiv_record(
+                    entity_key=pub_res["entity_key"],
+                    schema_tag=pub_res["schema_tag"],
+                    entity_id=pub_res["entity_id"],
+                    owner_wallet=pub_res["owner_wallet"],
+                    tx_hash=pub_res["tx_hash"],
+                    payload=pub_res["payload"],
+                    status="confirmed"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save arkiv reconciliation record for service {service_id}: {e}")
+
         return self.get_service(service_id)
 
     def update_service(self, service_id: str, data: ServiceUpdate, provider_id: str) -> ServiceResponse:
@@ -666,11 +697,9 @@ class MarketplaceService:
                         hardened_prompt = zg_res.optimized_prompt or zg_res.hardened_prompt
                         model_name = zg_res.metadata.get("model", "0G Private Computer")
                         trust_mode = zg_res.metadata.get("trust_mode", "verified")
-                        dur = zg_res.metadata.get("duration_ms", 0)
                         report_summary = (
-                            f"0G Private Computer AI security analysis completed in {dur}ms by {service.provider_name} "
-                            f"using model '{model_name}' ({trust_mode} trust mode). "
-                            f"Identified {len(findings)} findings and generated hardened prompt."
+                            f"0G Private Computer AI security analysis and hardening verified by {service.provider_name}. "
+                            f"Identified {len(findings)} vulnerability findings and generated hardened prompt."
                         )
                     elif zg_res.status == "0g_reasoning_failed":
                         logger.warning(f"0G reasoning failed: {zg_res.error_message}")
@@ -1029,22 +1058,34 @@ class MarketplaceService:
 
         conn = self.db._get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT wallet_address FROM providers WHERE id = ?", (order.provider_id,))
+        cursor.execute("SELECT id, wallet_address FROM providers WHERE id = ? OR LOWER(wallet_address) = LOWER(?)", (order.provider_id, order.provider_id))
         prov_row = cursor.fetchone()
+        prov_id = prov_row["id"] if prov_row else order.provider_id
         prov_wallet = prov_row["wallet_address"] if prov_row else None
-        is_assigned_prov = (order.provider_id == user_id or (prov_wallet and prov_wallet.lower() == user_id.lower()))
-        is_cust = (order.customer_id.lower() == user_id.lower())
+        
+        uid = (user_id or "").lower()
+        is_assigned_prov = (
+            order.provider_id.lower() == uid
+            or (prov_wallet and prov_wallet.lower() == uid)
+            or (prov_id and prov_id.lower() == uid)
+        )
+        if not is_assigned_prov and user_id:
+            user_prov = self.get_provider_by_wallet(user_id)
+            if user_prov and (user_prov.id.lower() == order.provider_id.lower() or (prov_id and user_prov.id.lower() == prov_id.lower())):
+                is_assigned_prov = True
+        is_cust = (order.customer_id.lower() == uid)
 
-        # Ownership authorization check
-        if role == "customer":
-            if not is_cust:
-                raise PermissionError("Access denied: You do not own this order.")
-            # Customers can only cancel or mark completed if delivered
+        # Ownership authorization check: prioritize actual order relationship over client header
+        if is_assigned_prov:
+            # User is the assigned provider for this order
+            if new_status not in {OrderStatus.ACCEPTED, OrderStatus.IN_PROGRESS, OrderStatus.REJECTED, OrderStatus.DELIVERED, OrderStatus.NEEDS_INFO}:
+                raise PermissionError(f"Provider cannot transition order to '{new_status.value}'.")
+        elif is_cust:
+            # User is the customer for this order
             if new_status not in {OrderStatus.CANCELLED, OrderStatus.COMPLETED}:
                 raise PermissionError(f"Customer cannot transition order to '{new_status.value}'.")
         else:
-            if not is_assigned_prov:
-                raise PermissionError("Access denied: You are not the assigned provider for this order.")
+            raise PermissionError("Access denied: You do not own or are not assigned to this order.")
 
         # Lifecycle state machine validation
         allowed = VALID_TRANSITIONS.get(order.status, set())
@@ -1093,10 +1134,21 @@ class MarketplaceService:
 
         conn = self.db._get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT wallet_address FROM providers WHERE id = ?", (order.provider_id,))
+        cursor.execute("SELECT id, wallet_address FROM providers WHERE id = ? OR LOWER(wallet_address) = LOWER(?)", (order.provider_id, order.provider_id))
         prov_row = cursor.fetchone()
+        prov_id = prov_row["id"] if prov_row else order.provider_id
         prov_wallet = prov_row["wallet_address"] if prov_row else None
-        is_assigned_prov = (order.provider_id == provider_id or (prov_wallet and prov_wallet.lower() == provider_id.lower()))
+
+        pid = (provider_id or "").lower()
+        is_assigned_prov = (
+            order.provider_id.lower() == pid
+            or (prov_wallet and prov_wallet.lower() == pid)
+            or (prov_id and prov_id.lower() == pid)
+        )
+        if not is_assigned_prov and provider_id:
+            user_prov = self.get_provider_by_wallet(provider_id)
+            if user_prov and (user_prov.id.lower() == order.provider_id.lower() or (prov_id and user_prov.id.lower() == prov_id.lower())):
+                is_assigned_prov = True
 
         if not is_assigned_prov:
             raise PermissionError("Access denied: You are not the assigned provider for this order.")
@@ -1461,17 +1513,21 @@ class MarketplaceService:
         now = datetime.now(timezone.utc).isoformat()
         payload_json = json.dumps(payload)
 
-        cursor.execute("SELECT entity_key FROM arkiv_records WHERE entity_key = ?", (entity_key,))
+        cursor.execute(
+            "SELECT entity_key FROM arkiv_records WHERE entity_key = ? OR (schema_tag = ? AND entity_id = ?)",
+            (entity_key, schema_tag, entity_id)
+        )
         existing = cursor.fetchone()
+        matched_key = existing["entity_key"] if existing else None
 
-        if existing:
+        if matched_key:
             cursor.execute(
                 """
                 UPDATE arkiv_records
-                SET schema_tag = ?, entity_id = ?, owner_wallet = ?, tx_hash = ?, payload = ?, status = ?, updated_at = ?
+                SET entity_key = ?, schema_tag = ?, entity_id = ?, owner_wallet = ?, tx_hash = ?, payload = ?, status = ?, updated_at = ?
                 WHERE entity_key = ?
                 """,
-                (schema_tag, entity_id, owner_wallet.lower(), tx_hash, payload_json, status, now, entity_key)
+                (entity_key, schema_tag, entity_id, owner_wallet.lower(), tx_hash, payload_json, status, now, matched_key)
             )
         else:
             cursor.execute(
