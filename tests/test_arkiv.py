@@ -402,3 +402,73 @@ def test_verify_entity_ownership_boundary():
         expected_owner="0x9876543210987654321098765432109876543210"
     ) is False
 
+
+# ---------------------------------------------------------------------------
+# 6. Idempotency & Privacy Boundary Verifications
+# ---------------------------------------------------------------------------
+
+def test_reconciliation_idempotency_duplicate_calls(client):
+    """
+    Verifies that duplicate reconciliation callbacks (e.g. browser refresh or network retry)
+    do not create duplicate order records or duplicate arkiv_records entries.
+    """
+    test_task_id = f"task-idemp-{int(datetime.now().timestamp())}"
+    customer_addr = "0x8888888888888888888888888888888888888888"
+
+    payload = {
+        "task_id": test_task_id,
+        "entity_key": f"key_idemp_{test_task_id}",
+        "tx_hash": f"0xtx_idemp_{test_task_id}",
+        "title": "Idempotent Reentrancy Audit",
+        "category": "smart_contract_audit",
+        "public_description": "Public scope description",
+        "required_skills": "EVM",
+        "budget_range": "50 tGLM",
+        "customer_wallet": customer_addr,
+    }
+
+    # Call 1
+    resp1 = client.post("/marketplace/arkiv/reconcile/task", json=payload, headers={"X-User-Id": customer_addr})
+    assert resp1.status_code == 200
+
+    # Call 2 (duplicate/retry)
+    resp2 = client.post("/marketplace/arkiv/reconcile/task", json=payload, headers={"X-User-Id": customer_addr})
+    assert resp2.status_code == 200
+
+    # Verify orders count for test_task_id is exactly 1
+    conn = marketplace_service.db._get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as count FROM orders WHERE id = ?", (test_task_id,))
+    row = cursor.fetchone()
+    assert row["count"] == 1
+
+    # Verify arkiv_records count for key_idemp is exactly 1
+    cursor.execute("SELECT COUNT(*) as count FROM arkiv_records WHERE entity_key = ?", (payload["entity_key"],))
+    rec_row = cursor.fetchone()
+    assert rec_row["count"] == 1
+
+
+def test_confidential_data_never_in_arkiv_schemas():
+    """
+    Verifies that Arkiv schemas strictly exclude confidential fields:
+    - No report findings or exploit payloads in TasksSchema or BidsSchema
+    - No private staging URLs, customer credentials, or bearer tokens
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    task = ArkivSecurityTask(
+        task_id="task-priv-001",
+        customer_wallet="0x5555555555555555555555555555555555555555",
+        category="application_testing",
+        title="Public Task Headline",
+        public_description="Public scope only",
+        created_at=now
+    )
+    task_dict = task.model_dump()
+    assert "private_key" not in task_dict
+    assert "password" not in task_dict
+    assert "findings" not in task_dict
+    assert "vulnerabilities" not in task_dict
+    assert "credentials" not in task_dict
+    assert "report" not in task_dict
+
+

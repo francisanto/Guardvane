@@ -11,6 +11,7 @@ Validates:
 8. Existing PromptShield security analysis and root route contracts.
 """
 
+import uuid
 import pytest
 from fastapi.testclient import TestClient
 
@@ -97,14 +98,15 @@ def test_marketplace_discovery_providers(client):
 def test_become_specialist_human_and_automated(client):
     """Verify registering human specialist and automated AI provider."""
     # 1. Human specialist registration
+    test_wallet = f"0x{uuid.uuid4().hex[:40]}"
     human_payload = {
         "display_name": "Test Human Specialist",
         "title": "Adversarial Prompting Auditor",
         "provider_type": "human",
         "description": "Expert in multi-modal jailbreaks and prompt boundaries.",
         "skills": ["Jailbreaking", "System Prompts", "Red Teaming"],
-        "categories": ["ai_security", "prompt_engineering"],
-        "wallet_address": "0.0.9999001",
+        "categories": ["prompt_engineering", "loop_engineering"],
+        "wallet_address": test_wallet,
         "availability": "available",
         "status": "published"
     }
@@ -119,15 +121,15 @@ def test_become_specialist_human_and_automated(client):
         assert human_prov["provider_type"] == "human"
         assert human_prov["verified"] is False  # Never automatically verified
 
-        # 2. Automated AI provider registration
+        # 2. Automated AI provider registration rejected for ordinary users
         auto_payload = {
             "display_name": "Test Auto Shield Agent",
             "title": "Autonomous Guardrail Enforcer",
             "provider_type": "automated",
             "description": "Sub-second prompt hardening using local neural classifiers.",
             "skills": ["Prompt Hardening", "OWASP Top-10", "Zero-G"],
-            "categories": ["llm_optimization", "ai_security"],
-            "wallet_address": "0.0.9999002",
+            "categories": ["prompt_optimization", "prompt_security_analysis"],
+            "wallet_address": f"0x{uuid.uuid4().hex[:40]}",
             "endpoint_url": "https://api.testshield.internal/v1/harden",
             "io_format": "JSON / Prompt-in, Hardened-out",
             "x402_supported": True,
@@ -135,12 +137,7 @@ def test_become_specialist_human_and_automated(client):
             "status": "published"
         }
         resp = client.post("/marketplace/providers/profile", json=auto_payload)
-        assert resp.status_code == 201
-        auto_prov = resp.json()
-        auto_id = auto_prov["id"]
-        assert auto_prov["provider_type"] == "automated"
-        assert auto_prov["x402_supported"] is True
-        assert auto_prov["endpoint_url"] == "https://api.testshield.internal/v1/harden"
+        assert resp.status_code == 403
     finally:
         db = marketplace_service.db
         with db._get_connection() as conn:
@@ -170,7 +167,7 @@ def test_automated_service_execution_flow(client):
 
     assert order["status"] == OrderStatus.COMPLETED.value
     assert order["execution_type"] == "automated"
-    assert order["payment_status"] == PaymentStatus.SETTLED.value
+    assert order["payment_status"] == PaymentStatus.VERIFIED.value
     assert order["report_id"] is not None
 
     # Verify report was generated and has findings
@@ -227,7 +224,15 @@ def test_human_service_execution_flow_and_lifecycle(client):
 
         assert order["status"] == OrderStatus.REQUESTED.value
         assert order["execution_type"] == "manual"
-        assert order["payment_status"] == PaymentStatus.ESCROWED_X402.value
+        assert order["payment_status"] == PaymentStatus.PENDING.value
+
+        # Test payment confirmation
+        pay_resp = client.post(
+            f"/marketplace/orders/{order_id}/pay",
+            json={"payment_method": "hedera_x402_escrow", "payer_wallet": "0xfrancis", "proof": "test-receipt"}
+        )
+        assert pay_resp.status_code == 200
+        assert pay_resp.json()["payment_status"] == PaymentStatus.VERIFIED.value
 
         # 2. Invalid transition: cannot jump directly from requested to completed
         bad_resp = client.patch(
@@ -285,7 +290,7 @@ def test_human_service_execution_flow_and_lifecycle(client):
         )
         assert comp_resp.status_code == 200
         assert comp_resp.json()["status"] == OrderStatus.COMPLETED.value
-        assert comp_resp.json()["payment_status"] == PaymentStatus.SETTLED.value
+        assert comp_resp.json()["payment_status"] == PaymentStatus.VERIFIED.value
     finally:
         with db._get_connection() as conn:
             if order_id:
