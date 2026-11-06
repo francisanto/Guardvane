@@ -14,10 +14,40 @@ load_dotenv()
 VALID_TRUST_MODES: Set[str] = {"standard", "verified", "private"}
 DEFAULT_TRUST_MODE: str = "verified"
 DEFAULT_BASE_URL: str = "https://router-api.0g.ai/v1"
-DEFAULT_MODEL: str = "glm-5.2"
-DEFAULT_TIMEOUT: float = 30.0
+DEFAULT_MODEL: str = "0gm-1.0-35b-a3b"
+DEFAULT_TIMEOUT: float = 60.0
 DEFAULT_MAX_RETRIES: int = 0
-DEFAULT_MAX_TOKENS: int = 1500
+DEFAULT_MAX_TOKENS: int = 3500
+
+MODEL_ALIASES: dict[str, str] = {
+    "0gm-1.0": "0gm-1.0-35b-a3b",
+    "0gm": "0gm-1.0-35b-a3b",
+    "0gm-1.0-35b": "0gm-1.0-35b-a3b",
+    "0gm-1.0-sia": "0gm-1.0-35b-a3b-sia",
+    "qwen-omni": "qwen3-omni-flash",
+    "qwen-vision": "qwen2.5-vl-72b-instruct",
+}
+
+# Verified / Private TEE Models verified on 0G Foundation TDX Enclaves
+TEE_CAPABLE_MODELS: Set[str] = {
+    "0gm-1.0-35b-a3b",
+    "0gm-1.0-35b-a3b-sia",
+    "glm-5.3",
+    "laya",
+    "vela-2.0-9b",
+    "whisper-large-v3",
+    "z-image-turbo",
+    "qwen3-embedding-0.6b",
+    "qwen3-embedding-8b",
+}
+
+
+def resolve_canonical_model_id(model_name: Optional[str]) -> str:
+    """Resolves short names or hackathon aliases to exact 0G router canonical model IDs."""
+    if not model_name or not model_name.strip():
+        return DEFAULT_MODEL
+    cleaned = model_name.strip().lower()
+    return MODEL_ALIASES.get(cleaned, model_name.strip())
 
 
 def _parse_bool(val: Optional[str], default: bool = True) -> bool:
@@ -56,6 +86,16 @@ class ZeroGSettings:
                 "0G API key is not configured. Set the 'ZG_API_KEY' environment variable."
             )
 
+        # Enforce that verified and private trust modes require models with TEE capability.
+        # NEVER silently downgrade verified or private requests to standard!
+        canonical = resolve_canonical_model_id(self.model)
+        if self.trust_mode in ("verified", "private") and canonical not in TEE_CAPABLE_MODELS:
+            raise ZeroGConfigurationError(
+                f"Model '{self.model}' does not have a verified TEE provider for trust_mode='{self.trust_mode}'. "
+                f"It only supports 'standard' routing. Never silently downgrading trust mode. "
+                f"Please switch ZG_MODEL to a TEE-verified model (such as '0gm-1.0-35b-a3b') or set ZG_TRUST_MODE=standard."
+            )
+
     def __repr__(self) -> str:
         return (
             f"ZeroGSettings(enabled={self.enabled}, model='{self.model}', "
@@ -87,7 +127,8 @@ def get_zero_g_settings(
     has_key = bool(raw_key and raw_key.strip())
 
     base_url = (base_url_override or os.environ.get("ZG_BASE_URL") or DEFAULT_BASE_URL).strip()
-    model = (model_override or os.environ.get("ZG_MODEL") or DEFAULT_MODEL).strip()
+    raw_model = (model_override or os.environ.get("ZG_MODEL") or DEFAULT_MODEL).strip()
+    model = resolve_canonical_model_id(raw_model)
 
     trust_mode_raw = (trust_mode_override or os.environ.get("ZG_TRUST_MODE") or DEFAULT_TRUST_MODE).strip().lower()
     trust_mode = trust_mode_raw if trust_mode_raw in VALID_TRUST_MODES else trust_mode_raw

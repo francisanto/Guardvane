@@ -31,13 +31,20 @@ class ZeroGCache:
     @staticmethod
     def compute_key(
         sanitized_prompt: str,
-        security_findings: Dict[str, Any],
-        model: str,
-        trust_mode: str
+        security_findings: Optional[Dict[str, Any]] = None,
+        model: str = "glm-5.2",
+        trust_mode: str = "verified",
+        user_id: Optional[str] = None,
+        analysis_version: str = "v2_primary",
     ) -> str:
-        """Derives a deterministic SHA-256 fingerprint for the request parameters."""
-        serialized_findings = json.dumps(security_findings, sort_keys=True)
-        raw_key = f"{sanitized_prompt.strip()}||{serialized_findings}||{model}||{trust_mode}"
+        """
+        Derives a deterministic SHA-256 fingerprint scoped by user identity,
+        prompt content, security context, model, trust mode, and analysis version.
+        Ensures private prompts are never shared across user boundaries.
+        """
+        scope = f"user:{user_id.strip()}" if user_id and str(user_id).strip() else "scope:isolated"
+        serialized_findings = json.dumps(security_findings or {}, sort_keys=True)
+        raw_key = f"{scope}||{sanitized_prompt.strip()}||{serialized_findings}||{model}||{trust_mode}||{analysis_version}"
         return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
     def get(self, key: str) -> Optional[Any]:

@@ -19,6 +19,7 @@ from openai import OpenAI, AsyncOpenAI
 from integrations.zero_g.config import (
     ZeroGSettings,
     get_zero_g_settings,
+    resolve_canonical_model_id,
     VALID_TRUST_MODES,
     DEFAULT_TRUST_MODE,
 )
@@ -99,6 +100,10 @@ class ZeroGResponse:
     http_status: Optional[int] = None
     duration_ms: Optional[float] = None
     is_attestation_verified: bool = False  # Request ID is NOT cryptographic verification
+    trace: Optional[Dict[str, Any]] = None
+    cost_usd_micro: Optional[str] = None
+    e2ee: Optional[str] = None
+    provider_address: Optional[str] = None
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -113,6 +118,10 @@ class ZeroGResponse:
             "http_status": self.http_status,
             "duration_ms": self.duration_ms,
             "is_attestation_verified": self.is_attestation_verified,
+            "trace": self.trace,
+            "cost_usd_micro": self.cost_usd_micro,
+            "e2ee": self.e2ee,
+            "provider_address": self.provider_address,
             "created_at": self.created_at,
         }
 
@@ -370,8 +379,15 @@ class ZeroGClient:
         """
         start_time = datetime.now(timezone.utc)
         client = self._get_sync_client()
-        target_model = model or self.model
+        target_model = resolve_canonical_model_id(model or self.model)
         tokens_limit = max_tokens if max_tokens is not None else self.max_tokens
+
+        # For 0G Native chat models (0gm-1.0 series), disable thinking tokens by default
+        # to ensure immediate, structured JSON generation within token budgets.
+        effective_extra_body = dict(extra_body) if extra_body else {}
+        if target_model.startswith("0gm-1.0"):
+            if "chat_template_kwargs" not in effective_extra_body:
+                effective_extra_body["chat_template_kwargs"] = {"enable_thinking": False}
 
         # Build message array if not provided directly
         if messages is None:
@@ -387,8 +403,8 @@ class ZeroGClient:
             "temperature": temperature,
             "max_tokens": tokens_limit,
         }
-        if extra_body:
-            create_kwargs["extra_body"] = extra_body
+        if effective_extra_body:
+            create_kwargs["extra_body"] = effective_extra_body
 
         try:
             raw_response = client.chat.completions.with_raw_response.create(**create_kwargs)
@@ -402,7 +418,25 @@ class ZeroGClient:
                 content = choice.message.content or ""
                 finish_reason = choice.finish_reason
 
-            req_id = self._extract_request_id(raw_response)
+            # Extract trace, billing, provider address, and e2ee headers
+            model_extra = getattr(parsed, "model_extra", None)
+            trace = model_extra.get("x_0g_trace") if isinstance(model_extra, dict) else None
+            cost_usd_micro = None
+            provider_address = None
+            if isinstance(trace, dict):
+                billing = trace.get("billing")
+                if isinstance(billing, dict):
+                    cost_usd_micro = billing.get("total_cost_usd_micro")
+                provider_address = trace.get("provider")
+
+            headers = getattr(raw_response, "headers", {}) or {}
+            e2ee = headers.get("x-0g-e2ee")
+            if not provider_address:
+                provider_address = headers.get("x-provider")
+
+            # Prefer exact UUID request_id from trace if available, fallback to header
+            trace_req_id = trace.get("request_id") if isinstance(trace, dict) else None
+            req_id = trace_req_id or self._extract_request_id(raw_response)
 
             return ZeroGResponse(
                 content=content,
@@ -415,6 +449,10 @@ class ZeroGClient:
                 http_status=getattr(raw_response, "status_code", 200),
                 duration_ms=round(duration_ms, 2),
                 is_attestation_verified=False,  # An HTTP request ID is NOT cryptographic verification
+                trace=trace,
+                cost_usd_micro=cost_usd_micro,
+                e2ee=e2ee,
+                provider_address=provider_address,
             )
         except Exception as e:
             self._handle_exception(e)
@@ -439,8 +477,14 @@ class ZeroGClient:
         """
         start_time = datetime.now(timezone.utc)
         async_client = self._get_async_client()
-        target_model = model or self.model
+        target_model = resolve_canonical_model_id(model or self.model)
         tokens_limit = max_tokens if max_tokens is not None else self.max_tokens
+
+        # For 0G Native chat models (0gm-1.0 series), disable thinking tokens by default
+        effective_extra_body = dict(extra_body) if extra_body else {}
+        if target_model.startswith("0gm-1.0"):
+            if "chat_template_kwargs" not in effective_extra_body:
+                effective_extra_body["chat_template_kwargs"] = {"enable_thinking": False}
 
         if messages is None:
             messages = []
@@ -455,8 +499,8 @@ class ZeroGClient:
             "temperature": temperature,
             "max_tokens": tokens_limit,
         }
-        if extra_body:
-            create_kwargs["extra_body"] = extra_body
+        if effective_extra_body:
+            create_kwargs["extra_body"] = effective_extra_body
 
         try:
             raw_response = await async_client.chat.completions.with_raw_response.create(**create_kwargs)
@@ -470,7 +514,23 @@ class ZeroGClient:
                 content = choice.message.content or ""
                 finish_reason = choice.finish_reason
 
-            req_id = self._extract_request_id(raw_response)
+            model_extra = getattr(parsed, "model_extra", None)
+            trace = model_extra.get("x_0g_trace") if isinstance(model_extra, dict) else None
+            cost_usd_micro = None
+            provider_address = None
+            if isinstance(trace, dict):
+                billing = trace.get("billing")
+                if isinstance(billing, dict):
+                    cost_usd_micro = billing.get("total_cost_usd_micro")
+                provider_address = trace.get("provider")
+
+            headers = getattr(raw_response, "headers", {}) or {}
+            e2ee = headers.get("x-0g-e2ee")
+            if not provider_address:
+                provider_address = headers.get("x-provider")
+
+            trace_req_id = trace.get("request_id") if isinstance(trace, dict) else None
+            req_id = trace_req_id or self._extract_request_id(raw_response)
 
             return ZeroGResponse(
                 content=content,
@@ -483,6 +543,10 @@ class ZeroGClient:
                 http_status=getattr(raw_response, "status_code", 200),
                 duration_ms=round(duration_ms, 2),
                 is_attestation_verified=False,
+                trace=trace,
+                cost_usd_micro=cost_usd_micro,
+                e2ee=e2ee,
+                provider_address=provider_address,
             )
         except Exception as e:
             self._handle_exception(e)
