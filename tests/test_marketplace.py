@@ -394,8 +394,10 @@ def test_integration_boundaries_readiness(client):
     assert resp.status_code == 200
     data = resp.json()
 
-    assert data["arkiv"]["is_connected"] is False
-    assert data["arkiv"]["mode"] == "mock_interface"
+    # Arkiv is now integrated with Rabdi testnet
+    assert "arkiv" in data
+    assert data["arkiv"]["chain_id"] == 7794095
+    assert data["arkiv"]["network"] in ("Rabdi Testnet", "Rabdi Testnet (Mock)")
 
     assert data["swarm"]["is_connected"] is False
     assert data["swarm"]["mode"] == "mock_interface"

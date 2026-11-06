@@ -1148,5 +1148,243 @@ class MarketplaceService:
             recent_activity=recent_orders
         )
 
+    # -----------------------------------------------------------------------
+    # Arkiv Decentralized Marketplace Reconciliation Layer
+    # -----------------------------------------------------------------------
+
+    def save_arkiv_record(
+        self,
+        entity_key: str,
+        schema_tag: str,
+        entity_id: str,
+        owner_wallet: str,
+        tx_hash: str,
+        payload: Dict[str, Any],
+        status: str = "confirmed"
+    ) -> Dict[str, Any]:
+        """Saves or updates an on-chain Arkiv entity reference in PostgreSQL/SQLite."""
+        conn = self.db._get_connection()
+        cursor = conn.cursor()
+        now = datetime.now(timezone.utc).isoformat()
+        payload_json = json.dumps(payload)
+
+        cursor.execute("SELECT entity_key FROM arkiv_records WHERE entity_key = ?", (entity_key,))
+        existing = cursor.fetchone()
+
+        if existing:
+            cursor.execute(
+                """
+                UPDATE arkiv_records
+                SET schema_tag = ?, entity_id = ?, owner_wallet = ?, tx_hash = ?, payload = ?, status = ?, updated_at = ?
+                WHERE entity_key = ?
+                """,
+                (schema_tag, entity_id, owner_wallet.lower(), tx_hash, payload_json, status, now, entity_key)
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO arkiv_records (entity_key, schema_tag, entity_id, owner_wallet, tx_hash, payload, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (entity_key, schema_tag, entity_id, owner_wallet.lower(), tx_hash, payload_json, status, now, now)
+            )
+        conn.commit()
+
+        return {
+            "entity_key": entity_key,
+            "schema_tag": schema_tag,
+            "entity_id": entity_id,
+            "owner_wallet": owner_wallet.lower(),
+            "tx_hash": tx_hash,
+            "status": status,
+            "created_at": now
+        }
+
+    def reconcile_task(self, data: Any) -> Dict[str, Any]:
+        """Reconciles an on-chain security task with local PostgreSQL order registry."""
+        record = self.save_arkiv_record(
+            entity_key=data.entity_key,
+            schema_tag="guardvane.tasks.v1",
+            entity_id=data.task_id,
+            owner_wallet=data.customer_wallet,
+            tx_hash=data.tx_hash,
+            payload={
+                "task_id": data.task_id,
+                "title": data.title,
+                "category": data.category,
+                "public_description": data.public_description,
+                "required_skills": data.required_skills,
+                "budget_range": data.budget_range,
+                "customer_wallet": data.customer_wallet.lower(),
+            }
+        )
+
+        conn = self.db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM orders WHERE id = ?", (data.task_id,))
+        if not cursor.fetchone():
+            now = datetime.now(timezone.utc).isoformat()
+            
+            # Select default existing provider and service to satisfy database foreign keys
+            cursor.execute("SELECT id FROM providers LIMIT 1")
+            p_row = cursor.fetchone()
+            prov_id = p_row["id"] if p_row else "prov_zerog"
+
+            cursor.execute("SELECT id FROM services LIMIT 1")
+            s_row = cursor.fetchone()
+            srv_id = s_row["id"] if s_row else "srv_zerog_loop"
+
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO orders (
+                        id, customer_id, customer_name, provider_id, provider_name, provider_type,
+                        service_id, service_title, service_category, prompt_content, requirements,
+                        price, currency, status, execution_type, payment_status, deliverable_notes,
+                        created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        data.task_id,
+                        data.customer_wallet.lower(),
+                        f"Customer ({data.customer_wallet[:6]}...{data.customer_wallet[-4:]})",
+                        prov_id,
+                        "Awaiting Specialist Bid",
+                        "human",
+                        srv_id,
+                        data.title,
+                        data.category,
+                        data.public_description,
+                        data.required_skills or "Arkiv Decentralized Task",
+                        0.0,
+                        "tGLM",
+                        "requested",
+                        "manual",
+                        "pending",
+                        f"Arkiv Task Entity: {data.entity_key} | Tx: {data.tx_hash}",
+                        now,
+                        now,
+                    )
+                )
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not insert order for task {data.task_id}: {e}")
+                conn.rollback()
+
+        return {"status": "reconciled", "record": record}
+
+    def reconcile_bid(self, data: Any) -> Dict[str, Any]:
+        """Reconciles an on-chain specialist bid."""
+        record = self.save_arkiv_record(
+            entity_key=data.entity_key,
+            schema_tag="guardvane.bids.v1",
+            entity_id=data.task_id,
+            owner_wallet=data.specialist_wallet,
+            tx_hash=data.tx_hash,
+            payload={
+                "task_id": data.task_id,
+                "specialist_wallet": data.specialist_wallet.lower(),
+                "proposed_price": data.proposed_price,
+                "estimated_duration": data.estimated_duration,
+                "proposal_summary": data.proposal_summary,
+            }
+        )
+        return {"status": "reconciled", "record": record}
+
+    def reconcile_award(self, data: Any) -> Dict[str, Any]:
+        """Reconciles an on-chain award and transitions order to accepted/in_progress."""
+        record = self.save_arkiv_record(
+            entity_key=data.entity_key,
+            schema_tag="guardvane.awards.v1",
+            entity_id=data.task_id,
+            owner_wallet=data.customer_wallet,
+            tx_hash=data.tx_hash,
+            payload={
+                "task_id": data.task_id,
+                "accepted_bid_key": data.accepted_bid_key,
+                "customer_wallet": data.customer_wallet.lower(),
+                "specialist_wallet": data.specialist_wallet.lower(),
+                "award_status": "awarded",
+            }
+        )
+
+        conn = self.db._get_connection()
+        cursor = conn.cursor()
+        now = datetime.now(timezone.utc).isoformat()
+        cursor.execute("SELECT * FROM orders WHERE id = ?", (data.task_id,))
+        order_row = cursor.fetchone()
+
+        if order_row:
+            # Check if specialist has an existing provider profile
+            cursor.execute(
+                "SELECT id FROM providers WHERE LOWER(wallet_address) = LOWER(?) OR id = ?",
+                (data.specialist_wallet, data.specialist_wallet)
+            )
+            prov_match = cursor.fetchone()
+            if prov_match:
+                prov_id = prov_match["id"]
+            else:
+                prov_id = data.specialist_wallet.lower()
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO providers (
+                            id, display_name, title, provider_type, description, avatar_url,
+                            skills, categories, wallet_address, portfolio_url, endpoint_url,
+                            io_format, x402_supported, availability, verified, status,
+                            reputation_metadata, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (id) DO NOTHING
+                        """,
+                        (
+                            prov_id,
+                            f"Specialist ({data.specialist_wallet[:6]}...{data.specialist_wallet[-4:]})",
+                            "Arkiv Certified Security Specialist",
+                            "human",
+                            "Specialist awarded via Arkiv on Rabdi testnet.",
+                            "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80",
+                            json.dumps(["Arkiv", "Smart Contract Audit"]),
+                            json.dumps(["ai_security", "smart_contract_audit"]),
+                            data.specialist_wallet.lower(),
+                            "",
+                            "",
+                            "json",
+                            1,
+                            "available",
+                            0,
+                            "published",
+                            json.dumps({"audits_completed": 1, "status": "active"}),
+                            now,
+                        )
+                    )
+                    conn.commit()
+                except Exception as ex:
+                    logger.debug(f"Provider auto-create skipped or exists: {ex}")
+                    conn.rollback()
+
+            try:
+                cursor.execute(
+                    """
+                    UPDATE orders
+                    SET status = 'accepted', provider_id = ?, provider_name = ?,
+                        deliverable_notes = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        prov_id,
+                        f"Specialist ({data.specialist_wallet[:6]}...{data.specialist_wallet[-4:]})",
+                        f"Awarded on Arkiv: {data.entity_key} (Bid: {data.accepted_bid_key}) | Tx: {data.tx_hash}",
+                        now,
+                        data.task_id,
+                    )
+                )
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not update order status for task {data.task_id}: {e}")
+                conn.rollback()
+
+        return {"status": "reconciled", "order_id": data.task_id, "record": record}
+
 
 marketplace_service = MarketplaceService()

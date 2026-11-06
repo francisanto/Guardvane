@@ -10,6 +10,7 @@ import hashlib
 import json
 import threading
 from typing import Any, Dict, Optional
+from integrations.zero_g.config import DEFAULT_MODEL, DEFAULT_TRUST_MODE
 
 
 @dataclass
@@ -32,8 +33,8 @@ class ZeroGCache:
     def compute_key(
         sanitized_prompt: str,
         security_findings: Optional[Dict[str, Any]] = None,
-        model: str = "glm-5.2",
-        trust_mode: str = "verified",
+        model: str = DEFAULT_MODEL,
+        trust_mode: str = DEFAULT_TRUST_MODE,
         user_id: Optional[str] = None,
         analysis_version: str = "v2_primary",
     ) -> str:

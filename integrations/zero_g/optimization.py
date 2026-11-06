@@ -1,7 +1,7 @@
 """
 0G-Powered Primary Security Reasoning and Prompt Hardening Engine.
 Executes primary AI threat modeling, vulnerability evaluation, and prompt rewriting
-on 0G Private Computer (glm-5.2) under X-0G-Provider-Trust-Mode: verified.
+on 0G Private Computer (0gm-1.0-35b-a3b) under X-0G-Provider-Trust-Mode: verified.
 
 Local components are strictly confined to:
 Stage A: Preprocessing (credential sanitization, input limits, token estimation, context extraction)

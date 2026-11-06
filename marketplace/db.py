@@ -172,11 +172,26 @@ class MarketplaceDB:
         self._init_sqlite_db()
 
     def _init_postgres_db(self, raw_conn):
-        """Checks if PostgreSQL marketplace tables require sample data seeding."""
+        """Checks if PostgreSQL marketplace tables require sample data seeding and ensures arkiv_records exists."""
         try:
             wrapped = PgConnWrapper(raw_conn)
             with wrapped:
                 cur = wrapped.cursor()
+                cur.execute("""
+                CREATE TABLE IF NOT EXISTS arkiv_records (
+                    entity_key VARCHAR(128) PRIMARY KEY,
+                    schema_tag VARCHAR(64) NOT NULL,
+                    entity_id VARCHAR(128) NOT NULL,
+                    owner_wallet VARCHAR(42) NOT NULL,
+                    tx_hash VARCHAR(128) NOT NULL,
+                    payload TEXT NOT NULL,
+                    status VARCHAR(50) NOT NULL DEFAULT 'confirmed',
+                    created_at VARCHAR(64) NOT NULL,
+                    updated_at VARCHAR(64) NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_arkiv_records_schema_entity ON arkiv_records(schema_tag, entity_id);
+                CREATE INDEX IF NOT EXISTS ix_arkiv_records_owner ON arkiv_records(owner_wallet);
+                """)
                 cur.execute("SELECT COUNT(*) FROM providers")
                 row = cur.fetchone()
                 count = row[0] if row else 0
@@ -300,6 +315,20 @@ class MarketplaceDB:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS arkiv_records (
+                entity_key TEXT PRIMARY KEY,
+                schema_tag TEXT NOT NULL,
+                entity_id TEXT NOT NULL,
+                owner_wallet TEXT NOT NULL,
+                tx_hash TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'confirmed',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS ix_arkiv_records_schema_entity ON arkiv_records(schema_tag, entity_id);
+            CREATE INDEX IF NOT EXISTS ix_arkiv_records_owner ON arkiv_records(owner_wallet);
             """)
 
         # Check if seed data is needed
@@ -357,66 +386,6 @@ class MarketplaceDB:
                 "published",
                 json.dumps({"audits_completed": 956, "avg_turnaround_sec": 1.8, "agent_version": "v2.1.0", "is_demo": True}),
                 now
-            ),
-            (
-                "prov_elena",
-                "Dr. Elena Rostova",
-                "Principal LLM Security Researcher & Application Penetration Specialist",
-                "human",
-                "Specialized in deep application security testing for AI-integrated software, end-to-end API penetration checks, adversarial prompt injection, and multi-turn jailbreak resilience.",
-                "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-                json.dumps(["Application Testing", "API Penetration", "Adversarial Prompting", "Jailbreak Resilience", "Red Teaming"]),
-                json.dumps(["application_testing", "prompt_engineering", "prompt_optimization"]),
-                "0.0.6729184",
-                "https://github.com/elena-rostova-security",
-                None,
-                None,
-                0,
-                "available",
-                1,
-                "published",
-                json.dumps({"audits_completed": 48, "avg_turnaround_hours": 24, "industry_experience_years": 8, "is_demo": True}),
-                now
-            ),
-            (
-                "prov_marcus",
-                "Marcus Chen",
-                "Enterprise AI Codebase Security Architect",
-                "human",
-                "Auditing AI codebases, LangChain/LlamaIndex pipelines, smart contracts, tool-call privileges, and agentic loop state bounds for privilege escalations and unhandled execution paths.",
-                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-                json.dumps(["Codebase Security Check", "Agentic Loop Analysis", "Tool Call Containment", "Vector DB Architecture"]),
-                json.dumps(["codebase_security", "loop_engineering", "prompt_optimization"]),
-                "0.0.7182934",
-                "https://linkedin.com/in/marcus-chen-rag-sec",
-                None,
-                None,
-                0,
-                "available",
-                1,
-                "published",
-                json.dumps({"audits_completed": 34, "avg_turnaround_hours": 24, "industry_experience_years": 6, "is_demo": True}),
-                now
-            ),
-            (
-                "prov_amina",
-                "Amina Diallo",
-                "AI Alignment Specialist & Defensive Prompt Engineer",
-                "human",
-                "Helping engineering teams design robust system prompts, few-shot guardrails, and deterministic intent-preservation mechanisms that resist social engineering and model drift.",
-                "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
-                json.dumps(["System Prompt Architecture", "Prompt Optimization", "Hallucination Reduction", "Guardrail Enforcement"]),
-                json.dumps(["prompt_optimization", "prompt_engineering", "loop_engineering"]),
-                "0.0.8392104",
-                "https://amina-prompts.io",
-                None,
-                None,
-                0,
-                "available",
-                1,
-                "published",
-                json.dumps({"audits_completed": 19, "avg_turnaround_hours": 12, "industry_experience_years": 4, "is_demo": True}),
-                now
             )
         ]
 
@@ -472,104 +441,6 @@ class MarketplaceDB:
                 "automated",
                 1,
                 now
-            ),
-            (
-                "srv_elena_app",
-                "prov_elena",
-                "Full-Scope Application Testing & API Penetration",
-                "Comprehensive manual security audit of your AI application, testing web interfaces, API endpoints, authentication boundaries, and integrated LLM workflows.",
-                "application_testing",
-                180.0,
-                "USD",
-                "48 - 72 hours",
-                json.dumps(["application_testing", "api_penetration", "llm_integration_review"]),
-                "manual",
-                1,
-                now
-            ),
-            (
-                "srv_elena_inj",
-                "prov_elena",
-                "Prompt Injection & Adversarial Jailbreak Assessment",
-                "Comprehensive manual adversarial evaluation probing for indirect injections, roleplay escapes, prefix injection, and developer instruction exfiltration.",
-                "prompt_engineering",
-                120.0,
-                "USD",
-                "24 - 48 hours",
-                json.dumps(["adversarial_red_teaming", "jailbreak_testing", "system_prompt_audit"]),
-                "manual",
-                1,
-                now
-            ),
-            (
-                "srv_marcus_code",
-                "prov_marcus",
-                "Deep Codebase Security Check & Architecture Review",
-                "Manual source code security audit inspecting Python/TypeScript LLM frameworks, agent orchestration, credential storage, and tool call privileges.",
-                "codebase_security",
-                150.0,
-                "USD",
-                "24 - 48 hours",
-                json.dumps(["codebase_security", "architecture_review", "tool_privilege_audit"]),
-                "manual",
-                1,
-                now
-            ),
-            (
-                "srv_marcus_rag",
-                "prov_marcus",
-                "RAG Pipeline & Indirect Injection Security Review",
-                "Thorough audit of your Retrieval-Augmented Generation retrieval flows, document chunk sanitation, vector similarity exploits, and metadata authorization boundaries.",
-                "codebase_security",
-                95.0,
-                "USD",
-                "24 hours",
-                json.dumps(["rag_pipeline_review", "indirect_injection", "access_control_verification"]),
-                "manual",
-                1,
-                now
-            ),
-            (
-                "srv_marcus_loop",
-                "prov_marcus",
-                "Agentic Loop Engineering & Multi-Agent Audit",
-                "Specialist security assessment of multi-agent cyclic workflows, evaluating tool handover privileges, termination guarantees, and memory isolation.",
-                "loop_engineering",
-                110.0,
-                "USD",
-                "24 - 36 hours",
-                json.dumps(["loop_engineering", "multi_agent_containment", "recursion_isolation"]),
-                "manual",
-                1,
-                now
-            ),
-            (
-                "srv_amina_align",
-                "prov_amina",
-                "Production Prompt Engineering & Guardrail Review",
-                "Manual review and refactoring of production system prompts to resist user manipulation, preserve business logic, and enforce deterministic output formats.",
-                "prompt_engineering",
-                65.0,
-                "USD",
-                "12 - 24 hours",
-                json.dumps(["prompt_engineering", "system_prompt_refactoring", "instruction_hierarchy"]),
-                "manual",
-                1,
-                now
-            ),
-            (
-                "srv_amina_opt",
-                "prov_amina",
-                "Prompt Optimization & Token Efficiency Audit",
-                "Specialist review to reduce token consumption by 30-50% while preserving intent fidelity, reasoning consistency, and output guardrails.",
-                "prompt_optimization",
-                85.0,
-                "USD",
-                "24 hours",
-                json.dumps(["prompt_optimization", "token_reduction", "performance_tuning"]),
-                "manual",
-                1,
-                now
             )
         ]
 
@@ -602,50 +473,6 @@ class MarketplaceDB:
                 "settled",
                 "rep_101",
                 "Autonomous defense rules synthesized and verified via 0G Private Computer.",
-                now,
-                now
-            ),
-            (
-                "ord_102",
-                "francis",
-                "Francis",
-                "prov_elena",
-                "Dr. Elena Rostova",
-                "human",
-                "srv_elena_app",
-                "Full-Scope Application Testing & API Penetration",
-                "application_testing",
-                "Product: https://staging.guardvane.ai - Test all LLM integration endpoints and user authentication cookies.",
-                "Focus on multi-turn prompt injection and API session privilege escalation.",
-                180.0,
-                "USD",
-                "in_progress",
-                "manual",
-                "escrowed_x402",
-                None,
-                "Hedera x402 Escrow Active: $180.00 USD locked. Specialist Dr. Elena Rostova actively assessing application attack vectors.",
-                now,
-                now
-            ),
-            (
-                "ord_103",
-                "francis",
-                "Francis",
-                "prov_marcus",
-                "Marcus Chen",
-                "human",
-                "srv_marcus_code",
-                "Deep Codebase Security Check & Architecture Review",
-                "codebase_security",
-                "Repository: https://github.com/guardvane/guardvane-core - Inspect agent orchestration and tool execution privileges.",
-                "Audit tool-calling sandbox containment and credential separation.",
-                150.0,
-                "USD",
-                "requested",
-                "manual",
-                "escrowed_x402",
-                None,
-                "Hedera x402 Escrow Active: $150.00 USD locked. Pending specialist acceptance.",
                 now,
                 now
             )

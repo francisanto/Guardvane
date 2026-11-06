@@ -40,6 +40,23 @@ const STATE = {
     prompts: [],
     integrations: null
   },
+  arkiv: {
+    config: null,
+    status: null,
+    tasks: [],
+    selectedTaskId: null,
+    taskBids: [],
+    loading: false,
+    error: null,
+    txStatus: null,
+    categoryFilter: 'all',
+    statusFilter: 'all'
+  },
+  network: {
+    chainId: null,
+    isRabdi: false,
+    name: 'Unknown'
+  },
   activeModal: null,
   modalPayload: null,
   loading: false
@@ -215,6 +232,58 @@ function continueAsGuest() {
 }
 
 // ---------------------------------------------------------------------------
+// Rabdi Testnet (Chain ID 7794095) Network Helpers
+// ---------------------------------------------------------------------------
+
+async function checkRabdiNetwork() {
+  if (typeof window !== 'undefined' && window.ethereum) {
+    try {
+      const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' });
+      const chainId = parseInt(chainIdHex, 16);
+      STATE.network.chainId = chainId;
+      STATE.network.isRabdi = (chainId === 7794095);
+      STATE.network.name = (chainId === 7794095) ? 'Rabdi Testnet' : `Chain ${chainId}`;
+    } catch (e) {
+      console.debug('Failed to get chainId:', e);
+    }
+  }
+}
+
+async function handleSwitchToRabdi() {
+  if (typeof window === 'undefined' || !window.ethereum) {
+    alert('MetaMask is not installed. Please install MetaMask to connect to Rabdi Testnet.');
+    return;
+  }
+  try {
+    if (window.ArkivModule && window.ArkivModule.switchOrAddRabdiNetwork) {
+      await window.ArkivModule.switchOrAddRabdiNetwork();
+    } else {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x76ee8f' }]
+      });
+    }
+    await checkRabdiNetwork();
+    renderApp();
+  } catch (err) {
+    console.error('Failed to switch to Rabdi:', err);
+    alert('Could not switch to Rabdi Testnet: ' + (err.message || err));
+  }
+}
+
+if (typeof window !== 'undefined' && window.ethereum) {
+  try {
+    window.ethereum.on('chainChanged', (chainIdHex) => {
+      const chainId = parseInt(chainIdHex, 16);
+      STATE.network.chainId = chainId;
+      STATE.network.isRabdi = (chainId === 7794095);
+      STATE.network.name = (chainId === 7794095) ? 'Rabdi Testnet' : `Chain ${chainId}`;
+      renderApp();
+    });
+  } catch (e) {}
+}
+
+// ---------------------------------------------------------------------------
 // Initial Data Loading
 // ---------------------------------------------------------------------------
 
@@ -223,14 +292,17 @@ async function loadInitialData() {
   renderApp();
 
   try {
-    const [stats, providers, services, orders, reports, prompts, integrations] = await Promise.all([
+    const [stats, providers, services, orders, reports, prompts, integrations, arkivConfig, arkivStatus, arkivTasks] = await Promise.all([
       apiFetch('/marketplace/stats').catch(() => null),
       apiFetch('/marketplace/providers').catch(() => []),
       apiFetch('/marketplace/services').catch(() => []),
       apiFetch('/marketplace/orders').catch(() => []),
       apiFetch('/marketplace/reports').catch(() => []),
       apiFetch('/marketplace/prompts').catch(() => []),
-      apiFetch('/marketplace/integrations/status').catch(() => null)
+      apiFetch('/marketplace/integrations/status').catch(() => null),
+      apiFetch('/marketplace/arkiv/config').catch(() => null),
+      apiFetch('/marketplace/arkiv/status').catch(() => null),
+      apiFetch('/marketplace/arkiv/tasks').catch(() => [])
     ]);
 
     STATE.data.stats = stats;
@@ -240,6 +312,11 @@ async function loadInitialData() {
     STATE.data.reports = reports;
     STATE.data.prompts = prompts;
     STATE.data.integrations = integrations;
+    STATE.arkiv.config = arkivConfig;
+    STATE.arkiv.status = arkivStatus;
+    STATE.arkiv.tasks = arkivTasks || [];
+
+    await checkRabdiNetwork();
 
     // Auto-detect registered provider profile for the connected wallet
     if (STATE.auth.walletAddress && Array.isArray(providers)) {
@@ -465,6 +542,16 @@ function renderSidebar() {
             OpiHub
           </button>
 
+          <button onclick="navigateTo('arkiv_tasks')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'arkiv_tasks' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
+            <div class="flex items-center gap-3">
+              <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>Arkiv Task Board</span>
+            </div>
+            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono font-semibold px-2 py-0.5 rounded">RABDI</span>
+          </button>
+
           <button onclick="navigateTo('my_prompts')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'my_prompts' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
             <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -557,8 +644,33 @@ function renderSidebar() {
 // ---------------------------------------------------------------------------
 
 function renderTopbar() {
+  const isRabdi = STATE.network && STATE.network.isRabdi;
+  const chainId = STATE.network && STATE.network.chainId;
+
   return `
-    <header class="h-16 border-b border-[#E2E9E3] bg-[#FAFBF9] px-8 flex items-center justify-end shrink-0 select-none">
+    <header class="h-16 border-b border-[#E2E9E3] bg-[#FAFBF9] px-8 flex items-center justify-between shrink-0 select-none">
+      <!-- Left: Rabdi Network Status Pill -->
+      <div class="flex items-center gap-3">
+        ${isRabdi ? `
+          <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
+            <span class="w-2 h-2 rounded-full bg-[#2FA36B] animate-pulse"></span>
+            <span>Rabdi Testnet (7794095)</span>
+            ${(STATE.arkiv && STATE.arkiv.status && STATE.arkiv.status.current_block) ? `
+              <span class="text-[11px] text-[#627566] pl-1 border-l border-[#CDE5D5]">#${STATE.arkiv.status.current_block}</span>
+            ` : ''}
+          </div>
+        ` : `
+          <button
+            onclick="handleSwitchToRabdi()"
+            title="Click to switch MetaMask to Rabdi Testnet"
+            class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] hover:bg-[#FDE68A] transition-smooth cursor-pointer"
+          >
+            <span class="w-2 h-2 rounded-full bg-[#D97706] animate-ping"></span>
+            <span>${chainId ? `Chain ${chainId}: Switch to Rabdi (7794095)` : 'Switch to Rabdi Testnet'}</span>
+          </button>
+        `}
+      </div>
+
       <!-- Top Right Controls -->
       <div class="flex items-center gap-3">
         <!-- Wallet Badge -->
@@ -601,6 +713,8 @@ function renderCurrentView() {
       return renderDashboardView();
     case 'opihub':
       return renderOpiHubView();
+    case 'arkiv_tasks':
+      return renderArkivTasksView();
     case 'provider_detail':
       return renderProviderDetailView();
     case 'become_provider':
@@ -1387,6 +1501,263 @@ function renderMyPromptsView() {
 }
 
 // ---------------------------------------------------------------------------
+// Arkiv Decentralized Security Task Board (Rabdi Testnet)
+// ---------------------------------------------------------------------------
+
+function setArkivCategoryFilter(cat) {
+  STATE.arkiv.categoryFilter = cat;
+  renderApp();
+}
+
+function setArkivStatusFilter(stat) {
+  STATE.arkiv.statusFilter = stat;
+  renderApp();
+}
+
+async function loadArkivTasks(force = false) {
+  STATE.arkiv.loading = true;
+  renderApp();
+  try {
+    const tasks = await apiFetch('/marketplace/arkiv/tasks');
+    STATE.arkiv.tasks = tasks || [];
+    STATE.arkiv.error = null;
+  } catch (err) {
+    console.error('Failed to load Arkiv tasks:', err);
+    STATE.arkiv.error = err.message || 'Could not load tasks from Arkiv.';
+  } finally {
+    STATE.arkiv.loading = false;
+    renderApp();
+  }
+}
+
+function renderArkivTaskCard(t, currentWallet) {
+  const isOwner = currentWallet && t.customer_wallet && t.customer_wallet.toLowerCase() === currentWallet;
+  const shortOwner = t.customer_wallet ? (t.customer_wallet.substring(0, 6) + '...' + t.customer_wallet.substring(t.customer_wallet.length - 4)) : 'Anonymous';
+  const shortKey = t.entity_key ? (t.entity_key.substring(0, 10) + '...' + t.entity_key.substring(t.entity_key.length - 6)) : 'Pending';
+
+  const statusColors = {
+    open: 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]',
+    awarded: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
+    completed: 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]'
+  };
+  const statusBadge = statusColors[t.status] || 'bg-gray-100 text-gray-800 border-gray-200';
+  const skills = (t.required_skills || '').split(',').map(s => s.trim()).filter(Boolean);
+
+  return `
+    <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs hover:shadow-md transition-smooth flex flex-col justify-between space-y-4">
+      <div class="space-y-3">
+        <!-- Top Metadata Row -->
+        <div class="flex items-center justify-between text-xs">
+          <span class="px-2.5 py-0.5 rounded-full font-medium capitalize text-[11px] border ${statusBadge}">
+            ${escapeHtml(t.status)}
+          </span>
+          <span class="font-mono text-[#627566] text-[11px]">
+            Budget: <strong class="text-[#202820] font-semibold">${escapeHtml(t.budget_range || 'Negotiable')}</strong>
+          </span>
+        </div>
+
+        <!-- Title -->
+        <h3 class="text-[16px] font-semibold text-[#202820] leading-snug">
+          ${escapeHtml(t.title)}
+        </h3>
+
+        <!-- Description -->
+        <p class="text-[13px] text-[#445246] line-clamp-3 leading-relaxed">
+          ${escapeHtml(t.public_description)}
+        </p>
+
+        <!-- Skills -->
+        ${skills.length > 0 ? `
+          <div class="flex flex-wrap gap-1.5 pt-1">
+            ${skills.map(s => `
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-[#F0F5F1] text-[#445246] border border-[#E2E9E3]">
+                ${escapeHtml(s)}
+              </span>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- Footer Info & Actions -->
+      <div class="pt-3 border-t border-[#E2E9E3] flex flex-col space-y-3">
+        <div class="flex items-center justify-between text-[11.5px] text-[#627566]">
+          <div class="flex items-center gap-1.5">
+            <span>Posted by:</span>
+            <a
+              href="https://explorer.rabdi.db-chain.testnet.arkiv.network/address/${t.customer_wallet}"
+              target="_blank"
+              class="font-mono text-[#176B45] hover:underline"
+            >
+              ${shortOwner}
+            </a>
+            ${isOwner ? '<span class="text-[9.5px] px-1 rounded bg-[#EAF5EE] text-[#176B45] font-semibold font-mono">YOU</span>' : ''}
+          </div>
+
+          <div class="font-mono text-[10.5px] text-[#8B9C8E]" title="Entity Key: ${t.entity_key}">
+            Key: ${shortKey}
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button
+            onclick="openTaskBidsModal('${t.task_id}')"
+            class="px-3 py-1.5 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] text-[12.5px] font-medium rounded-md transition-smooth cursor-pointer"
+          >
+            Inspect Bids
+          </button>
+
+          ${(t.status === 'open' && !isOwner) ? `
+            <button
+              onclick="openSubmitBidModal('${t.task_id}')"
+              class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+            >
+              Submit Bid
+            </button>
+          ` : ''}
+
+          ${(t.status === 'open' && isOwner) ? `
+            <button
+              onclick="openTaskBidsModal('${t.task_id}')"
+              class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+            >
+              Review Bids & Award
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderArkivTasksView() {
+  const tasks = STATE.arkiv.tasks || [];
+  const currentWallet = STATE.auth.walletAddress ? STATE.auth.walletAddress.toLowerCase() : '';
+
+  const categories = [
+    { id: 'all', label: 'All Tasks' },
+    { id: 'application_testing', label: 'Application Testing' },
+    { id: 'codebase_security', label: 'Codebase Security Check' },
+    { id: 'prompt_optimization', label: 'Prompt Optimization' },
+    { id: 'prompt_engineering', label: 'Prompt Engineering' },
+    { id: 'smart_contract_audit', label: 'Smart Contract Audit' }
+  ];
+
+  const filtered = tasks.filter(t => {
+    if (STATE.arkiv.categoryFilter && STATE.arkiv.categoryFilter !== 'all') {
+      if (t.category !== STATE.arkiv.categoryFilter) return false;
+    }
+    if (STATE.arkiv.statusFilter && STATE.arkiv.statusFilter !== 'all') {
+      if (t.status !== STATE.arkiv.statusFilter) return false;
+    }
+    return true;
+  });
+
+  return `
+    <div class="space-y-6">
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Arkiv Security Task Board</h1>
+            <span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Rabdi 7794095</span>
+          </div>
+          <p class="text-[13px] text-[#627566] mt-0.5">
+            Public, verifiable security audit requests published directly to Arkiv. Customer-owned, specialist-bid, rewarded in tGLM.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+          <button
+            onclick="loadArkivTasks(true)"
+            title="Refresh live from Rabdi testnet"
+            class="px-3 py-2 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] text-[13px] font-medium rounded-md shadow-2xs transition-smooth flex items-center gap-1.5 cursor-pointer"
+          >
+            <svg class="w-4 h-4 text-[#627566] ${STATE.arkiv.loading ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>Refresh</span>
+          </button>
+
+          <button
+            onclick="openPostTaskModal()"
+            class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Post Security Task</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Category Filters -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#E2E9E3]">
+        ${categories.map(c => `
+          <button
+            onclick="setArkivCategoryFilter('${c.id}')"
+            class="px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-smooth ${
+              STATE.arkiv.categoryFilter === c.id
+                ? 'bg-[#176B45] text-white shadow-xs'
+                : 'bg-white border border-[#E2E9E3] text-[#445246] hover:bg-[#F0F5F1]'
+            }"
+          >
+            ${c.label}
+          </button>
+        `).join('')}
+      </div>
+
+      <!-- Status Sub-filter -->
+      <div class="flex items-center justify-between gap-4 bg-white p-3.5 border border-[#E2E9E3] rounded-lg shadow-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-[13px] font-medium text-[#445246]">Status:</span>
+          <div class="flex items-center gap-1">
+            ${['all', 'open', 'awarded', 'completed'].map(st => `
+              <button
+                onclick="setArkivStatusFilter('${st}')"
+                class="px-2.5 py-1 text-[12px] rounded-md font-medium capitalize transition-smooth ${
+                  STATE.arkiv.statusFilter === st
+                    ? 'bg-[#EAF5EE] text-[#176B45] font-semibold border border-[#CDE5D5]'
+                    : 'text-[#627566] hover:text-[#202820]'
+                }"
+              >
+                ${st}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="text-[13px] text-[#627566]">
+          Showing <strong class="text-[#202820]">${filtered.length}</strong> tasks on Rabdi Testnet
+        </div>
+      </div>
+
+      <!-- Task Cards Grid -->
+      ${filtered.length > 0 ? `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          ${filtered.map(t => renderArkivTaskCard(t, currentWallet)).join('')}
+        </div>
+      ` : `
+        <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
+          <div class="w-12 h-12 rounded-full bg-[#EAF5EE] text-[#176B45] flex items-center justify-center mx-auto">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 class="text-[15px] font-semibold text-[#202820]">No security tasks found on Rabdi</h3>
+          <p class="text-[13px] text-[#627566] max-w-md mx-auto">
+            Tasks published to Arkiv are stored permanently on the Rabdi blockchain with decentralized ownership and time-based expiration.
+          </p>
+          <button onclick="openPostTaskModal()" class="px-4 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+            + Post the First Security Task
+          </button>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
 // 7. My Requests & Security Reports Pages
 // ---------------------------------------------------------------------------
 
@@ -1802,6 +2173,12 @@ function renderModalContent() {
       return renderSettingsModal();
     case 'add_service_modal':
       return renderAddServiceModal();
+    case 'arkiv_post_task':
+      return renderArkivPostTaskModal();
+    case 'arkiv_submit_bid':
+      return renderArkivSubmitBidModal();
+    case 'arkiv_view_bids':
+      return renderArkivViewBidsModal();
     default:
       return '';
   }
@@ -2108,8 +2485,15 @@ function renderQuickAnalyzeModal() {
         <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against Guardvane's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
 
         <div class="flex justify-end gap-2">
-          <button id="quick-scan-btn" onclick="executeQuickAnalyze()" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-2">
-            Run ML Vulnerability Scan
+          <button id="quick-scan-btn" onclick="executeQuickAnalyze()" class="px-3.5 py-2 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Local ML Scan
+          </button>
+          <button id="quick-opt-btn" onclick="executeQuickOptimize()" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
+            <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+            0G AI Reasoning & Hardening
           </button>
         </div>
 
@@ -2493,9 +2877,367 @@ function renderAddServiceModal() {
   `;
 }
 
-// ---------------------------------------------------------------------------
-// Actions & Handlers
-// ---------------------------------------------------------------------------
+function renderArkivPostTaskModal() {
+  const isRabdi = STATE.network.isRabdi;
+
+  return `
+    <div class="p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-[16px] font-semibold text-[#202820]">Post Security Task to Arkiv</h3>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Rabdi 7794095</span>
+          </div>
+          <p class="text-[12px] text-[#627566] mt-0.5">Published directly to Rabdi blockchain with a 7-day expiration lease. Verified decentralized discovery.</p>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+      </div>
+
+      ${!isRabdi ? `
+        <div class="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md text-[12.5px] text-[#92400E] flex items-center justify-between">
+          <span>MetaMask is not on <strong>Rabdi Testnet (Chain ID 7794095)</strong>.</span>
+          <button onclick="handleSwitchToRabdi()" class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer">
+            Switch to Rabdi
+          </button>
+        </div>
+      ` : ''}
+
+      <form onsubmit="handlePostTask(event)" class="space-y-4">
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Task Title *</label>
+          <input
+            type="text"
+            name="title"
+            required
+            placeholder="e.g. Audit DeFi Vault smart contract for reentrancy & rounding vulnerabilities"
+            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Security Category *</label>
+            <select
+              name="category"
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            >
+              <option value="smart_contract_audit">Smart Contract Audit</option>
+              <option value="application_testing">Application Testing</option>
+              <option value="codebase_security">Codebase Security Check</option>
+              <option value="prompt_optimization">Prompt Optimization</option>
+              <option value="prompt_engineering">Prompt Engineering</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Budget Range / Currency *</label>
+            <input
+              type="text"
+              name="budget_range"
+              required
+              value="50-100 tGLM"
+              placeholder="e.g. 50-100 tGLM or 25 tGLM"
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Required Skills / Scope Tags</label>
+          <input
+            type="text"
+            name="required_skills"
+            placeholder="e.g. Solidity, Reentrancy, EVM, Fuzzing, Slither"
+            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+          />
+          <p class="text-[11px] text-[#8B9C8E] mt-0.5">Comma-separated tags for indexed specialist matching.</p>
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Public Scope & Specification *</label>
+          <textarea
+            name="public_description"
+            rows="4"
+            required
+            placeholder="Describe the target system, repository commit, objectives, and deliverables. Note: This content will be published directly to the Rabdi blockchain."
+            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Budget Type</label>
+            <select name="budget_type" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px]">
+              <option value="fixed">Fixed Price</option>
+              <option value="milestone">Milestone Based</option>
+              <option value="negotiable">Open for Bidding</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Turnaround Deadline</label>
+            <input type="text" name="deadline" value="5 days" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px]" />
+          </div>
+        </div>
+
+        <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] text-[#627566] space-y-1">
+          <div class="font-semibold text-[#202820] flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            On-Chain Publishing Details:
+          </div>
+          <div>• Posting creates an entity on the <code>guardvane.tasks.v1</code> schema using your connected wallet.</div>
+          <div>• Requires a signature in MetaMask (Rabdi testnet). Expiration is set to 7 days.</div>
+        </div>
+
+        <div id="post-task-status" class="hidden"></div>
+
+        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="post-task-submit-btn"
+            class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
+          >
+            <span>Sign & Publish to Rabdi</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderArkivSubmitBidModal() {
+  const payload = STATE.modalPayload || {};
+  const taskId = payload.taskId;
+  const task = payload.task || (STATE.arkiv.tasks || []).find(t => t.task_id === taskId) || {};
+  const isRabdi = STATE.network.isRabdi;
+
+  return `
+    <div class="p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-[16px] font-semibold text-[#202820]">Submit Specialist Bid</h3>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Arkiv bids.v1</span>
+          </div>
+          <p class="text-[12px] text-[#627566] mt-0.5">Bid record expires automatically after 48 hours on Rabdi testnet.</p>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+      </div>
+
+      <!-- Task Context Summary -->
+      <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-1.5">
+        <div class="flex items-center justify-between text-[11px] font-mono text-[#627566]">
+          <span>Task: ${escapeHtml(task.task_id || taskId)}</span>
+          <span>Budget: <strong class="text-[#202820]">${escapeHtml(task.budget_range || 'Open')}</strong></span>
+        </div>
+        <div class="text-[14px] font-semibold text-[#202820]">${escapeHtml(task.title || 'Security Audit Task')}</div>
+        <div class="text-[12px] text-[#445246] line-clamp-2">${escapeHtml(task.public_description || '')}</div>
+      </div>
+
+      ${!isRabdi ? `
+        <div class="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md text-[12.5px] text-[#92400E] flex items-center justify-between">
+          <span>MetaMask is not on <strong>Rabdi Testnet (Chain ID 7794095)</strong>.</span>
+          <button onclick="handleSwitchToRabdi()" class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer">
+            Switch to Rabdi
+          </button>
+        </div>
+      ` : ''}
+
+      <form onsubmit="handleSubmitBid(event, '${taskId}')" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Proposed Price (tGLM) *</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              name="proposed_price"
+              required
+              value="25.00"
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            />
+          </div>
+
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Turnaround *</label>
+            <input
+              type="text"
+              name="estimated_duration"
+              required
+              value="3 days"
+              placeholder="e.g. 48 hours or 3 days"
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[13px] font-medium text-[#202820] mb-1">Proposal Summary & Methodology *</label>
+          <textarea
+            name="proposal_summary"
+            rows="4"
+            required
+            placeholder="Detail your auditing tools, automated coverage, manual review methodology, and deliverables..."
+            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+          ></textarea>
+        </div>
+
+        <div id="submit-bid-status" class="hidden"></div>
+
+        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="submit-bid-btn"
+            class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
+          >
+            <span>Sign & Submit Bid</span>
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderArkivViewBidsModal() {
+  const payload = STATE.modalPayload || {};
+  const taskId = payload.taskId;
+  const task = payload.task || (STATE.arkiv.tasks || []).find(t => t.task_id === taskId) || {};
+  const bids = STATE.arkiv.taskBids || [];
+  const isLoading = payload.loading;
+  const currentWallet = STATE.auth.walletAddress ? STATE.auth.walletAddress.toLowerCase() : '';
+  const isTaskOwner = currentWallet && task.customer_wallet && (task.customer_wallet.toLowerCase() === currentWallet);
+
+  return `
+    <div class="p-6 space-y-5">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-[16px] font-semibold text-[#202820]">Specialist Bids & Awards</h3>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Arkiv Rabdi</span>
+          </div>
+          <p class="text-[12px] text-[#627566] mt-0.5">Task ID: <code class="font-mono text-[#202820]">${escapeHtml(taskId)}</code></p>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+      </div>
+
+      <!-- Task Context Header -->
+      <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-1">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-medium text-[#176B45] uppercase tracking-wider text-[11px]">${formatCategoryName(task.category || '')}</span>
+          <span class="font-mono text-[11px] text-[#627566]">Budget: <strong class="text-[#202820]">${escapeHtml(task.budget_range || 'Negotiable')}</strong></span>
+        </div>
+        <h4 class="text-[14px] font-semibold text-[#202820]">${escapeHtml(task.title || 'Security Audit')}</h4>
+        <div class="text-[11.5px] text-[#627566] flex items-center gap-2 pt-0.5">
+          <span>Poster:</span>
+          <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/address/${task.customer_wallet}" target="_blank" class="font-mono text-[#176B45] hover:underline">
+            ${task.customer_wallet ? (task.customer_wallet.substring(0, 8) + '...' + task.customer_wallet.substring(task.customer_wallet.length - 4)) : 'Unknown'}
+          </a>
+          ${isTaskOwner ? '<span class="px-1.5 py-0.2 rounded bg-[#EAF5EE] text-[#176B45] font-semibold text-[10px] font-mono">TASK OWNER</span>' : ''}
+          <span class="ml-auto font-mono text-[11px] capitalize px-2 py-0.5 rounded border ${task.status === 'open' ? 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]' : 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]'}">
+            ${escapeHtml(task.status || 'open')}
+          </span>
+        </div>
+      </div>
+
+      <div id="award-action-status" class="hidden"></div>
+
+      <!-- Bids List -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between text-[13px] font-medium text-[#202820]">
+          <span>Proposals from Specialists (${bids.length})</span>
+          ${(task.status === 'open' && !isTaskOwner) ? `
+            <button onclick="openSubmitBidModal('${taskId}')" class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
+              + Submit a Bid
+            </button>
+          ` : ''}
+        </div>
+
+        ${isLoading ? `
+          <div class="p-8 text-center text-[#627566] text-xs flex items-center justify-center gap-2">
+            <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin"></div>
+            <span>Querying Arkiv (guardvane.bids.v1) on Rabdi testnet...</span>
+          </div>
+        ` : bids.length > 0 ? `
+          <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+            ${bids.map(b => {
+              const shortSpecialist = b.specialist_wallet ? (b.specialist_wallet.substring(0, 6) + '...' + b.specialist_wallet.substring(b.specialist_wallet.length - 4)) : 'Anonymous';
+              const shortBidKey = b.entity_key ? (b.entity_key.substring(0, 10) + '...' + b.entity_key.substring(b.entity_key.length - 6)) : '';
+              const isMyBid = currentWallet && b.specialist_wallet && (b.specialist_wallet.toLowerCase() === currentWallet);
+
+              return `
+                <div class="p-4 bg-white border border-[#E2E9E3] rounded-lg shadow-2xs hover:border-[#176B45] transition-smooth space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/address/${b.specialist_wallet}" target="_blank" class="font-mono text-[12px] font-semibold text-[#176B45] hover:underline">
+                        ${shortSpecialist}
+                      </a>
+                      ${isMyBid ? '<span class="px-1.5 py-0.2 rounded bg-[#EFF6FF] text-[#1E40AF] text-[9.5px] font-semibold font-mono">YOUR BID</span>' : ''}
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <span class="px-2 py-0.5 rounded text-[11.5px] font-bold font-mono bg-[#EAF5EE] text-[#176B45]">
+                        ${b.proposed_price} tGLM
+                      </span>
+                      <span class="text-[11.5px] text-[#627566]">(${escapeHtml(b.estimated_duration)})</span>
+                    </div>
+                  </div>
+
+                  <p class="text-[12.5px] text-[#445246] leading-relaxed">${escapeHtml(b.proposal_summary)}</p>
+
+                  <div class="pt-2 border-t border-[#E2E9E3] flex items-center justify-between text-[11px] text-[#8B9C8E]">
+                    <span title="Bid Entity Key: ${b.entity_key}">Key: <code class="font-mono text-[#627566]">${shortBidKey || 'N/A'}</code></span>
+
+                    ${(isTaskOwner && task.status === 'open') ? `
+                      <button
+                        onclick="handleAcceptBid('${taskId}', '${b.entity_key}', '${b.specialist_wallet}')"
+                        class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white text-[11.5px] font-medium rounded shadow-2xs transition-smooth cursor-pointer"
+                      >
+                        Accept & Award Task 🎯
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div class="p-8 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-center space-y-2">
+            <div class="text-[13px] font-medium text-[#202820]">No bids submitted yet for this task</div>
+            <p class="text-[12px] text-[#627566] max-w-sm mx-auto">
+              Specialist proposals will appear here as soon as security researchers inspect the task on Rabdi.
+            </p>
+            ${(!isTaskOwner && task.status === 'open') ? `
+              <div class="pt-2">
+                <button onclick="openSubmitBidModal('${taskId}')" class="px-3.5 py-1.5 bg-[#176B45] text-white text-[12px] font-medium rounded cursor-pointer">
+                  Submit the First Bid
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `}
+      </div>
+
+      <div class="pt-3 border-t border-[#E2E9E3] flex justify-end">
+        <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+}
 
 function handleGlobalSearch(value) {
   STATE.filters.search = value;
@@ -2768,6 +3510,295 @@ async function handleDeletePrompt(promptId) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Arkiv Marketplace Action Handlers (MetaMask Browser Signing + Rabdi)
+// ---------------------------------------------------------------------------
+
+function openPostTaskModal() {
+  if (!STATE.auth.walletAddress) {
+    alert('Please connect your MetaMask wallet first to publish an on-chain task to Rabdi testnet.');
+    connectAndSignWithMetaMask();
+    return;
+  }
+  openModal('arkiv_post_task');
+}
+
+async function handlePostTask(event) {
+  event.preventDefault();
+  const form = event.target;
+  const statusEl = document.getElementById('post-task-status');
+  const submitBtn = document.getElementById('post-task-submit-btn');
+
+  const title = form.title.value.trim();
+  const category = form.category.value;
+  const budgetRange = form.budget_range.value.trim();
+  const requiredSkills = form.required_skills.value.trim();
+  const publicDescription = form.public_description.value.trim();
+  const budgetType = form.budget_type.value;
+  const deadline = form.deadline.value.trim();
+
+  if (!STATE.auth.walletAddress) {
+    alert('Wallet not connected. Please connect MetaMask.');
+    return;
+  }
+
+  if (typeof window === 'undefined' || !window.ArkivModule) {
+    alert('Arkiv SDK browser bundle not loaded. Please reload the page.');
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+  }
+
+  if (statusEl) {
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = `
+      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] flex items-center gap-2">
+        <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+        <span>Confirming transaction in MetaMask on Rabdi Testnet (Chain ID 7794095)...</span>
+      </div>
+    `;
+  }
+
+  try {
+    const taskId = 'task-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6);
+    const accessKey = (STATE.arkiv && STATE.arkiv.config && STATE.arkiv.config.access_key) ? STATE.arkiv.config.access_key : '';
+
+    const result = await window.ArkivModule.publishSecurityTask({
+      taskId,
+      category,
+      title,
+      publicDescription,
+      requiredSkills,
+      budgetType,
+      budgetRange,
+      deadline
+    }, STATE.auth.walletAddress, accessKey);
+
+    const { entityKey, txHash } = result;
+
+    if (statusEl) {
+      statusEl.innerHTML = `
+        <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] space-y-1">
+          <div class="font-semibold">✓ Confirmed on Rabdi! Reconciling with Guardvane...</div>
+          <div class="text-[11px] font-mono break-all">Tx: ${txHash}</div>
+        </div>
+      `;
+    }
+
+    await apiFetch('/marketplace/arkiv/reconcile/task', {
+      method: 'POST',
+      body: JSON.stringify({
+        task_id: taskId,
+        entity_key: entityKey,
+        tx_hash: txHash,
+        title,
+        category,
+        public_description: publicDescription,
+        required_skills: requiredSkills,
+        budget_range: budgetRange,
+        customer_wallet: STATE.auth.walletAddress
+      })
+    });
+
+    alert(`Task successfully published to Arkiv!\nEntity Key: ${entityKey}\nTx Hash: ${txHash}`);
+    closeModal();
+    await loadArkivTasks(true);
+    navigateTo('arkiv_tasks');
+  } catch (err) {
+    console.error('Failed to post task on Arkiv:', err);
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `
+        <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12.5px] text-[#991B1B] space-y-1">
+          <div class="font-semibold">Transaction Error</div>
+          <div class="text-[11.5px] break-all">${escapeHtml(err.message || String(err))}</div>
+        </div>
+      `;
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
+  }
+}
+
+function openSubmitBidModal(taskId) {
+  if (!STATE.auth.walletAddress) {
+    alert('Please connect your MetaMask wallet first to submit a specialist bid.');
+    connectAndSignWithMetaMask();
+    return;
+  }
+  const task = (STATE.arkiv.tasks || []).find(t => t.task_id === taskId);
+  if (task && task.customer_wallet && task.customer_wallet.toLowerCase() === STATE.auth.walletAddress.toLowerCase()) {
+    alert('You cannot submit a bid on your own security task.');
+    return;
+  }
+  openModal('arkiv_submit_bid', { taskId, task });
+}
+
+async function handleSubmitBid(event, taskId) {
+  event.preventDefault();
+  const form = event.target;
+  const statusEl = document.getElementById('submit-bid-status');
+  const submitBtn = document.getElementById('submit-bid-btn');
+
+  const proposedPrice = parseFloat(form.proposed_price.value);
+  const estimatedDuration = form.estimated_duration.value.trim();
+  const proposalSummary = form.proposal_summary.value.trim();
+
+  if (!STATE.auth.walletAddress) {
+    alert('Please connect your MetaMask wallet.');
+    return;
+  }
+
+  if (typeof window === 'undefined' || !window.ArkivModule) {
+    alert('Arkiv SDK browser module not loaded. Please reload.');
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+  }
+
+  if (statusEl) {
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = `
+      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] flex items-center gap-2">
+        <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+        <span>Confirming specialist bid on Rabdi testnet via MetaMask...</span>
+      </div>
+    `;
+  }
+
+  try {
+    const accessKey = (STATE.arkiv && STATE.arkiv.config && STATE.arkiv.config.access_key) ? STATE.arkiv.config.access_key : '';
+
+    const result = await window.ArkivModule.submitSpecialistBid({
+      taskId,
+      proposedPrice,
+      estimatedDuration,
+      proposalSummary
+    }, STATE.auth.walletAddress, accessKey);
+
+    const { entityKey, txHash } = result;
+
+    await apiFetch('/marketplace/arkiv/reconcile/bid', {
+      method: 'POST',
+      body: JSON.stringify({
+        task_id: taskId,
+        entity_key: entityKey,
+        tx_hash: txHash,
+        proposed_price: proposedPrice,
+        estimated_duration: estimatedDuration,
+        proposal_summary: proposalSummary,
+        specialist_wallet: STATE.auth.walletAddress
+      })
+    });
+
+    alert(`Bid successfully submitted on Arkiv!\nEntity Key: ${entityKey}\nTx Hash: ${txHash}`);
+    closeModal();
+    await openTaskBidsModal(taskId);
+  } catch (err) {
+    console.error('Failed to submit bid:', err);
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `
+        <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12.5px] text-[#991B1B] space-y-1">
+          <div class="font-semibold">Transaction Error</div>
+          <div class="text-[11.5px] break-all">${escapeHtml(err.message || String(err))}</div>
+        </div>
+      `;
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
+  }
+}
+
+async function openTaskBidsModal(taskId) {
+  STATE.arkiv.selectedTaskId = taskId;
+  STATE.arkiv.taskBids = [];
+  const task = (STATE.arkiv.tasks || []).find(t => t.task_id === taskId);
+  openModal('arkiv_view_bids', { taskId, task, loading: true });
+
+  try {
+    const bids = await apiFetch(`/marketplace/arkiv/tasks/${taskId}/bids`);
+    STATE.arkiv.taskBids = bids || [];
+    if (STATE.activeModal === 'arkiv_view_bids') {
+      openModal('arkiv_view_bids', { taskId, task, loading: false });
+    }
+  } catch (err) {
+    console.error('Failed to fetch bids for task:', err);
+    if (STATE.activeModal === 'arkiv_view_bids') {
+      openModal('arkiv_view_bids', { taskId, task, loading: false, error: err.message });
+    }
+  }
+}
+
+async function handleAcceptBid(taskId, bidKey, specialistWallet) {
+  if (!confirm(`Award task to specialist ${specialistWallet.substring(0, 8)}...? This will publish an immutable award record to Arkiv on Rabdi testnet.`)) {
+    return;
+  }
+
+  const statusEl = document.getElementById('award-action-status');
+  if (statusEl) {
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = `
+      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] flex items-center gap-2">
+        <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+        <span>Confirming award on Rabdi testnet via MetaMask...</span>
+      </div>
+    `;
+  }
+
+  try {
+    const accessKey = (STATE.arkiv && STATE.arkiv.config && STATE.arkiv.config.access_key) ? STATE.arkiv.config.access_key : '';
+
+    const result = await window.ArkivModule.acceptBidAndCreateAward({
+      taskId,
+      acceptedBidKey: bidKey,
+      specialistWallet
+    }, STATE.auth.walletAddress, accessKey);
+
+    const { entityKey, txHash } = result;
+
+    await apiFetch('/marketplace/arkiv/reconcile/award', {
+      method: 'POST',
+      body: JSON.stringify({
+        task_id: taskId,
+        entity_key: entityKey,
+        tx_hash: txHash,
+        accepted_bid_key: bidKey,
+        customer_wallet: STATE.auth.walletAddress,
+        specialist_wallet: specialistWallet
+      })
+    });
+
+    alert(`Task successfully awarded on Arkiv!\nEntity Key: ${entityKey}\nTx Hash: ${txHash}`);
+    closeModal();
+    await loadArkivTasks(true);
+    await loadInitialData();
+  } catch (err) {
+    console.error('Failed to accept bid:', err);
+    if (statusEl) {
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `
+        <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12.5px] text-[#991B1B] space-y-1">
+          <div class="font-semibold">Award Error</div>
+          <div class="text-[11.5px] break-all">${escapeHtml(err.message || String(err))}</div>
+        </div>
+      `;
+    }
+  }
+}
+
 async function runLocalPromptAnalysis(promptText, promptId = null) {
   openModal('quick_analyze');
   const input = document.getElementById('quick-prompt-input');
@@ -2923,6 +3954,380 @@ async function executeQuickAnalyze(promptId = null) {
       scanBtn.disabled = false;
       scanBtn.classList.remove('opacity-60', 'cursor-not-allowed');
     }
+  }
+}
+
+async function executeQuickOptimize(promptId = null, bypassCache = false) {
+  const input = document.getElementById('quick-prompt-input');
+  const resultsBox = document.getElementById('quick-analyze-results');
+  const scanBtn = document.getElementById('quick-scan-btn');
+  const optBtn = document.getElementById('quick-opt-btn');
+  if (!input || !resultsBox) return;
+
+  const text = input.value;
+  if (!text.trim()) {
+    alert('Please enter a prompt to evaluate and harden.');
+    return;
+  }
+
+  resultsBox.classList.remove('hidden');
+  resultsBox.innerHTML = `
+    <div class="flex items-center gap-2.5 p-3 text-[12.5px] text-[#176B45] font-medium bg-[#EAF5EE] rounded border border-[#CDE5D5]">
+      <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+      <span>${bypassCache ? 'Retrying fresh 0G Private Computer AI reasoning (bypassing cache)...' : '0G Private Computer performing AI threat reasoning & prompt hardening (Verified Mode)...'}</span>
+    </div>
+  `;
+
+  if (scanBtn) { scanBtn.disabled = true; scanBtn.classList.add('opacity-60', 'cursor-not-allowed'); }
+  if (optBtn) { optBtn.disabled = true; optBtn.classList.add('opacity-60', 'cursor-not-allowed'); }
+
+  try {
+    const data = await apiFetch('/optimize', {
+      method: 'POST',
+      headers: {
+        'X-User-Id': (STATE.user && STATE.user.id) ? STATE.user.id : 'default'
+      },
+      body: JSON.stringify({
+        prompt: text,
+        analysis_mode: 'both',
+        fallback_to_local: false,
+        bypass_cache: bypassCache,
+        temperature: 0.3,
+        max_tokens: 2000
+      })
+    });
+
+    const meta = data.zero_g_metadata || {};
+    const structured = data.structured_reasoning || (data.reasoning ? data.reasoning.structured : null) || {};
+    const taskUnd = structured.task_understanding || (data.reasoning ? data.reasoning.task_understanding : null) || {};
+    const secAnalysis = structured.security_analysis || (data.reasoning ? data.reasoning.security_analysis : null) || {};
+    const findings = secAnalysis.findings || [];
+    const missingReqs = structured.missing_security_requirements || data.missing_requirements_addressed || [];
+    const changesMade = structured.changes_made || (data.reasoning ? data.reasoning.changes_made : null) || [];
+    const assumptions = structured.assumptions || (data.reasoning ? data.reasoning.assumptions : null) || [];
+    const remainingRisks = structured.remaining_risks || (data.reasoning ? data.reasoning.remaining_risks : null) || [];
+
+    const isCompleted = (data.status === '0g_reasoning_completed' || meta.status === '0g_reasoning_completed' || meta.status === '0g_success');
+    const isCached = Boolean(meta.cached || meta.status === '0g_success_cached');
+    const isFailed = (data.status === '0g_reasoning_failed' || meta.status === '0g_reasoning_failed');
+    const isLocalOnly = (data.status === 'local_only' || meta.status === 'local_only');
+
+    // Execution status labels
+    let statusLabel = '0G reasoning completed';
+    let statusBadgeClass = 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]';
+    if (isFailed) {
+      statusLabel = '0G reasoning failed';
+      statusBadgeClass = 'bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]';
+    } else if (isLocalOnly) {
+      statusLabel = 'Local-only analysis';
+      statusBadgeClass = 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]';
+    } else if (isCached) {
+      statusLabel = '0G reasoning completed (Cached • 0 Credits)';
+      statusBadgeClass = 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]';
+    }
+
+    // Severity color helper
+    const getSevBadge = (sev) => {
+      const s = String(sev || 'medium').toLowerCase();
+      if (s === 'critical') return 'bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]';
+      if (s === 'high') return 'bg-[#FFEDD5] text-[#C2410C] border-[#FED7AA]';
+      if (s === 'medium') return 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]';
+      return 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]';
+    };
+
+    if (isFailed) {
+      // 0G Reasoning Failed View
+      resultsBox.innerHTML = `
+        <div class="space-y-3.5 text-[12.5px]">
+          <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-2">
+            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${statusBadgeClass}">
+              ${statusLabel}
+            </span>
+            <span class="text-[11px] font-mono text-[#627566]">${meta.duration_ms ? `${meta.duration_ms}ms` : '0ms'}</span>
+          </div>
+
+          <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12px] text-[#991B1B] space-y-1.5">
+            <div class="font-semibold flex items-center gap-1.5">
+              <span>⚠️ 0G Private Computer AI Reasoning Encountered an Error</span>
+            </div>
+            <p class="font-mono text-[11.5px]">${escapeHtml(data.error || meta.error || '0G node returned an invalid response structure or network timeout.')}</p>
+            <div class="text-[11px] text-[#7F1D1D] pt-1">
+              Guardvane does NOT silently substitute local heuristics for missing 0G AI reasoning. You may retry the remote inference below.
+            </div>
+          </div>
+
+          <!-- Preserved Local Preprocessing Scan (if available) -->
+          ${data.security_analysis ? `
+            <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
+              <div class="text-[11px] font-semibold text-[#627566] uppercase tracking-wider">Preserved Local Preprocessing Signals</div>
+              <div class="grid grid-cols-2 gap-2 text-[12px]">
+                <div><span class="text-[#8B9C8E]">Injection Score:</span> <strong>${(data.security_analysis.prompt_security?.malicious_probability * 100 || 0).toFixed(1)}%</strong></div>
+                <div><span class="text-[#8B9C8E]">Detected Secrets:</span> <strong>${data.security_analysis.sensitive_data?.findings_count || 0}</strong></div>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Actions -->
+          <div class="pt-2 border-t border-[#E2E9E3] flex justify-between items-center">
+            <button onclick="executeQuickOptimize(null, true)" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
+              <span>🔄</span> Retry 0G Reasoning
+            </button>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('quick-prompt-input').value); alert('Copied original prompt!');" class="text-xs text-[#627566] hover:underline font-medium cursor-pointer">
+              Copy Original Prompt 📋
+            </button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Success / Local-Only View with the 8 Distinct Required Sections
+    resultsBox.innerHTML = `
+      <div class="space-y-4 text-[12.5px]">
+        <!-- Execution Status & Telemetry Header -->
+        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${statusBadgeClass}">
+              ${statusLabel}
+            </span>
+            <div class="flex items-center gap-3">
+              <span class="text-[11px] font-mono text-[#627566]">
+                ${meta.duration_ms ? `${meta.duration_ms}ms` : '0ms'}
+              </span>
+              <button onclick="const el = document.getElementById('inference-telemetry-drawer'); el.classList.toggle('hidden');" class="text-[11px] text-[#176B45] hover:underline cursor-pointer font-medium">
+                View Inference Details ℹ️
+              </button>
+            </div>
+          </div>
+
+          <!-- Inference Details Collapsible Drawer -->
+          <div id="inference-telemetry-drawer" class="hidden p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded mt-2 text-[11px] font-mono space-y-1">
+            <div class="grid grid-cols-2 gap-2 text-[#445246]">
+              <div><span class="text-[#8B9C8E]">Provider:</span> ${escapeHtml(isLocalOnly ? 'Local Deterministic Rules' : (meta.provider || '0G Private Computer'))}</div>
+              <div><span class="text-[#8B9C8E]">Model:</span> ${escapeHtml(isLocalOnly ? 'N/A (Local Heuristic Scan)' : (meta.model || 'glm-5.2'))}</div>
+              <div><span class="text-[#8B9C8E]">Trust Mode:</span> ${escapeHtml(isLocalOnly ? 'N/A' : (meta.trust_mode || 'verified'))}</div>
+              <div><span class="text-[#8B9C8E]">Request ID:</span> <span class="truncate inline-block max-w-[120px]" title="${escapeForAttr(meta.request_id || 'N/A')}">${escapeHtml(meta.request_id || 'N/A')}</span></div>
+              <div><span class="text-[#8B9C8E]">Total Tokens:</span> ${meta.total_tokens ? meta.total_tokens : (meta.usage?.total_tokens ?? 'N/A')}</div>
+              <div><span class="text-[#8B9C8E]">Latency:</span> ${meta.duration_ms || 0}ms</div>
+            </div>
+            <div class="text-[10px] text-[#8B9C8E] pt-1 border-t border-[#E2E9E3]">
+              * Gateway Request ID tracks transport routing; it is not a cryptographic attestation proof. Configured model is only verified upon real provider response.
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. Task Understanding -->
+        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
+          <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider flex items-center justify-between">
+            <span>1. Task Understanding</span>
+            <span class="text-[11px] text-[#627566] font-mono font-normal">${escapeHtml(taskUnd.application_type || 'Application Specification')}</span>
+          </div>
+          <div class="text-[12px] text-[#202820]">
+            <strong>User Intent:</strong> ${escapeHtml(taskUnd.user_intent || data.preserved_intent || 'Preserved development intention.')}
+          </div>
+          ${Array.isArray(taskUnd.technologies) && taskUnd.technologies.length > 0 ? `
+            <div class="flex flex-wrap gap-1 pt-1">
+              <span class="text-[10.5px] text-[#8B9C8E] font-medium mr-1">Technologies:</span>
+              ${taskUnd.technologies.map(t => `
+                <span class="px-2 py-0.5 bg-[#FAFBF9] border border-[#CBD7CE] text-[#374151] rounded text-[10.5px] font-mono">
+                  ${escapeHtml(t)}
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 2. Security Risk Assessment -->
+        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">2. Security Risk Assessment</span>
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${getSevBadge(secAnalysis.overall_risk || data.overall_risk || 'Low')}">
+              ${escapeHtml(secAnalysis.overall_risk || data.overall_risk || 'Low')} Risk
+            </span>
+          </div>
+          <p class="text-[12px] text-[#445246]">
+            ${escapeHtml(data.reasoning?.contextual_summary || 'Contextual threat analysis performed on requested application parameters.')}
+          </p>
+        </div>
+
+        <!-- 3. Vulnerability Findings -->
+        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2.5">
+          <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">
+            3. Vulnerability Findings (${findings.length})
+          </div>
+          ${findings.length > 0 ? `
+            <div class="space-y-2">
+              ${findings.map((f, i) => `
+                <div class="p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] space-y-1">
+                  <div class="flex items-center justify-between">
+                    <strong class="text-[#202820] text-[12px]">${i+1}. ${escapeHtml(f.vulnerability)}</strong>
+                    <div class="flex items-center gap-1.5">
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${getSevBadge(f.severity)}">
+                        ${escapeHtml(f.severity)}
+                      </span>
+                      ${f.confidence ? `<span class="text-[10px] font-mono text-[#8B9C8E]">(${(f.confidence * 100).toFixed(0)}% conf)</span>` : ''}
+                    </div>
+                  </div>
+                  ${f.evidence ? `<div class="text-[11px] text-[#627566] italic">"${escapeHtml(f.evidence)}"</div>` : ''}
+                  <div class="text-[#445246]">${escapeHtml(f.explanation)}</div>
+                  ${f.recommendation ? `
+                    <div class="text-[11px] text-[#176B45] pt-0.5">
+                      <strong>Mitigation:</strong> ${escapeHtml(f.recommendation)}
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            <div class="text-[12px] text-[#176B45] font-medium">No critical application vulnerabilities detected in this request.</div>
+          `}
+        </div>
+
+        <!-- 4. Attack Scenarios -->
+        ${findings.some(f => f.attack_scenario) ? `
+          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
+            <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">4. Attack Scenarios</div>
+            <div class="space-y-1.5">
+              ${findings.filter(f => f.attack_scenario).map(f => `
+                <div class="p-2 bg-[#FFFBEB] border border-[#FDE68A] rounded text-[11.5px] text-[#92400E] space-y-0.5">
+                  <strong>${escapeHtml(f.vulnerability)}:</strong>
+                  <div>${escapeHtml(f.attack_scenario)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- 5. Recommended Security Controls -->
+        ${missingReqs.length > 0 ? `
+          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-1.5">
+            <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">5. Recommended Security Controls</div>
+            <ul class="list-disc list-inside space-y-1 text-[12px] text-[#445246]">
+              ${missingReqs.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        <!-- 6. Hardened Prompt -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">6. Hardened Prompt Specification</span>
+            <div class="flex items-center gap-2">
+              <button onclick="navigator.clipboard.writeText(document.getElementById('opt-prompt-result-text').innerText); alert('Copied hardened prompt to clipboard!');" class="text-xs text-[#176B45] hover:underline font-medium cursor-pointer">
+                Copy Hardened Prompt 📋
+              </button>
+            </div>
+          </div>
+          <pre id="opt-prompt-result-text" class="p-3 bg-white border border-[#CBD7CE] rounded-lg text-[12px] font-mono text-[#202820] max-h-64 overflow-y-auto whitespace-pre-wrap select-all">${escapeHtml(data.optimized_prompt || data.hardened_prompt || '')}</pre>
+        </div>
+
+        <!-- 7. Changes Made -->
+        ${changesMade.length > 0 ? `
+          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-1.5">
+            <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">7. Changes Made & Rationale</div>
+            <div class="space-y-1">
+              ${changesMade.map(c => `
+                <div class="text-[11.5px] text-[#445246]">
+                  <span class="font-semibold text-[#202820]">• ${escapeHtml(c.change || c)}:</span> ${escapeHtml(c.reason || 'Embedded security requirement')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- 8. Assumptions and Remaining Risks -->
+        ${(assumptions.length > 0 || remainingRisks.length > 0) ? `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            ${assumptions.length > 0 ? `
+              <div class="p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] space-y-1">
+                <div class="font-semibold text-[#627566] text-[11px] uppercase tracking-wider">Assumptions</div>
+                <ul class="list-disc list-inside space-y-0.5 text-[#445246]">
+                  ${assumptions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+            ${remainingRisks.length > 0 ? `
+              <div class="p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] space-y-1">
+                <div class="font-semibold text-[#991B1B] text-[11px] uppercase tracking-wider">Remaining Residual Risks</div>
+                <ul class="list-disc list-inside space-y-0.5 text-[#7F1D1D]">
+                  ${remainingRisks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        <!-- Footer Control Actions -->
+        <div class="pt-2 border-t border-[#E2E9E3] flex flex-wrap justify-between items-center gap-2">
+          <div class="flex items-center gap-2">
+            <button onclick="navigator.clipboard.writeText(document.getElementById('quick-prompt-input').value); alert('Copied original prompt!');" class="px-2.5 py-1.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
+              Copy Original Prompt 📋
+            </button>
+            <button onclick="executeQuickOptimize(null, true)" class="px-2.5 py-1.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
+              Retry 0G Reasoning 🔄
+            </button>
+          </div>
+          <button onclick="saveOptimizedPromptFromModal('${escapeForAttr(data.optimized_prompt || data.hardened_prompt || '')}')" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth cursor-pointer">
+            Save to My Prompts 💾
+          </button>
+        </div>
+      </div>
+    `;
+
+    if (promptId) {
+      await apiFetch(`/marketplace/prompts/${promptId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          analysis_result: {
+            status: data.status,
+            overall_risk: secAnalysis.overall_risk || data.overall_risk,
+            findings_count: findings.length,
+            optimized_prompt: data.optimized_prompt,
+          }
+        })
+      });
+      await loadInitialData();
+    }
+  } catch (err) {
+    resultsBox.innerHTML = `
+      <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12.5px] text-[#991B1B] space-y-1.5">
+        <div class="font-semibold flex items-center justify-between">
+          <span>0G AI Reasoning Request Failed</span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]">
+            0G reasoning failed
+          </span>
+        </div>
+        <p class="font-mono text-[11.5px]">${escapeHtml(err.message || 'An unexpected error occurred during 0G reasoning.')}</p>
+        <div class="pt-2">
+          <button onclick="executeQuickOptimize(null, true)" class="px-3 py-1 bg-[#991B1B] hover:bg-[#7F1D1D] text-white text-[11px] font-medium rounded cursor-pointer">
+            Retry 0G Reasoning 🔄
+          </button>
+        </div>
+      </div>
+    `;
+  } finally {
+    if (scanBtn) { scanBtn.disabled = false; scanBtn.classList.remove('opacity-60', 'cursor-not-allowed'); }
+    if (optBtn) { optBtn.disabled = false; optBtn.classList.remove('opacity-60', 'cursor-not-allowed'); }
+  }
+}
+
+async function saveOptimizedPromptFromModal(content) {
+  try {
+    await apiFetch('/marketplace/prompts', {
+      method: 'POST',
+      headers: { 'X-User-Id': STATE.user.id || 'francis' },
+      body: JSON.stringify({
+        title: `0G Hardened Prompt — ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        content: content,
+        is_private: true
+      })
+    });
+    alert('Hardened prompt saved to your private library!');
+    closeModal();
+    await loadInitialData();
+    navigateTo('my_prompts');
+  } catch (e) {
+    alert(`Failed to save prompt: ${e.message}`);
   }
 }
 

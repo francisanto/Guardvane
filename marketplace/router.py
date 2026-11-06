@@ -10,9 +10,20 @@ from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Query, Re
 from auth.service import decode_session_token
 
 from integrations.arkiv.client import arkiv_client
+from integrations.arkiv.schemas import (
+    ArkivSyncStatus,
+    ArkivSpecialistProfile,
+    ArkivServiceListing,
+    ArkivSecurityTask,
+    ArkivSpecialistBid,
+    ArkivAwardRecord,
+    ReconcileTaskRequest,
+    ReconcileBidRequest,
+    ReconcileAwardRequest,
+)
 from integrations.hedera.client import hedera_client
 from integrations.swarm.client import swarm_client
-from integrations.zero_g.client import ZeroGClient
+from integrations.zero_g import zero_g_optimizer, ZeroGClient
 from marketplace.schemas import (
     DashboardStats,
     DeliverOrderRequest,
@@ -459,13 +470,117 @@ def get_integrations_status():
     return IntegrationStatusResponse(
         arkiv=arkiv_client.get_status().model_dump(),
         zero_g={
-            "is_configured": False,
+            "is_configured": zero_g_optimizer.client.is_configured,
+            "is_enabled": zero_g_optimizer.client.is_enabled,
             "engine": "0g_private_computer",
-            "mode": "deterministic_fallback_ready",
-            "phase": "Phase 1 - Interface Ready",
-            "notice": "Zero-G inference client initialized with sanitization."
+            "model": zero_g_optimizer.client.model,
+            "trust_mode": zero_g_optimizer.client.trust_mode,
+            "mode": "verified_inference" if zero_g_optimizer.client.is_configured else "deterministic_fallback_ready",
+            "phase": "Verified 0G Inference Ready" if zero_g_optimizer.client.is_configured else "Phase 1 - Local Fallback Ready",
+            "notice": "0G Private Computer client active with verified trust-mode header and credential sanitization."
         },
         swarm=swarm_client.get_status().model_dump(),
         hedera=hedera_client.get_status().model_dump()
     )
+
+
+# ---------------------------------------------------------------------------
+# Arkiv Decentralized Marketplace Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/arkiv/config")
+def get_arkiv_config():
+    """Returns network parameters and access credentials for frontend Arkiv connection."""
+    return {
+        "chain_id": arkiv_client.chain_id,
+        "chain_id_hex": "0x76ee8f",
+        "network": "Rabdi Testnet",
+        "currency": "tGLM",
+        "rpc_url": arkiv_client.rpc_url,
+        "access_key": arkiv_client.access_key,
+        "explorer_url": "https://explorer.rabdi.db-chain.testnet.arkiv.network"
+    }
+
+
+@router.get("/arkiv/status", response_model=ArkivSyncStatus)
+def get_arkiv_status():
+    """Queries live connection state and latest block number on Rabdi testnet."""
+    return arkiv_client.get_status()
+
+
+@router.get("/arkiv/specialists", response_model=List[ArkivSpecialistProfile])
+def list_arkiv_specialists(
+    availability: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0)
+):
+    """Discovers specialist profiles directly from Arkiv (guardvane.specialists.v1)."""
+    return arkiv_client.query_specialists(availability=availability, limit=limit, offset=offset)
+
+
+@router.get("/arkiv/services", response_model=List[ArkivServiceListing])
+def list_arkiv_services(
+    category: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0)
+):
+    """Discovers service listings directly from Arkiv (guardvane.services.v1)."""
+    return arkiv_client.query_services(category=category, limit=limit, offset=offset)
+
+
+@router.get("/arkiv/tasks", response_model=List[ArkivSecurityTask])
+def list_arkiv_tasks(
+    category: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    wallet: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0)
+):
+    """Discovers security tasks directly from Arkiv (guardvane.tasks.v1)."""
+    return arkiv_client.query_tasks(category=category, status=status, customer_wallet=wallet, limit=limit, offset=offset)
+
+
+@router.get("/arkiv/tasks/{task_id}/bids", response_model=List[ArkivSpecialistBid])
+def list_arkiv_bids(
+    task_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0)
+):
+    """Retrieves specialist bids for a task directly from Arkiv (guardvane.bids.v1)."""
+    return arkiv_client.query_bids(task_id=task_id, limit=limit, offset=offset)
+
+
+@router.get("/arkiv/tasks/{task_id}/awards", response_model=List[ArkivAwardRecord])
+def list_arkiv_awards(
+    task_id: str
+):
+    """Retrieves award records for a task directly from Arkiv (guardvane.awards.v1)."""
+    return arkiv_client.query_awards(task_id=task_id)
+
+
+@router.post("/arkiv/reconcile/task")
+def reconcile_task(
+    data: ReconcileTaskRequest,
+    auth: Dict[str, str] = Depends(get_current_user)
+):
+    """Reconciles customer-signed on-chain task with PostgreSQL registry."""
+    return marketplace_service.reconcile_task(data)
+
+
+@router.post("/arkiv/reconcile/bid")
+def reconcile_bid(
+    data: ReconcileBidRequest,
+    auth: Dict[str, str] = Depends(get_current_user)
+):
+    """Reconciles specialist-signed on-chain bid with PostgreSQL registry."""
+    return marketplace_service.reconcile_bid(data)
+
+
+@router.post("/arkiv/reconcile/award")
+def reconcile_award(
+    data: ReconcileAwardRequest,
+    auth: Dict[str, str] = Depends(get_current_user)
+):
+    """Reconciles customer-signed on-chain award and transitions order to accepted."""
+    return marketplace_service.reconcile_award(data)
 
