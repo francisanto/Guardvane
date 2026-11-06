@@ -134,6 +134,23 @@ class ServiceResponse(ServiceBase):
     provider_avatar: Optional[str] = ""
     provider_verified: bool = False
     created_at: str
+    arkiv_entity_key: Optional[str] = None
+    arkiv_tx_hash: Optional[str] = None
+    arkiv_status: Optional[str] = None
+
+
+class ArkivVerificationResponse(BaseModel):
+    is_verified: bool
+    service_id: str
+    title: Optional[str] = None
+    entity_key: Optional[str] = None
+    tx_hash: Optional[str] = None
+    schema_tag: str = "guardvane.services.v1"
+    explorer_url: Optional[str] = None
+    verification_source: str
+    on_chain_entity: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    checked_at: str
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +203,7 @@ class PaymentConfirmRequest(BaseModel):
 
 
 class DeliverOrderRequest(BaseModel):
-    summary: str = Field(..., min_length=10, description="Executive summary of audit findings")
+    summary: str = Field(..., min_length=1, description="Executive summary of audit findings")
     findings: List[Dict[str, Any]] = Field(default_factory=list, description="Structured vulnerability list")
     recommendations: List[str] = Field(default_factory=list, description="Actionable recommendations")
     hardened_prompt: Optional[str] = Field(default=None, description="Hardened or optimized prompt version")

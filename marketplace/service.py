@@ -381,9 +381,11 @@ class MarketplaceService:
         cursor = conn.cursor()
 
         sql = """
-            SELECT s.*, p.display_name as provider_name, p.provider_type, p.avatar_url as provider_avatar, p.verified as provider_verified
+            SELECT s.*, p.display_name as provider_name, p.provider_type, p.avatar_url as provider_avatar, p.verified as provider_verified,
+                   a.entity_key as arkiv_entity_key, a.tx_hash as arkiv_tx_hash, a.status as arkiv_status
             FROM services s
             JOIN providers p ON s.provider_id = p.id
+            LEFT JOIN arkiv_records a ON a.schema_tag = 'guardvane.services.v1' AND a.entity_id = s.id
             WHERE s.is_active = 1
         """
         params: List[Any] = []
@@ -436,7 +438,10 @@ class MarketplaceService:
                 provider_type=ProviderType(row["provider_type"]),
                 provider_avatar=row["provider_avatar"] or "",
                 provider_verified=bool(row["provider_verified"]),
-                created_at=row["created_at"]
+                created_at=row["created_at"],
+                arkiv_entity_key=row.get("arkiv_entity_key"),
+                arkiv_tx_hash=row.get("arkiv_tx_hash"),
+                arkiv_status=row.get("arkiv_status")
             )
             for row in rows
         ]
@@ -446,9 +451,11 @@ class MarketplaceService:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT s.*, p.display_name as provider_name, p.provider_type, p.avatar_url as provider_avatar, p.verified as provider_verified
+            SELECT s.*, p.display_name as provider_name, p.provider_type, p.avatar_url as provider_avatar, p.verified as provider_verified,
+                   a.entity_key as arkiv_entity_key, a.tx_hash as arkiv_tx_hash, a.status as arkiv_status
             FROM services s
             JOIN providers p ON s.provider_id = p.id
+            LEFT JOIN arkiv_records a ON a.schema_tag = 'guardvane.services.v1' AND a.entity_id = s.id
             WHERE s.id = ?
             """,
             (service_id,)
@@ -473,8 +480,76 @@ class MarketplaceService:
             provider_type=ProviderType(row["provider_type"]),
             provider_avatar=row["provider_avatar"] or "",
             provider_verified=bool(row["provider_verified"]),
-            created_at=row["created_at"]
+            created_at=row["created_at"],
+            arkiv_entity_key=row.get("arkiv_entity_key"),
+            arkiv_tx_hash=row.get("arkiv_tx_hash"),
+            arkiv_status=row.get("arkiv_status")
         )
+
+    def verify_service_entity(self, service_id: str) -> Dict[str, Any]:
+        """
+        Retrieves live on-chain entity verification from Arkiv Rabdi Testnet
+        using client.getEntity(). Compares on-chain record against local database.
+        """
+        service = self.get_service(service_id)
+        if not service:
+            return {
+                "is_verified": False,
+                "service_id": service_id,
+                "verification_source": "none",
+                "error": f"Service '{service_id}' not found in marketplace database.",
+                "checked_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        conn = self.db._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT entity_key, tx_hash, status FROM arkiv_records WHERE schema_tag = 'guardvane.services.v1' AND entity_id = ?",
+            (service_id,)
+        )
+        arkiv_rec = cursor.fetchone()
+        entity_key = arkiv_rec["entity_key"] if arkiv_rec else None
+        tx_hash = arkiv_rec["tx_hash"] if arkiv_rec else None
+
+        if not entity_key:
+            return {
+                "is_verified": False,
+                "service_id": service_id,
+                "title": service.title,
+                "schema_tag": "guardvane.services.v1",
+                "verification_source": "off_chain_database_only",
+                "error": "This service exists only in local Supabase database. No confirmed on-chain entity found on Rabdi Testnet.",
+                "checked_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        from integrations.arkiv.client import arkiv_client
+        live_entity = arkiv_client.get_entity("services", entity_key)
+        if not live_entity:
+            return {
+                "is_verified": False,
+                "service_id": service_id,
+                "title": service.title,
+                "entity_key": entity_key,
+                "tx_hash": tx_hash,
+                "schema_tag": "guardvane.services.v1",
+                "explorer_url": f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{tx_hash}" if tx_hash else None,
+                "verification_source": "arkiv_live_rpc",
+                "error": f"Rabdi node did not return an active entity for key '{entity_key}'. Entity may have expired or is unindexed.",
+                "checked_at": datetime.now(timezone.utc).isoformat()
+            }
+
+        return {
+            "is_verified": True,
+            "service_id": service_id,
+            "title": service.title,
+            "entity_key": entity_key,
+            "tx_hash": tx_hash,
+            "schema_tag": "guardvane.services.v1",
+            "explorer_url": f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{tx_hash}" if tx_hash else None,
+            "verification_source": "arkiv_live_rpc",
+            "on_chain_entity": live_entity,
+            "checked_at": datetime.now(timezone.utc).isoformat()
+        }
 
     def create_service(self, data: ServiceCreate, provider_id: str) -> ServiceResponse:
         provider = self.get_provider(provider_id)
@@ -745,11 +820,26 @@ class MarketplaceService:
 
         # Payment settlement check: all AI requests MUST be confirmed paid
         if order.payment_status not in (PaymentStatus.VERIFIED.value, "verified", "settled"):
-            raise PermissionError(
-                f"Order '{order_id}' cannot execute: payment status is '{order.payment_status}'. "
-                "Confirmed Hedera x402 payment settlement via Blocky402 is required."
+            # Check if there is a verified on-chain payment intent for this order
+            conn = self.db._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, status FROM payment_intents WHERE order_id = ? AND status = 'verified' LIMIT 1",
+                (order_id,)
             )
-            raise ValueError(f"Order '{order_id}' not found.")
+            v_intent = cursor.fetchone()
+            if v_intent:
+                with conn:
+                    conn.execute(
+                        "UPDATE orders SET payment_status = ?, payment_intent_id = ?, updated_at = ? WHERE id = ?",
+                        (PaymentStatus.VERIFIED.value, v_intent["id"], datetime.now(timezone.utc).isoformat(), order_id)
+                    )
+                order = self.get_order(order_id)
+            else:
+                raise PermissionError(
+                    f"Order '{order_id}' cannot execute: payment status is '{order.payment_status}'. "
+                    "Confirmed Hedera x402 payment settlement via Blocky402 is required."
+                )
 
         findings = []
         rec_list = []
@@ -809,7 +899,7 @@ class MarketplaceService:
                     trust_mode = zg_res.metadata.get("trust_mode", "verified")
                     latency_ms = zg_res.metadata.get("latency_ms", 0.0)
 
-                    usage = zg_res.usage or {}
+                    usage = getattr(zg_res, "usage", None) or getattr(zg_res, "metadata", {}).get("usage") or {}
                     actual_prompt_tokens = usage.get("prompt_tokens") or max(50, len(order.prompt_content) // 4)
                     actual_completion_tokens = usage.get("completion_tokens") or max(80, len(hardened_prompt) // 4)
                     actual_total_tokens = usage.get("total_tokens") or (actual_prompt_tokens + actual_completion_tokens)
@@ -1002,11 +1092,7 @@ class MarketplaceService:
                 )
             raise ValueError(f"Payment verification failed: {intent.failure_reason or 'Payment verification rejected by gateway.'}")
 
-        # Execution Gate: If Automated AI order, trigger 0G Private Computer AI reasoning now!
-        if order.execution_type == ServiceExecutionType.AUTOMATED:
-            return self.execute_automated_ai_order(order_id, payment_ref=proof)
-
-        # Human Specialist Order: Activate order to requested for specialist workspace
+        # Update order payment_status to VERIFIED immediately upon verified settlement
         new_status = order.status
         if order.status == OrderStatus.PENDING_PAYMENT:
             new_status = OrderStatus.REQUESTED
@@ -1020,6 +1106,10 @@ class MarketplaceService:
                 """,
                 (PaymentStatus.VERIFIED.value, new_status.value, intent.id, now, order_id)
             )
+
+        # Execution Gate: If Automated AI order, trigger 0G Private Computer AI reasoning now!
+        if order.execution_type == ServiceExecutionType.AUTOMATED:
+            return self.execute_automated_ai_order(order_id, payment_ref=proof)
 
         return self.get_order(order_id)
 
@@ -1303,29 +1393,35 @@ class MarketplaceService:
 
         conn = self.db._get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, wallet_address FROM providers WHERE id = ? OR LOWER(wallet_address) = LOWER(?)", (order.provider_id, order.provider_id))
+        cursor.execute("SELECT id, wallet_address, display_name FROM providers WHERE id = ? OR LOWER(wallet_address) = LOWER(?)", (order.provider_id, order.provider_id))
         prov_row = cursor.fetchone()
         prov_id = prov_row["id"] if prov_row else order.provider_id
         prov_wallet = prov_row["wallet_address"] if prov_row else None
+        prov_name = prov_row["display_name"] if prov_row else order.provider_name
 
         pid = (provider_id or "").lower()
         is_assigned_prov = (
             order.provider_id.lower() == pid
             or (prov_wallet and prov_wallet.lower() == pid)
             or (prov_id and prov_id.lower() == pid)
+            or (prov_name and prov_name.lower() == pid)
         )
         if not is_assigned_prov and provider_id:
             user_prov = self.get_provider_by_wallet(provider_id)
-            if user_prov and (user_prov.id.lower() == order.provider_id.lower() or (prov_id and user_prov.id.lower() == prov_id.lower())):
+            if user_prov and (
+                user_prov.id.lower() == order.provider_id.lower()
+                or (prov_id and user_prov.id.lower() == prov_id.lower())
+                or (prov_name and user_prov.display_name.lower() == prov_name.lower())
+            ):
                 is_assigned_prov = True
 
         if not is_assigned_prov:
             raise PermissionError("Access denied: You are not the assigned provider for this order.")
 
-        if order.status not in {OrderStatus.ACCEPTED, OrderStatus.IN_PROGRESS}:
-            raise ValueError(f"Cannot deliver order in '{order.status.value}' state. Must be accepted or in_progress.")
+        if order.status not in {OrderStatus.REQUESTED, OrderStatus.ACCEPTED, OrderStatus.IN_PROGRESS}:
+            raise ValueError(f"Cannot deliver order in '{order.status.value}' state. Must be requested, accepted, or in_progress.")
 
-        if order.payment_status != PaymentStatus.VERIFIED:
+        if order.payment_status != PaymentStatus.VERIFIED and order.escrow_state != "funded":
             raise ValueError("Cannot deliver order: payment has not been verified/settled.")
 
         now = datetime.now(timezone.utc).isoformat()

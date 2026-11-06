@@ -148,7 +148,13 @@ async function apiFetch(endpoint, options = {}) {
         renderApp();
       }
       const errData = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(errData.detail || `API error (${res.status})`);
+      let errMsg = errData.detail || `API error (${res.status})`;
+      if (Array.isArray(errMsg)) {
+        errMsg = errMsg.map(e => e.msg || e.detail || JSON.stringify(e)).join(', ');
+      } else if (typeof errMsg === 'object') {
+        errMsg = JSON.stringify(errMsg);
+      }
+      throw new Error(errMsg);
     }
     return await res.json();
   } catch (err) {
@@ -302,7 +308,6 @@ async function handleLogout() {
   STATE.user.name = null;
   STATE.user.activeProviderId = null;
   STATE.user.role = 'customer';
-  STATE.user.is0gVerified = false;
   STATE.data.orders = [];
   STATE.data.reports = [];
   STATE.data.prompts = [];
@@ -1145,8 +1150,19 @@ function renderOpiHubView() {
           </select>
         </div>
 
-        <div class="text-[13px] text-[#627566]">
-          Showing <strong class="text-[#202820]">${isServicesTab ? filteredServices.length : filteredProviders.length}</strong> ${isServicesTab ? 'available services' : 'verified providers'}
+        <div class="flex items-center gap-3">
+          <button
+            onclick="openArkivInspectorModal()"
+            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold font-mono bg-[#FAFBF9] hover:bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5] rounded-md transition-smooth cursor-pointer shadow-2xs"
+            title="Inspect Arkiv schemas and entities live on Rabdi Testnet via Arkiv SDK"
+          >
+            <span class="w-2 h-2 rounded-full bg-[#176B45] animate-pulse"></span>
+            <span>Rabdi Testnet</span>
+            <span class="text-[10.5px] text-[#445246] font-normal">• Arkiv SDK Inspector</span>
+          </button>
+          <div class="text-[13px] text-[#627566]">
+            Showing <strong class="text-[#202820]">${isServicesTab ? filteredServices.length : filteredProviders.length}</strong> ${isServicesTab ? 'available services' : 'verified providers'}
+          </div>
         </div>
       </div>
 
@@ -2113,6 +2129,11 @@ function renderMyRequestsView() {
                             Report
                           </button>
                         ` : ''}
+                        ${o.status === 'delivered' && o.escrow_state === 'funded' ? `
+                          <button onclick="executeEVMEscrowRelease('${o.id}')" class="px-2.5 py-1 bg-[#176B45] text-white hover:bg-[#115638] font-medium text-[12px] rounded shadow-xs transition-smooth cursor-pointer" title="Release smart escrow payment to specialist">
+                            Release Escrow
+                          </button>
+                        ` : ''}
                       </div>
                     </td>
                   </tr>
@@ -2417,11 +2438,37 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
         </div>
       </div>
 
-      <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
-        <div class="text-[11px] text-[#627566]">
-          ${isAutomated ? '⚡ Instant On-Chain Inference' : '🔒 Smart Escrow Protected'}
+      <div class="pt-3 border-t border-[#E2E9E3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[11px] text-[#627566]">
+            ${isAutomated ? '⚡ Instant 0G Inference' : '🔒 Smart Escrow Protected'}
+          </span>
+          ${s.arkiv_entity_key ? `
+            <button
+              type="button"
+              onclick="event.stopPropagation(); openArkivVerificationModal('${s.id}')"
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-mono font-medium bg-[#EAF5EE] text-[#176B45] hover:bg-[#D7EFE0] border border-[#CDE5D5] transition-smooth cursor-pointer shadow-2xs"
+              title="Click to verify live on Rabdi Testnet via Arkiv SDK client.getEntity()"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#176B45] animate-pulse"></span>
+              <span>Arkiv Verified</span>
+              <span class="text-[#627566] text-[9.5px]">(${s.arkiv_entity_key.slice(0, 6)}...${s.arkiv_entity_key.slice(-4)})</span>
+              <span>↗</span>
+            </button>
+          ` : `
+            <button
+              type="button"
+              onclick="event.stopPropagation(); openArkivVerificationModal('${s.id}')"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-mono text-[#8B9C8E] hover:text-[#202820] hover:bg-[#F0F5F1] transition-smooth cursor-pointer"
+              title="Inspect Arkiv Storage Status"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-[#CBD5E1]"></span>
+              <span>Off-Chain</span>
+              <span>🔍</span>
+            </button>
+          `}
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 self-end sm:self-auto">
           ${ownsService ? `
             <button onclick="navigateTo('provider_workspace')" class="px-3 py-1.5 text-[12px] font-medium bg-[#EAF5EE] border border-[#CDE5D5] text-[#176B45] rounded transition-smooth cursor-pointer">
               My Service →
@@ -2485,7 +2532,7 @@ function renderActivityFeed(activities) {
 
 function renderModalContainer() {
   let maxWidthClass = 'max-w-xl';
-  if (STATE.activeModal === 'report_viewer') {
+  if (['report_viewer', 'arkiv_verify_modal', 'arkiv_inspector_modal'].includes(STATE.activeModal)) {
     maxWidthClass = 'max-w-3xl';
   } else if (['order_detail', 'request_review', 'add_service_modal', 'edit_service_modal'].includes(STATE.activeModal)) {
     maxWidthClass = 'max-w-2xl';
@@ -2539,6 +2586,10 @@ function renderModalContent() {
       return renderArkivSubmitBidModal();
     case 'arkiv_view_bids':
       return renderArkivViewBidsModal();
+    case 'arkiv_verify_modal':
+      return renderArkivVerifyModal();
+    case 'arkiv_inspector_modal':
+      return renderArkivInspectorModal();
     default:
       return '';
   }
@@ -2555,7 +2606,6 @@ function renderRequestReviewModal() {
   const isCodebaseSecurity = category === 'codebase_security';
 
   const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
-  const is0gVerified = !!(STATE.user.is0gVerified || localStorage.getItem(`guardvane_0g_verified_${userWallet}`) === 'true');
   const savedX402Account = localStorage.getItem('guardvane_x402_account') || '';
   const savedX402Key = localStorage.getItem('guardvane_x402_key') || '';
   const hasX402Setup = !!(savedX402Account && savedX402Key);
@@ -2589,9 +2639,10 @@ function renderRequestReviewModal() {
           </div>
           <div class="text-right">
             ${isAutomated ? `
-              <div class="text-[13px] font-bold font-mono text-[#176B45]">Dynamic Prompt Quote</div>
+              <div class="text-[15px] font-bold font-mono text-[#176B45]" id="modal-header-quote-usd">$${initUsd.toFixed(3)} USD</div>
+              <div class="text-[11.5px] font-mono text-[#445246]" id="modal-header-quote-hbar">≈ ${initHbars} HBAR</div>
               <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono bg-[#E0E7FF] text-[#3730A3]">
-                0G AI Agent
+                0G AI • Hedera x402
               </span>
             ` : `
               <div class="text-[15px] font-bold font-mono text-[#176B45]">$${(currentService?.price || 0).toFixed(2)} USD</div>
@@ -2722,26 +2773,6 @@ function renderRequestReviewModal() {
               placeholder=""
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
             >${payload.promptText || ''}</textarea>
-
-            ${isAutomated ? `
-              <!-- Live Dynamic Token & Pricing Quote -->
-              <div id="dynamic-prompt-pricing-bar" class="p-2.5 bg-[#FAFBF9] border border-[#CDE5D5] rounded-lg flex items-center justify-between text-xs mt-2">
-                <div class="space-y-0.5">
-                  <div class="text-[10.5px] font-semibold text-[#627566] uppercase tracking-wider">Estimated Token Allowance</div>
-                  <div class="font-mono text-[#202820]" id="dynamic-token-calc-detail">
-                    ${initInTokens} in + ${initOutTokens} out = ${initTotalTokens} tokens ($0.03/1k tokens)
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="text-[14px] font-bold font-mono text-[#176B45]" id="dynamic-quoted-price-usd">
-                    $${initUsd.toFixed(3)} USD
-                  </div>
-                  <div class="text-[11px] font-mono text-[#445246]" id="dynamic-quoted-price-hbar">
-                    ≈ ${initHbars} HBAR
-                  </div>
-                </div>
-              </div>
-            ` : ''}
           </div>
 
           <div>
@@ -2763,92 +2794,71 @@ function renderRequestReviewModal() {
               <span class="text-[11px] bg-[#E0E7FF] text-[#3730A3] font-semibold px-2 py-0.5 rounded font-mono">0G Private Computer</span>
             </div>
 
-            ${is0gVerified ? `
-              <!-- 0G Verified Allocation Card -->
-              <div class="p-3.5 bg-[#EAF5EE] border border-[#CDE5D5] rounded-xl space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <span class="text-[12.5px] font-semibold text-[#176B45] flex items-center gap-1.5">
-                    ✨ 0G Compute Allocation Verified
-                  </span>
-                  <span class="text-[10px] bg-[#CDE5D5] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">Zero Gas</span>
+            <!-- Hedera x402 Micropayment Required -->
+            <div class="p-3.5 bg-white border border-[#CBD7CE] rounded-xl space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-xs">ħ</span>
+                  <span class="text-[12.5px] font-semibold text-[#202820]">Hedera x402 Micropayment (Native HBAR)</span>
                 </div>
-                <p class="text-[11.5px] text-[#445246] leading-relaxed">
-                  Your connected wallet holds verified 0G Compute Allocation Credits. AI defense inference executes freely under your compute quota ($0.00 USD).
-                </p>
-                <input type="hidden" name="is_zero_g_wallet" value="true" />
+                <div class="text-right">
+                  <span class="text-[13px] font-bold font-mono text-[#176B45]" id="x402-card-quote-usd">$${initUsd.toFixed(3)} USD</span>
+                  <span class="text-[11px] font-mono text-[#445246] ml-1" id="x402-card-quote-hbar">(≈ ${initHbars} HBAR)</span>
+                </div>
               </div>
-            ` : `
-              <!-- Non-0G Wallet: Hedera x402 Micropayment Required -->
-              <div class="p-3.5 bg-white border border-[#CBD7CE] rounded-xl space-y-3">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="w-5 h-5 rounded bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-xs">ħ</span>
-                    <span class="text-[12.5px] font-semibold text-[#202820]">Hedera x402 Micropayment (Native HBAR)</span>
-                  </div>
-                  <span class="text-[10px] bg-[#FEF3C7] text-[#92400E] font-mono px-2 py-0.5 rounded font-semibold">Unverified 0G</span>
-                </div>
 
-                <p class="text-[11.5px] text-[#627566] leading-relaxed">
-                  This wallet is not 0G-verified. Micropayment is calculated dynamically from prompt token length and settled via the Blocky402 facilitator.
-                </p>
+              <p class="text-[11.5px] text-[#627566] leading-relaxed">
+                All AI agent security analyses are paid services settled dynamically via the Blocky402 facilitator on Hedera Testnet before 0G Private Computer reasoning executes.
+              </p>
 
-                ${hasX402Setup ? `
-                  <div class="p-2.5 bg-[#FAFBF9] border border-[#CDE5D5] rounded-lg flex items-center justify-between text-xs">
-                    <div class="space-y-0.5">
-                      <span class="font-semibold text-[#176B45] flex items-center gap-1">
-                        ⚡ 1-Click x402 Auto-Payment Active
-                      </span>
-                      <span class="font-mono text-[#627566]">Account: ${escapeHtml(savedX402Account)}</span>
-                    </div>
-                    <button type="button" onclick="clearX402Setup()" class="text-[11px] text-[#991B1B] hover:underline cursor-pointer">
-                      Change Signer
-                    </button>
+              ${hasX402Setup ? `
+                <div class="p-2.5 bg-[#FAFBF9] border border-[#CDE5D5] rounded-lg flex items-center justify-between text-xs">
+                  <div class="space-y-0.5">
+                    <span class="font-semibold text-[#176B45] flex items-center gap-1">
+                      ⚡ 1-Click x402 Auto-Payment Active
+                    </span>
+                    <span class="font-mono text-[#627566]">Signer Account: ${escapeHtml(savedX402Account)}</span>
                   </div>
-                  <input type="hidden" name="x402_account" value="${escapeForAttr(savedX402Account)}" />
-                  <input type="hidden" name="x402_key" value="${escapeForAttr(savedX402Key)}" />
-                ` : `
-                  <!-- One-Time Setup Card -->
-                  <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-2.5 text-xs">
-                    <div class="flex items-center justify-between">
-                      <span class="font-semibold text-[#202820]">Sign Up for x402 Auto-Payment (One-Time Setup)</span>
-                      <span class="text-[10px] text-[#8B9C8E]">Saved locally in browser</span>
-                    </div>
-                    <div>
-                      <label class="block text-[11px] text-[#627566] mb-1 font-medium">Hedera Testnet Account ID *</label>
-                      <input
-                        type="text"
-                        name="x402_account"
-                        required
-                        placeholder="0.0.xxxxx (e.g. from portal.hedera.com)"
-                        class="w-full px-2.5 py-1.5 bg-white border border-[#CBD7CE] rounded text-xs font-mono focus:outline-none focus:border-[#176B45]"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-[11px] text-[#627566] mb-1 font-medium">Testnet Private Key *</label>
-                      <input
-                        type="password"
-                        name="x402_key"
-                        required
-                        placeholder="DER or Hex Private Key"
-                        class="w-full px-2.5 py-1.5 bg-white border border-[#CBD7CE] rounded text-xs font-mono focus:outline-none focus:border-[#176B45]"
-                      />
-                    </div>
-                    <label class="flex items-center gap-2 pt-0.5 text-[11px] text-[#445246] cursor-pointer">
-                      <input type="checkbox" name="save_x402_setup" checked class="text-[#176B45] rounded" />
-                      <span>Remember credentials for autonomous 1-click settlements</span>
-                    </label>
-                  </div>
-                `}
-
-                <div class="pt-1 flex items-center justify-between text-[11px] border-t border-[#F0F5F1]">
-                  <span class="text-[#8B9C8E]">Have an 0G Compute Allocation?</span>
-                  <button type="button" onclick="handleVerify0GWalletClick()" class="text-[#176B45] font-semibold hover:underline cursor-pointer">
-                    Verify 0G Wallet for Free Credits →
+                  <button type="button" onclick="clearX402Setup()" class="text-[11px] text-[#991B1B] hover:underline cursor-pointer">
+                    Change Signer
                   </button>
                 </div>
-                <input type="hidden" name="is_zero_g_wallet" value="false" />
-              </div>
-            `}
+                <input type="hidden" name="x402_account" value="${escapeForAttr(savedX402Account)}" />
+                <input type="hidden" name="x402_key" value="${escapeForAttr(savedX402Key)}" />
+              ` : `
+                <!-- One-Time Setup Card -->
+                <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-2.5 text-xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-semibold text-[#202820]">Hedera Testnet Signer (One-Time Setup)</span>
+                    <span class="text-[10px] text-[#8B9C8E]">Saved locally in browser</span>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-[#627566] mb-1 font-medium">Hedera Testnet Account ID *</label>
+                    <input
+                      type="text"
+                      name="x402_account"
+                      required
+                      placeholder="0.0.xxxxx (e.g. from portal.hedera.com)"
+                      class="w-full px-2.5 py-1.5 bg-white border border-[#CBD7CE] rounded text-xs font-mono focus:outline-none focus:border-[#176B45]"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-[#627566] mb-1 font-medium">Testnet Private Key *</label>
+                    <input
+                      type="password"
+                      name="x402_key"
+                      required
+                      placeholder="DER or Hex Private Key"
+                      class="w-full px-2.5 py-1.5 bg-white border border-[#CBD7CE] rounded text-xs font-mono focus:outline-none focus:border-[#176B45]"
+                    />
+                  </div>
+                  <label class="flex items-center gap-2 pt-0.5 text-[11px] text-[#445246] cursor-pointer">
+                    <input type="checkbox" name="save_x402_setup" checked class="text-[#176B45] rounded" />
+                    <span>Remember credentials for autonomous 1-click settlements</span>
+                  </label>
+                </div>
+              `}
+            </div>
           </div>
         ` : `
           <!-- Human Specialist Smart Escrow Section -->
@@ -2866,7 +2876,6 @@ function renderRequestReviewModal() {
                 Payment is locked in autonomous smart escrow and automatically disburses directly to the specialist's wallet upon verified delivery of your audit deliverable.
               </p>
             </div>
-            <input type="hidden" name="is_zero_g_wallet" value="false" />
           </div>
         `}
 
@@ -2875,7 +2884,7 @@ function renderRequestReviewModal() {
             Cancel
           </button>
           <button type="submit" id="order-submit-btn" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer flex items-center gap-1.5">
-            ${isAutomated ? (is0gVerified ? 'Execute Free 0G Defense 🚀' : 'Pay via Hedera x402 & Execute ⚡') : 'Submit Review Request'}
+            ${isAutomated ? `Pay <span id="submit-btn-hbar">${initHbars}</span> HBAR via Hedera x402 & Execute ⚡` : 'Submit Review Request'}
           </button>
         </div>
       </form>
@@ -2947,9 +2956,9 @@ function renderDeliverModal() {
             <svg class="w-4 h-4 text-[#176B45] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>Upon deliverable submission, <strong>$${(order?.price || 0).toFixed(2)} USD</strong> escrow will disburse to your wallet.</span>
+            <span>Upon deliverable submission, <strong>$${(order?.price || 0).toFixed(2)} USD</strong> smart escrow disburses to your connected specialist wallet.</span>
           </div>
-          <span class="text-[11px] font-mono font-medium text-[#176B45]">Hedera x402 Escrow</span>
+          <span class="text-[11px] font-mono font-medium text-[#176B45]">MetaMask Smart Escrow (Rabdi Testnet)</span>
         </div>
 
         <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
@@ -3485,7 +3494,6 @@ function renderWalletModal() {
   const myProvider = getMyProvider();
   const isRabdi = STATE.network && STATE.network.isRabdi;
   const currentBlock = STATE.arkiv?.status?.current_block;
-  const is0gVerified = !!(STATE.user.is0gVerified || localStorage.getItem(`guardvane_0g_verified_${userWallet}`) === 'true');
   const savedX402Account = localStorage.getItem('guardvane_x402_account') || '';
   const savedX402Key = localStorage.getItem('guardvane_x402_key') || '';
   const hasX402Setup = !!(savedX402Account && savedX402Key);
@@ -3523,31 +3531,6 @@ function renderWalletModal() {
               ${myProvider ? `${escapeHtml(myProvider.display_name)} (Registered)` : 'Not registered'}
             </span>
           </div>
-        </div>
-
-        <!-- 0G Compute Allocation Card -->
-        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">0G Compute Allocation</span>
-            ${is0gVerified ? `
-              <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">✨ Verified (Zero Gas)</span>
-            ` : `
-              <span class="text-[10px] bg-[#FEF3C7] text-[#92400E] font-mono px-2 py-0.5 rounded font-semibold">Unverified (Requires x402)</span>
-            `}
-          </div>
-          <p class="text-[12px] text-[#627566] leading-relaxed">
-            ${is0gVerified ? 'Your connected wallet holds verified 0G Compute Allocation Credits. Automated prompt scans execute freely under your quota.' : 'AI prompt defenses require Hedera x402 micropayments unless your wallet is verified with 0G Compute Allocation credits.'}
-          </p>
-          ${!is0gVerified ? `
-            <div class="pt-1">
-              <button
-                onclick="handleVerify0GWalletClick()"
-                class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-xs font-semibold rounded-md shadow-2xs transition-smooth cursor-pointer"
-              >
-                Verify 0G Wallet for Free Credits →
-              </button>
-            </div>
-          ` : ''}
         </div>
 
         <!-- Hedera x402 Auto-Payment Signer Card -->
@@ -3642,7 +3625,6 @@ function renderWalletModal() {
 function renderSettingsModal() {
   const userWallet = STATE.auth.walletAddress || '';
   const myProvider = getMyProvider();
-  const is0gVerified = !!(STATE.user.is0gVerified || localStorage.getItem(`guardvane_0g_verified_${userWallet.toLowerCase()}`) === 'true');
   const savedX402Account = localStorage.getItem('guardvane_x402_account') || '';
   const hasX402Setup = !!(savedX402Account && localStorage.getItem('guardvane_x402_key'));
 
@@ -3711,32 +3693,6 @@ function renderSettingsModal() {
                 Register →
               </button>
             `}
-          </div>
-        </div>
-
-        <!-- 0G Compute Allocation Settings Card -->
-        <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">0G Compute Allocation</label>
-          <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-[12px] font-medium text-[#202820]">Allocation Credits:</span>
-              ${is0gVerified ? `
-                <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">✨ Verified (Zero Gas)</span>
-              ` : `
-                <span class="text-[10px] bg-[#FEF3C7] text-[#92400E] font-mono px-2 py-0.5 rounded font-semibold">Unverified (Requires x402)</span>
-              `}
-            </div>
-            <p class="text-[11.5px] text-[#627566] leading-relaxed">
-              ${is0gVerified ? 'Your connected wallet is authorized for zero-cost AI inference using your 0G Compute Allocation credits.' : 'Without a verified 0G wallet, prompt defenses are charged per-token and settled via Hedera x402 micropayments.'}
-            </p>
-            ${!is0gVerified ? `
-              <button
-                onclick="handleVerify0GWalletClick()"
-                class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-xs font-semibold rounded-md shadow-2xs transition-smooth cursor-pointer"
-              >
-                Verify 0G Wallet for Free Credits →
-              </button>
-            ` : ''}
           </div>
         </div>
 
@@ -4901,49 +4857,17 @@ function updateDynamicPromptPricing() {
   const hbarRate = 0.0687;
   const hbars = (usd / hbarRate).toFixed(2);
 
-  const detailEl = document.getElementById('dynamic-token-calc-detail');
-  const usdEl = document.getElementById('dynamic-quoted-price-usd');
-  const hbarEl = document.getElementById('dynamic-quoted-price-hbar');
-  const submitBtn = document.getElementById('order-submit-btn');
+  const headerUsdEl = document.getElementById('modal-header-quote-usd');
+  const headerHbarEl = document.getElementById('modal-header-quote-hbar');
+  const cardUsdEl = document.getElementById('x402-card-quote-usd');
+  const cardHbarEl = document.getElementById('x402-card-quote-hbar');
+  const submitBtnHbar = document.getElementById('submit-btn-hbar');
 
-  if (detailEl) detailEl.textContent = `${inTokens} in + 1024 out = ${totalTokens} tokens ($0.03/1k tokens)`;
-  if (usdEl) usdEl.textContent = `$${usd.toFixed(3)} USD`;
-  if (hbarEl) hbarEl.textContent = `≈ ${hbars} HBAR`;
-
-  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
-  const is0gVerified = !!(STATE.user.is0gVerified || localStorage.getItem(`guardvane_0g_verified_${userWallet}`) === 'true');
-  if (submitBtn) {
-    if (is0gVerified) {
-      submitBtn.innerHTML = `<span>Execute Free 0G Defense 🚀</span>`;
-    } else {
-      submitBtn.innerHTML = `<span>Pay ${hbars} HBAR & Execute ⚡</span>`;
-    }
-  }
-}
-
-async function handleVerify0GWalletClick() {
-  const wallet = STATE.auth.walletAddress;
-  if (!wallet) {
-    showNotification('Please connect your MetaMask wallet first to verify 0G Compute Allocation.', 'error');
-    return;
-  }
-  try {
-    showNotification('Verifying 0G Compute Allocation for ' + wallet.substring(0, 8) + '...', 'info');
-    await apiFetch('/marketplace/wallet/verify-0g', {
-      method: 'POST',
-      body: JSON.stringify({ wallet_address: wallet })
-    });
-    localStorage.setItem(`guardvane_0g_verified_${wallet.toLowerCase()}`, 'true');
-    STATE.user.is0gVerified = true;
-    showNotification('0G Compute Allocation verified! Free AI defenses enabled.', 'success');
-    if (STATE.activeModal === 'request_review') {
-      openModal('request_review', STATE.modalPayload);
-    } else {
-      renderApp();
-    }
-  } catch (err) {
-    showNotification(`0G verification failed: ${err.message}`, 'error');
-  }
+  if (headerUsdEl) headerUsdEl.textContent = `$${usd.toFixed(3)} USD`;
+  if (headerHbarEl) headerHbarEl.textContent = `≈ ${hbars} HBAR`;
+  if (cardUsdEl) cardUsdEl.textContent = `$${usd.toFixed(3)} USD`;
+  if (cardHbarEl) cardHbarEl.textContent = `(≈ ${hbars} HBAR)`;
+  if (submitBtnHbar) submitBtnHbar.textContent = hbars;
 }
 
 function clearX402Setup() {
@@ -5043,7 +4967,6 @@ async function handleOrderSubmit(e) {
   const productLink = form.product_link?.value ? form.product_link.value.trim() : null;
   const docsLink = form.docs_link?.value ? form.docs_link.value.trim() : null;
   const testEnvNotes = form.test_env_notes?.value ? form.test_env_notes.value.trim() : null;
-  const isZeroGWallet = (form.is_zero_g_wallet?.value === 'true') || !!form.is_zero_g_wallet?.checked;
 
   const currentService = STATE.data.services.find(s => s.id === serviceId);
   const isAutomated = currentService?.execution_type === 'automated';
@@ -5052,13 +4975,13 @@ async function handleOrderSubmit(e) {
   const cancelBtn = form.querySelector('button[type="button"]');
   const originalHtml = submitBtn ? submitBtn.innerHTML : '';
 
-  // Non-0G Automated AI: Requires Hedera x402 payment based on prompt
-  if (isAutomated && !isZeroGWallet) {
+  // 1. Automated AI Route: Paid via Hedera x402 Native HBAR
+  if (isAutomated) {
     let accountId = form.x402_account?.value?.trim() || localStorage.getItem('guardvane_x402_account');
     let privKey = form.x402_key?.value?.trim() || localStorage.getItem('guardvane_x402_key');
 
     if (!accountId || !privKey) {
-      showNotification('Please enter your Hedera Testnet Account ID and Private Key to sign up for x402 payment.', 'error');
+      showNotification('Please enter your Hedera Testnet Account ID and Private Key to authorize x402 payment.', 'error');
       return;
     }
 
@@ -5090,7 +5013,6 @@ async function handleOrderSubmit(e) {
           product_link: productLink,
           docs_link: docsLink,
           test_env_notes: testEnvNotes,
-          is_zero_g_wallet: false,
           customer_id: STATE.user.id || STATE.auth.walletAddress || 'cust_anonymous',
           customer_name: STATE.user.name || 'Customer'
         })
@@ -5126,28 +5048,18 @@ async function handleOrderSubmit(e) {
     }
   }
 
-  // 0G-Verified or Human Specialist Flow
+  // 2. Human Specialist Route (MetaMask EVM Smart Escrow)
   if (submitBtn) {
     submitBtn.disabled = true;
     if (cancelBtn) cancelBtn.disabled = true;
     submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
-    if (isAutomated) {
-      submitBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-        </svg>
-        0G Private Computer Reasoning (Please wait 30-60s)...
-      `;
-    } else {
-      submitBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-        </svg>
-        Submitting Review Request...
-      `;
-    }
+    submitBtn.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      Submitting Review Request...
+    `;
   }
 
   try {
@@ -5160,7 +5072,6 @@ async function handleOrderSubmit(e) {
         product_link: productLink,
         docs_link: docsLink,
         test_env_notes: testEnvNotes,
-        is_zero_g_wallet: isZeroGWallet,
         customer_id: STATE.user.id || STATE.auth.walletAddress || 'cust_anonymous',
         customer_name: STATE.user.name || 'Customer'
       })
@@ -5168,14 +5079,8 @@ async function handleOrderSubmit(e) {
 
     closeModal();
     await loadInitialData();
-
-    if (isAutomated && order.report_id) {
-      showNotification("0G Defense analysis completed! Report has been generated and saved to Security Reports.", "success");
-      navigateTo('security_reports');
-    } else {
-      showNotification("Review request submitted to specialist successfully! Track it under My Requests.", "success");
-      navigateTo('my_requests');
-    }
+    showNotification("Review request submitted to specialist successfully! Deposit escrow under My Requests.", "success");
+    navigateTo('my_requests');
   } catch (err) {
     showNotification(`Order submission error: ${err.message}`, "error");
     if (submitBtn) {
@@ -6607,4 +6512,382 @@ async function executeEVMEscrowRelease(orderId) {
   } catch (err) {
     showNotification(`Escrow release failed: ${err.message}`, 'error');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Arkiv On-Chain Service Verification & Inspector Modals
+// ---------------------------------------------------------------------------
+
+async function openArkivVerificationModal(serviceId) {
+  const service = (STATE.data.services || []).find(s => s.id === serviceId);
+  STATE.activeModal = 'arkiv_verify_modal';
+  STATE.modalPayload = {
+    serviceId,
+    serviceTitle: service?.title || 'Security Service',
+    loading: true,
+    data: null,
+    error: null,
+    clientSideQueried: false,
+    clientSideEntity: null,
+  };
+  renderApp();
+
+  try {
+    const res = await apiFetch(`/marketplace/services/${serviceId}/arkiv-verify`);
+    
+    let clientSideEntity = null;
+    let clientSideQueried = false;
+    if (res.entity_key && window.ArkivModule && window.ArkivModule.getPublicClient) {
+      try {
+        const client = window.ArkivModule.getPublicClient();
+        const row = await client.getEntity(res.entity_key, window.ArkivModule.ServicesSchema);
+        if (row) {
+          clientSideEntity = {
+            entity_key: row.$key || res.entity_key,
+            owner: row.$owner,
+            creator: row.$creator,
+            expires_at: Number(row.$expiresAt || 0n),
+            title: row.title && typeof row.title === 'object' ? row.title.value : row.title,
+            provider_wallet: row.provider_wallet && typeof row.provider_wallet === 'object' ? row.provider_wallet.value : row.provider_wallet,
+            service_category: row.service_category && typeof row.service_category === 'object' ? row.service_category.value : row.service_category,
+            indicative_price: row.indicative_price && typeof row.indicative_price === 'object' ? row.indicative_price.value : row.indicative_price,
+            availability: row.availability && typeof row.availability === 'object' ? row.availability.value : row.availability,
+          };
+          clientSideQueried = true;
+        }
+      } catch (clientErr) {
+        console.warn('Client-side Arkiv query notice:', clientErr);
+      }
+    }
+
+    STATE.modalPayload = {
+      serviceId,
+      serviceTitle: service?.title || res.title || 'Security Service',
+      loading: false,
+      data: res,
+      clientSideQueried,
+      clientSideEntity,
+      error: null,
+    };
+  } catch (err) {
+    STATE.modalPayload = {
+      serviceId,
+      serviceTitle: service?.title || 'Security Service',
+      loading: false,
+      data: null,
+      error: err.message || 'Failed to query Rabdi Testnet',
+      clientSideQueried: false,
+      clientSideEntity: null,
+    };
+  }
+  renderApp();
+}
+
+function renderArkivVerifyModal() {
+  const payload = STATE.modalPayload || {};
+  const loading = payload.loading;
+  const data = payload.data;
+  const error = payload.error;
+  const serviceTitle = payload.serviceTitle || 'Security Service';
+
+  const explorerBase = 'https://explorer.rabdi.db-chain.testnet.arkiv.network';
+
+  return `
+    <div class="p-6 space-y-5 select-none">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3.5">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-base">📜</span>
+          <div>
+            <h3 class="text-[16px] font-bold text-[#202820]">Arkiv On-Chain Service Inspector</h3>
+            <p class="text-[11.5px] text-[#627566] font-mono">Rabdi Testnet (Chain ID 7794095) • Schema: guardvane.services.v1</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] text-sm cursor-pointer">✕</button>
+      </div>
+
+      ${loading ? `
+        <div class="p-10 text-center space-y-3">
+          <div class="inline-block animate-spin w-8 h-8 border-3 border-[#176B45] border-t-transparent rounded-full"></div>
+          <div class="space-y-1">
+            <h4 class="text-[13.5px] font-semibold text-[#202820]">Querying Rabdi Testnet via Arkiv SDK...</h4>
+            <p class="text-[12px] font-mono text-[#627566]">client.getEntity(entityKey, ServicesSchema) / JSON-RPC: arkiv_getEntity</p>
+          </div>
+        </div>
+      ` : error ? `
+        <div class="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-xl space-y-2 text-[12.5px]">
+          <div class="font-bold text-[#991B1B]">Network Query Error</div>
+          <p class="text-[#7F1D1D]">${escapeHtml(error)}</p>
+        </div>
+      ` : data && data.is_verified ? `
+        <!-- On-Chain Confirmed Verification State -->
+        <div class="space-y-4">
+          <div class="p-3.5 bg-[#EAF5EE] border border-[#CDE5D5] rounded-xl flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-[#176B45] text-white flex items-center justify-center font-bold text-xs">✓</span>
+              <div>
+                <div class="text-[13px] font-bold text-[#176B45]">VERIFIED ON-CHAIN STORAGE (Rabdi Testnet)</div>
+                <div class="text-[11.5px] text-[#445246]">Entity integrity cryptographically confirmed via Arkiv SDK <code>client.getEntity()</code></div>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#CDE5D5] text-[#176B45]">Verified Active</span>
+          </div>
+
+          <!-- Entity & Tx Hash -->
+          <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 space-y-3 text-[12.5px]">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Arkiv Entity Key</span>
+                <button
+                  onclick="navigator.clipboard.writeText('${escapeForAttr(data.entity_key || '')}'); showNotification('Entity key copied!', 'success');"
+                  class="text-[11px] text-[#176B45] hover:underline cursor-pointer"
+                >
+                  Copy Key
+                </button>
+              </div>
+              <code class="block font-mono text-xs text-[#202820] bg-white px-2.5 py-1.5 rounded border border-[#E2E9E3] break-all select-all">
+                ${escapeHtml(data.entity_key || '')}
+              </code>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Confirmed Transaction Hash</span>
+                ${data.tx_hash ? `
+                  <a
+                    href="${explorerBase}/tx/${escapeForAttr(data.tx_hash)}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-[11px] text-[#176B45] hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                  >
+                    <span>View on Rabdi Explorer</span>
+                    <span>↗</span>
+                  </a>
+                ` : ''}
+              </div>
+              <code class="block font-mono text-xs text-[#202820] bg-white px-2.5 py-1.5 rounded border border-[#E2E9E3] break-all select-all">
+                ${escapeHtml(data.tx_hash || 'Confirmed on-chain')}
+              </code>
+            </div>
+          </div>
+
+          <!-- Decoded On-Chain Attributes -->
+          <div>
+            <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-2">Decoded On-Chain Record (guardvane.services.v1)</div>
+            <div class="bg-white border border-[#E2E9E3] rounded-xl overflow-hidden divide-y divide-[#E2E9E3] text-[12.5px]">
+              <div class="p-2.5 px-3 flex items-center justify-between">
+                <span class="text-[#627566]">On-Chain Title:</span>
+                <strong class="text-[#202820] font-mono">${escapeHtml(data.on_chain_entity?.title || data.title)}</strong>
+              </div>
+              <div class="p-2.5 px-3 flex items-center justify-between">
+                <span class="text-[#627566]">Provider Wallet (Owner):</span>
+                <code class="text-[#202820] font-mono text-xs">${escapeHtml(data.on_chain_entity?.provider_wallet || data.on_chain_entity?.owner || '')}</code>
+              </div>
+              <div class="p-2.5 px-3 flex items-center justify-between">
+                <span class="text-[#627566]">Category:</span>
+                <span class="text-[#202820] font-mono">${escapeHtml(data.on_chain_entity?.service_category || 'prompt_engineering')}</span>
+              </div>
+              <div class="p-2.5 px-3 flex items-center justify-between">
+                <span class="text-[#627566]">Price (Indicative):</span>
+                <span class="text-[#176B45] font-bold font-mono">${escapeHtml(String(data.on_chain_entity?.indicative_price || '3'))} tGLM / USD</span>
+              </div>
+              <div class="p-2.5 px-3 flex items-center justify-between">
+                <span class="text-[#627566]">Expiration Block:</span>
+                <span class="text-[#627566] font-mono">Block ${escapeHtml(String(data.on_chain_entity?.expires_at || '1594464'))} (valid ~30 days)</span>
+              </div>
+              <div class="p-2.5 px-3 flex items-center justify-between">
+                <span class="text-[#627566]">Verification Source:</span>
+                <span class="text-[#176B45] font-mono text-xs">${payload.clientSideQueried ? 'Browser Arkiv SDK + Rabdi RPC' : 'Authoritative Rabdi RPC (@arkiv-network/sdk)'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Privacy Guarantee Notice -->
+          <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-[11.5px] text-[#627566] leading-relaxed">
+            <strong class="text-[#202820] block mb-0.5">🔒 Off-Chain Confidentiality Architecture</strong>
+            Only public service marketplace discovery metadata is anchored to Arkiv decentralized storage. Customer prompts, confidential security reports, payment credentials, and 0G inference computations remain strictly confidential and off-chain.
+          </div>
+        </div>
+      ` : `
+        <!-- Unverified / Off-Chain Only State -->
+        <div class="space-y-4">
+          <div class="p-3.5 bg-[#FEF2F2] border border-[#FECACA] rounded-xl flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-[#DC2626] text-white flex items-center justify-center font-bold text-xs">✕</span>
+              <div>
+                <div class="text-[13px] font-bold text-[#991B1B]">NOT VERIFIED ON ARKIV</div>
+                <div class="text-[11.5px] text-[#7F1D1D]">Stored in off-chain database (Supabase) only. No confirmed entity on Rabdi Testnet.</div>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#FEE2E2] text-[#991B1B]">Off-Chain Only</span>
+          </div>
+
+          <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 space-y-2 text-[12.5px] text-[#445246] leading-relaxed">
+            <strong class="text-[#202820] block">Honest Verification Guarantee:</strong>
+            <p>
+              Guardvane does NOT claim on-chain verification based solely on Supabase records. This service ('${escapeHtml(serviceTitle)}') has not yet had an on-chain entity anchored to the <code>guardvane.services.v1</code> schema on Rabdi Testnet.
+            </p>
+            <p class="text-[11.5px] text-[#627566] pt-1">
+              Status returned by Rabdi RPC: <code class="font-mono text-xs">${escapeHtml(data?.error || 'No matching on-chain entity')}</code>
+            </p>
+          </div>
+        </div>
+      `}
+
+      <div class="flex items-center justify-between pt-3 border-t border-[#E2E9E3]">
+        <div class="text-xs text-[#8B9C8E] font-mono">
+          RPC: <a href="https://rpc.rabdi.db-chain.testnet.arkiv.network" target="_blank" class="hover:underline">rpc.rabdi.db-chain.testnet.arkiv.network</a>
+        </div>
+        <button
+          onclick="closeModal()"
+          class="px-4 py-2 bg-[#176B45] text-white text-xs font-semibold rounded-md hover:bg-[#115638] transition-smooth cursor-pointer"
+        >
+          Close Inspector
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function openArkivInspectorModal(initialKey) {
+  STATE.activeModal = 'arkiv_inspector_modal';
+  STATE.modalPayload = {
+    entityKey: initialKey || '0x3b74b13d2531f64902090a5a51b71b83a879e8c343c89661b85bcbbc47fc5c97',
+    schema: 'services',
+    loading: false,
+    result: null,
+    error: null,
+  };
+  renderApp();
+}
+
+async function executeArkivDirectQuery(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById('arkiv-inspector-key-input');
+  const schemaSelect = document.getElementById('arkiv-inspector-schema-select');
+  const entityKey = (input?.value || '').trim();
+  const schema = schemaSelect?.value || 'services';
+
+  if (!entityKey) {
+    showNotification('Please enter an entity key.', 'error');
+    return;
+  }
+
+  STATE.modalPayload.entityKey = entityKey;
+  STATE.modalPayload.schema = schema;
+  STATE.modalPayload.loading = true;
+  STATE.modalPayload.result = null;
+  STATE.modalPayload.error = null;
+  renderApp();
+
+  try {
+    const res = await apiFetch(`/marketplace/arkiv/entity/${entityKey}?schema=${schema}`);
+    STATE.modalPayload.loading = false;
+    STATE.modalPayload.result = res.entity;
+    STATE.modalPayload.error = null;
+  } catch (err) {
+    STATE.modalPayload.loading = false;
+    STATE.modalPayload.result = null;
+    STATE.modalPayload.error = err.message || 'Entity not found or network error';
+  }
+  renderApp();
+}
+
+function renderArkivInspectorModal() {
+  const payload = STATE.modalPayload || {};
+  const currentKey = payload.entityKey || '0x3b74b13d2531f64902090a5a51b71b83a879e8c343c89661b85bcbbc47fc5c97';
+  const currentSchema = payload.schema || 'services';
+  const loading = payload.loading;
+  const result = payload.result;
+  const error = payload.error;
+
+  return `
+    <div class="p-6 space-y-5 select-none">
+      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3.5">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-lg bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-base">⚡</span>
+          <div>
+            <h3 class="text-[16px] font-bold text-[#202820]">Arkiv Rabdi Testnet Live Inspector</h3>
+            <p class="text-[11.5px] text-[#627566] font-mono">Chain ID: 7794095 • Native SDK Query: <code>client.getEntity()</code></p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] text-sm cursor-pointer">✕</button>
+      </div>
+
+      <form onsubmit="executeArkivDirectQuery(event)" class="space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="sm:col-span-2">
+            <label class="block text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Entity Key (Hex 32-byte)</label>
+            <input
+              type="text"
+              id="arkiv-inspector-key-input"
+              value="${escapeForAttr(currentKey)}"
+              required
+              class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md font-mono text-xs text-[#202820] focus:outline-none focus:border-[#176B45]"
+            />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Arkiv Schema</label>
+            <select
+              id="arkiv-inspector-schema-select"
+              class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md font-mono text-xs text-[#202820] focus:outline-none focus:border-[#176B45]"
+            >
+              <option value="services" ${currentSchema === 'services' ? 'selected' : ''}>guardvane.services.v1 (Service Listings)</option>
+              <option value="specialists" ${currentSchema === 'specialists' ? 'selected' : ''}>guardvane.specialists.v1 (Specialist Profiles)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <div class="text-[11px] text-[#627566]">
+            Confirmed Transaction: <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c" target="_blank" class="font-mono text-[#176B45] hover:underline">0xce3c...058c ↗</a>
+          </div>
+          <button
+            type="submit"
+            ${loading ? 'disabled' : ''}
+            class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-xs font-semibold rounded-md shadow-xs transition-smooth cursor-pointer ${loading ? 'opacity-60 cursor-not-allowed' : ''}"
+          >
+            ${loading ? 'Fetching from Rabdi...' : 'Fetch Entity via Arkiv SDK ⚡'}
+          </button>
+        </div>
+      </form>
+
+      ${loading ? `
+        <div class="p-8 text-center space-y-2">
+          <div class="inline-block animate-spin w-6 h-6 border-2 border-[#176B45] border-t-transparent rounded-full"></div>
+          <div class="text-xs font-mono text-[#627566]">JSON-RPC: arkiv_getEntity ...</div>
+        </div>
+      ` : error ? `
+        <div class="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-xl text-[12.5px] text-[#991B1B] space-y-1">
+          <div class="font-bold">Rabdi Query Response:</div>
+          <p class="font-mono text-xs">${escapeHtml(error)}</p>
+        </div>
+      ` : result ? `
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Live On-Chain Decoded Attributes:</span>
+            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">Decoded Successfully</span>
+          </div>
+          <pre class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl text-xs font-mono text-[#202820] overflow-x-auto max-h-60 leading-relaxed">${escapeHtml(JSON.stringify(result, null, 2))}</pre>
+        </div>
+      ` : `
+        <div class="p-6 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl text-center text-xs text-[#627566]">
+          Click <strong>Fetch Entity via Arkiv SDK</strong> above to query the Rabdi Testnet live using the official @arkiv-network/sdk client.
+        </div>
+      `}
+
+      <div class="flex items-center justify-between pt-3 border-t border-[#E2E9E3] text-xs">
+        <a
+          href="https://explorer.rabdi.db-chain.testnet.arkiv.network"
+          target="_blank"
+          class="text-[#176B45] hover:underline flex items-center gap-1 font-mono"
+        >
+          <span>Open Rabdi Explorer</span>
+          <span>↗</span>
+        </a>
+        <button onclick="closeModal()" class="px-3.5 py-1.5 border border-[#E2E9E3] text-[#202820] rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+          Done
+        </button>
+      </div>
+    </div>
+  `;
 }

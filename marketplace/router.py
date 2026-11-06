@@ -44,6 +44,7 @@ from marketplace.schemas import (
     ServiceUpdate,
     ServiceResponse,
     TicketCreate,
+    ArkivVerificationResponse,
 )
 from marketplace.service import marketplace_service
 
@@ -849,4 +850,34 @@ def reconcile_award(
 ):
     """Reconciles customer-signed on-chain award and transitions order to accepted."""
     return marketplace_service.reconcile_award(data)
+
+
+@router.get("/services/{service_id}/arkiv-verify", response_model=ArkivVerificationResponse)
+def verify_service_on_arkiv(service_id: str):
+    """
+    Retrieves live on-chain entity verification from Arkiv Rabdi Testnet
+    using client.getEntity(). Compares on-chain record against local database.
+    """
+    res = marketplace_service.verify_service_entity(service_id)
+    return res
+
+
+@router.get("/arkiv/entity/{entity_key}")
+def get_arkiv_entity(
+    entity_key: str,
+    schema: str = Query("services", description="Schema name: services or specialists")
+):
+    """
+    Retrieves any single entity directly from Arkiv via client.getEntity().
+    """
+    entity = arkiv_client.get_entity(schema, entity_key)
+    if not entity:
+        raise HTTPException(status_code=404, detail=f"Entity '{entity_key}' not found in schema '{schema}' on Rabdi Testnet.")
+    return {
+        "success": True,
+        "schema": schema,
+        "entity_key": entity_key,
+        "entity": entity,
+        "explorer_url": "https://explorer.rabdi.db-chain.testnet.arkiv.network"
+    }
 

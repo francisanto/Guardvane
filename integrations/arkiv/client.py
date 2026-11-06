@@ -384,6 +384,23 @@ class ArkivClient:
     # Verification & Integrity
     # -----------------------------------------------------------------------
 
+    def get_entity(
+        self,
+        schema_name: str,
+        entity_key: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves a single entity directly from Arkiv via client.getEntity().
+        Returns the decoded on-chain entity dictionary or None if not found.
+        """
+        if self._mock_mode:
+            return self._mock_entities.get(schema_name, {}).get(entity_key)
+
+        res = self._run_cli("get", ["--schema", schema_name, "--entityKey", entity_key])
+        if not res.get("success") or not res.get("entity"):
+            return None
+        return res["entity"]
+
     def verify_entity_ownership(
         self,
         schema_name: str,
