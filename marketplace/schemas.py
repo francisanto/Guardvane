@@ -235,7 +235,11 @@ class OrderResponse(BaseModel):
     hashscan_url: Optional[str] = None
     payment_type: Optional[str] = None
     escrow_tx_hash: Optional[str] = None
+    escrow_release_tx_hash: Optional[str] = None
     escrow_state: Optional[str] = None
+    rabdi_explorer_url: Optional[str] = None
+    rabdi_release_url: Optional[str] = None
+    provider_wallet: Optional[str] = None
     token_usage: Optional[str] = None
     created_at: str
     updated_at: str

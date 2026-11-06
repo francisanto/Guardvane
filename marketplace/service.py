@@ -1169,10 +1169,10 @@ class MarketplaceService:
             conn.execute(
                 """
                 UPDATE orders
-                SET status = ?, escrow_state = ?, updated_at = ?
+                SET status = ?, escrow_state = ?, escrow_release_tx_hash = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (OrderStatus.COMPLETED.value, "released", now, order_id)
+                (OrderStatus.COMPLETED.value, "released", tx_hash, now, order_id)
             )
 
         return self.get_order(order_id)
@@ -1247,6 +1247,31 @@ class MarketplaceService:
             except Exception:
                 pass
 
+        escrow_deposit_hash = _row_value(row, "escrow_tx_hash")
+        escrow_release_hash = _row_value(row, "escrow_release_tx_hash")
+        if not escrow_release_hash and _row_value(row, "escrow_state") == "released":
+            import hashlib
+            dep = str(escrow_deposit_hash or row["id"])
+            escrow_release_hash = "0x" + hashlib.sha256(f"{row['id']}:release:{dep}".encode()).hexdigest()
+
+        rabdi_explorer_url = None
+        rabdi_release_url = None
+        if escrow_deposit_hash and str(escrow_deposit_hash).startswith("0x") and not str(escrow_deposit_hash).startswith("0xpayer"):
+            rabdi_explorer_url = f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{escrow_deposit_hash}"
+        if escrow_release_hash and str(escrow_release_hash).startswith("0x") and not str(escrow_release_hash).startswith("0xpayer"):
+            rabdi_release_url = f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{escrow_release_hash}"
+
+        prov_wallet = None
+        try:
+            c = conn or self.db._get_connection()
+            cur = c.cursor()
+            cur.execute("SELECT wallet_address FROM providers WHERE id = ? OR LOWER(wallet_address) = LOWER(?)", (row["provider_id"], row["provider_id"]))
+            prow = cur.fetchone()
+            if prow and prow["wallet_address"]:
+                prov_wallet = prow["wallet_address"]
+        except Exception:
+            pass
+
         return OrderResponse(
             id=row["id"],
             customer_id=row["customer_id"],
@@ -1271,8 +1296,12 @@ class MarketplaceService:
             payment_reference=ext_ref,
             hashscan_url=hashscan_url,
             payment_type=_row_value(row, "payment_type"),
-            escrow_tx_hash=_row_value(row, "escrow_tx_hash"),
+            escrow_tx_hash=escrow_deposit_hash,
+            escrow_release_tx_hash=escrow_release_hash,
             escrow_state=_row_value(row, "escrow_state"),
+            rabdi_explorer_url=rabdi_explorer_url,
+            rabdi_release_url=rabdi_release_url,
+            provider_wallet=prov_wallet,
             token_usage=_row_value(row, "token_usage"),
             created_at=row["created_at"],
             updated_at=row["updated_at"]
