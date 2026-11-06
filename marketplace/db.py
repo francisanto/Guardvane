@@ -373,6 +373,10 @@ class MarketplaceDB:
             "orders": [
                 ("rejection_reason", "TEXT"),
                 ("payment_intent_id", "TEXT"),
+                ("payment_type", "TEXT"),
+                ("escrow_tx_hash", "TEXT"),
+                ("escrow_state", "TEXT"),
+                ("token_usage", "TEXT"),
             ],
         }
         for table, cols in additions.items():
