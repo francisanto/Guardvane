@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from auth.schemas import NonceRequest, NonceResponse, UserResponse, VerifyRequest
+from auth.schemas import NicknameUpdate, NonceRequest, NonceResponse, UserResponse, VerifyRequest
 from auth.service import (
     create_session_token,
     decode_session_token,
@@ -153,7 +153,32 @@ def get_current_user_profile(
         id=user.id,
         wallet_address=user.wallet_address,
         display_name=user.display_name,
+        nickname=user.display_name,
         roles=user.role_names(),
         created_at=user.created_at.isoformat() if hasattr(user.created_at, "isoformat") else str(user.created_at)
     )
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_current_user_nickname(
+    data: NicknameUpdate,
+    user: User = Depends(get_current_user_required),
+    db: Session = Depends(get_db)
+):
+    """
+    Updates the authenticated user's nickname / display name in PostgreSQL.
+    Persisted strictly by wallet address.
+    """
+    user.display_name = data.display_name.strip()
+    db.commit()
+    db.refresh(user)
+    return UserResponse(
+        id=user.id,
+        wallet_address=user.wallet_address,
+        display_name=user.display_name,
+        nickname=user.display_name,
+        roles=user.role_names(),
+        created_at=user.created_at.isoformat() if hasattr(user.created_at, "isoformat") else str(user.created_at)
+    )
+
 

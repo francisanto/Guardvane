@@ -5,7 +5,7 @@ Defines contracts for providers, services, orders, reports, and prompts.
 
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ProviderType(str, Enum):
@@ -19,9 +19,11 @@ class ServiceExecutionType(str, Enum):
 
 
 class OrderStatus(str, Enum):
+    PENDING_PAYMENT = "pending_payment"
     REQUESTED = "requested"
     ACCEPTED = "accepted"
     IN_PROGRESS = "in_progress"
+    NEEDS_INFO = "needs_info"
     DELIVERED = "delivered"
     COMPLETED = "completed"
     REJECTED = "rejected"
@@ -30,9 +32,18 @@ class OrderStatus(str, Enum):
 
 class PaymentStatus(str, Enum):
     PENDING = "pending"
-    ESCROWED_X402 = "escrowed_x402"
-    SETTLED = "settled"
+    VERIFIED = "verified"
+    FAILED = "failed"
     REFUNDED = "refunded"
+
+    @classmethod
+    def _missing_(cls, value):
+        # Legacy marketplace values from the bidding/x402-simulation era.
+        if value in ("escrowed_x402",):
+            return cls.PENDING
+        if value in ("settled",):
+            return cls.VERIFIED
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -57,12 +68,26 @@ class ProviderBase(BaseModel):
 
 
 class ProviderCreate(ProviderBase):
-    pass
+    service_title: Optional[str] = None
+    service_price: Optional[float] = Field(default=None, ge=0.0)
+    service_delivery: Optional[str] = None
+    service_category: Optional[str] = None
+
+
+class ProviderUpdate(BaseModel):
+    display_name: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    title: Optional[str] = Field(default=None, min_length=2, max_length=150)
+    description: Optional[str] = Field(default=None, min_length=10, max_length=3000)
+    skills: Optional[List[str]] = None
+    categories: Optional[List[str]] = None
+    portfolio_url: Optional[str] = None
+    availability: Optional[str] = None
 
 
 class ProviderResponse(ProviderBase):
     id: str
     verified: bool = False
+    is_platform_managed: bool = False
     reputation_metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: str
     services_count: Optional[int] = 0
@@ -86,6 +111,17 @@ class ServiceBase(BaseModel):
 
 class ServiceCreate(ServiceBase):
     provider_id: Optional[str] = None
+
+
+class ServiceUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=3, max_length=120)
+    description: Optional[str] = Field(None, min_length=5, max_length=4000)
+    category: Optional[str] = None
+    price: Optional[float] = Field(None, ge=0.0)
+    currency: Optional[str] = "USD"
+    estimated_delivery: Optional[str] = Field(None, min_length=2, max_length=50)
+    supported_tasks: Optional[List[str]] = None
+    is_active: Optional[bool] = None
 
 
 class ServiceResponse(ServiceBase):
@@ -129,6 +165,21 @@ class TicketCreate(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
     reason_or_notes: Optional[str] = Field(default=None)
+    rejection_reason: Optional[str] = Field(default=None)
+
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_reason(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            reason = data.get("rejection_reason") or data.get("reason_or_notes") or data.get("notes")
+            if reason:
+                data["reason_or_notes"] = reason
+                data["rejection_reason"] = reason
+        return data
+
+
+class PaymentConfirmRequest(BaseModel):
+    proof: Optional[str] = Field(default=None, description="Gateway-specific payment proof. Never a wallet signature alone.")
 
 
 class DeliverOrderRequest(BaseModel):
@@ -158,6 +209,7 @@ class OrderResponse(BaseModel):
     payment_status: PaymentStatus
     report_id: Optional[str] = None
     deliverable_notes: Optional[str] = None
+    rejection_reason: Optional[str] = None
     created_at: str
     updated_at: str
 

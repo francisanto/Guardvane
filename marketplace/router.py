@@ -32,13 +32,16 @@ from marketplace.schemas import (
     OrderResponse,
     OrderStatus,
     OrderStatusUpdate,
+    PaymentConfirmRequest,
     ProviderCreate,
     ProviderResponse,
+    ProviderUpdate,
     SavedPromptCreate,
     SavedPromptResponse,
     SavedPromptUpdate,
     SecurityReportResponse,
     ServiceCreate,
+    ServiceUpdate,
     ServiceResponse,
     TicketCreate,
 )
@@ -51,18 +54,21 @@ def get_current_user(
     request: Request,
     x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
     x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
+    x_wallet_address: Optional[str] = Header(None, alias="X-Wallet-Address"),
     guardvane_session: Optional[str] = Cookie(None)
 ) -> Dict[str, Any]:
     """
     Extracts current authenticated identity and active role.
     Prioritizes MetaMask SIWE HttpOnly cookie and Bearer tokens,
-    with backward compatibility for X-User-Id in development and automated testing.
+    with backward compatibility for X-User-Id and X-Wallet-Address in development and automated testing.
     """
     token = guardvane_session
     if not token:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
+
+    x_wallet = x_wallet_address or request.headers.get("x-wallet-address")
 
     if token:
         payload = decode_session_token(token)
@@ -77,13 +83,14 @@ def get_current_user(
                 "wallet_address": payload["wallet_address"]
             }
 
-    user_id = x_user_id or "francis"
+    user_id = x_wallet or x_user_id or "francis"
     role = (x_user_role or "customer").lower()
+    wallet = x_wallet or (user_id if str(user_id).startswith("0x") else None)
     return {
         "user_id": user_id,
         "role": role,
         "roles": [role],
-        "wallet_address": user_id if user_id.startswith("0x") else None
+        "wallet_address": wallet
     }
 
 
@@ -148,6 +155,46 @@ def create_service(
     return marketplace_service.create_service(data, provider_id=provider_id)
 
 
+@router.patch("/services/{service_id}", response_model=ServiceResponse)
+def update_service(
+    service_id: str,
+    data: ServiceUpdate,
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Update an existing service offering. Only the owning specialist can modify.
+    """
+    prov_id = auth.get("wallet_address") or auth.get("user_id")
+    prov = marketplace_service.get_provider_by_wallet(prov_id) if prov_id else None
+    effective_id = prov.id if prov else prov_id
+    try:
+        return marketplace_service.update_service(service_id, data, provider_id=effective_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.delete("/services/{service_id}")
+def delete_service(
+    service_id: str,
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Delete a service offering. Only the owning specialist can delete.
+    """
+    prov_id = auth.get("wallet_address") or auth.get("user_id")
+    prov = marketplace_service.get_provider_by_wallet(prov_id) if prov_id else None
+    effective_id = prov.id if prov else prov_id
+    try:
+        marketplace_service.delete_service(service_id, provider_id=effective_id)
+        return {"status": "deleted", "service_id": service_id}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
 # ---------------------------------------------------------------------------
 # Providers
 # ---------------------------------------------------------------------------
@@ -191,9 +238,38 @@ def create_provider_profile(
     auth: Dict[str, str] = Depends(get_current_user)
 ):
     """
-    Register a new specialist profile (Human or Automated AI Provider).
+    Register a new specialist profile (Human Security Provider).
     """
-    return marketplace_service.create_provider_profile(data, user_id=auth["user_id"])
+    try:
+        return marketplace_service.create_provider_profile(data, user_id=auth["user_id"])
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.patch("/providers/{provider_id}", response_model=ProviderResponse)
+def update_provider_profile(
+    provider_id: str,
+    data: ProviderUpdate,
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Update provider profile. Enforces ownership: only the wallet that owns this profile
+    can edit it. Platform-managed agents cannot be edited by users.
+    """
+    actor_wallet = auth.get("wallet_address") or auth.get("user_id")
+    try:
+        return marketplace_service.update_provider_profile(
+            provider_id=provider_id,
+            data=data,
+            actor_wallet=actor_wallet
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
 
 
 # ---------------------------------------------------------------------------
@@ -318,6 +394,31 @@ def deliver_order(
         raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/orders/{order_id}/pay", response_model=OrderResponse)
+def pay_order(
+    order_id: str,
+    data: Optional[PaymentConfirmRequest] = None,
+    auth: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Verify payment for an order through backend gateway.
+    Activates the request for provider dashboard upon verification.
+    """
+    proof = data.proof if data else None
+    actor_wallet = auth.get("wallet_address") or auth.get("user_id")
+    try:
+        return marketplace_service.confirm_order_payment(
+            order_id=order_id,
+            proof=proof,
+            actor_wallet=actor_wallet
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
 
 
 @router.post("/orders/{order_id}/ticket")
@@ -451,6 +552,24 @@ def delete_prompt(
 # ---------------------------------------------------------------------------
 # Dashboard Overview & Integrations Status
 # ---------------------------------------------------------------------------
+
+@router.get("/catalogue")
+def get_service_catalogue():
+    """
+    Returns the canonical OpiHub service catalogue.
+    """
+    from marketplace.catalogue import public_catalogue
+    return public_catalogue()
+
+
+@router.get("/payments/config")
+def get_payment_config():
+    """
+    Retrieve payment network configuration and modular gateway status.
+    """
+    from payments.service import payment_service
+    return payment_service.public_config()
+
 
 @router.get("/stats", response_model=DashboardStats)
 def get_dashboard_stats(

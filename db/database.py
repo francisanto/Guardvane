@@ -36,10 +36,16 @@ def get_database_url() -> str:
 
     # Standardize scheme for SQLAlchemy + psycopg 3
     if raw_url.startswith("postgresql://"):
-        return "postgresql+psycopg://" + raw_url[len("postgresql://"):]
+        url = "postgresql+psycopg://" + raw_url[len("postgresql://"):]
     elif raw_url.startswith("postgres://"):
-        return "postgresql+psycopg://" + raw_url[len("postgres://"):]
-    return raw_url
+        url = "postgresql+psycopg://" + raw_url[len("postgres://"):]
+    else:
+        url = raw_url
+
+    if "aws-0-ap-northeast-1.pooler.supabase.com" in url and "hostaddr" not in url:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}hostaddr=54.64.190.72"
+    return url
 
 
 DATABASE_URL = get_database_url()

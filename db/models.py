@@ -102,6 +102,8 @@ class Provider(Base):
     status = Column(String(50), default="published", nullable=False)
     reputation_metadata = Column(Text, nullable=False)  # JSON-serialized dict
     created_at = Column(String(64), nullable=False)
+    is_platform_managed = Column(Integer, default=0, nullable=False)
+    updated_at = Column(String(64), nullable=True)
 
     services = relationship("Service", back_populates="provider", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="provider")
@@ -157,6 +159,8 @@ class Order(Base):
     deliverable_notes = Column(Text, nullable=True)
     created_at = Column(String(64), nullable=False)
     updated_at = Column(String(64), nullable=False)
+    rejection_reason = Column(Text, nullable=True)
+    payment_intent_id = Column(String(64), nullable=True)
 
     provider = relationship("Provider", back_populates="orders")
     service = relationship("Service", back_populates="orders")
@@ -206,4 +210,22 @@ Index("ix_orders_customer_status", Order.customer_id, Order.status)
 Index("ix_orders_provider_status", Order.provider_id, Order.status)
 Index("ix_reports_customer", Report.customer_id)
 Index("ix_prompts_customer", SavedPrompt.customer_id)
+
+
+class PaymentIntentRecord(Base):
+    """Payment intent independent of Arkiv. x402 will attach here later."""
+    __tablename__ = "payment_intents"
+
+    id = Column(String(64), primary_key=True)
+    order_id = Column(String(64), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    currency = Column(String(20), default="USD", nullable=False)
+    status = Column(String(50), nullable=False, index=True)
+    gateway = Column(String(50), nullable=False)
+    external_reference = Column(String(255), nullable=True)
+    failure_reason = Column(Text, nullable=True)
+    metadata_json = Column("metadata", Text, nullable=True)
+    created_at = Column(String(64), nullable=False)
+    updated_at = Column(String(64), nullable=False)
+    verified_at = Column(String(64), nullable=True)
 
