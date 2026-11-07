@@ -1,6 +1,6 @@
 """
 EVM Escrow Service for Guardvane + OpiHub (Human Specialist Reviews).
-Integrates with MetaMask on Rabdi Testnet (Chain ID 7794095) or Hedera EVM (Chain ID 296).
+Integrates with MetaMask on Rabdi Testnet (Chain ID 7794095).
 Verifies on-chain escrow deposits and release events from GuardvaneEscrow.sol.
 """
 
@@ -80,50 +80,44 @@ class EVMEscrowService:
     ) -> Dict[str, Any]:
         """
         Verifies on-chain depositEscrow transaction on Rabdi testnet.
+        Queries the Rabdi JSON-RPC for a confirmed receipt with status == 1.
         """
-        # Hackathon / Dev test bypass
-        if tx_hash in {"test-receipt", "mock-escrow-deposit", "bypass-test"}:
+        if not tx_hash or not tx_hash.startswith("0x") or len(tx_hash) != 66:
+            return {"verified": False, "error": "Invalid Ethereum transaction hash format. Expected 0x followed by 64 hex characters."}
+
+        import time
+        w3 = self.w3
+        receipt = None
+        for attempt in range(3):
+            try:
+                receipt = w3.eth.get_transaction_receipt(tx_hash)
+                if receipt:
+                    break
+            except Exception as exc:
+                logger.debug(f"RPC get_transaction_receipt attempt {attempt + 1} for {tx_hash}: {exc}")
+            time.sleep(1.2)
+
+        if not receipt:
             return {
-                "verified": True,
-                "tx_hash": tx_hash,
-                "block_number": 1,
-                "escrow_state": "funded",
-                "test_mode": True
+                "verified": False,
+                "error": f"Transaction receipt for '{tx_hash}' not found on Rabdi RPC ({self.rpc_url}). Transaction may still be pending consensus."
             }
 
-        try:
-            w3 = self.w3
-            receipt = w3.eth.get_transaction_receipt(tx_hash)
-            if not receipt:
-                return {"verified": False, "error": "Transaction receipt not found yet"}
+        if receipt.get("status") != 1:
+            return {"verified": False, "error": "Transaction reverted on-chain (execution status 0)."}
 
-            if receipt.get("status") != 1:
-                return {"verified": False, "error": "Transaction reverted on-chain"}
+        # Validate contract recipient
+        tx_to = receipt.get("to", "")
+        if tx_to and self.contract_address and tx_to.lower() != self.contract_address.lower():
+            logger.warning(f"Tx 'to' {tx_to} did not match escrow contract {self.contract_address}")
 
-            # Validate contract recipient
-            tx_to = receipt.get("to", "")
-            if tx_to and self.contract_address:
-                if tx_to.lower() != self.contract_address.lower():
-                    logger.warning(f"Tx 'to' {tx_to} did not match escrow contract {self.contract_address}")
-
-            return {
-                "verified": True,
-                "tx_hash": tx_hash,
-                "block_number": receipt.get("blockNumber"),
-                "escrow_state": "funded",
-                "gas_used": receipt.get("gasUsed")
-            }
-        except Exception as exc:
-            logger.warning(f"On-chain escrow verification encountered exception: {exc}")
-            # If tx_hash is a valid hex string of 66 chars, allow graceful verification in demo testnet
-            if tx_hash.startswith("0x") and len(tx_hash) == 66:
-                return {
-                    "verified": True,
-                    "tx_hash": tx_hash,
-                    "escrow_state": "funded",
-                    "note": f"Accepted testnet tx hash ({exc})"
-                }
-            return {"verified": False, "error": str(exc)}
+        return {
+            "verified": True,
+            "tx_hash": tx_hash,
+            "block_number": receipt.get("blockNumber"),
+            "escrow_state": "funded",
+            "gas_used": receipt.get("gasUsed")
+        }
 
     def verify_escrow_release(
         self,
@@ -133,35 +127,39 @@ class EVMEscrowService:
     ) -> Dict[str, Any]:
         """
         Verifies on-chain releaseEscrow transaction on Rabdi testnet.
+        Queries the Rabdi JSON-RPC for a confirmed receipt with status == 1.
         """
-        if tx_hash in {"test-receipt", "mock-escrow-release", "bypass-test"}:
+        if not tx_hash or not tx_hash.startswith("0x") or len(tx_hash) != 66:
+            return {"verified": False, "error": "Invalid Ethereum transaction hash format. Expected 0x followed by 64 hex characters."}
+
+        import time
+        w3 = self.w3
+        receipt = None
+        for attempt in range(3):
+            try:
+                receipt = w3.eth.get_transaction_receipt(tx_hash)
+                if receipt:
+                    break
+            except Exception as exc:
+                logger.debug(f"RPC get_transaction_receipt release attempt {attempt + 1} for {tx_hash}: {exc}")
+            time.sleep(1.2)
+
+        if not receipt:
             return {
-                "verified": True,
-                "tx_hash": tx_hash,
-                "escrow_state": "released",
-                "test_mode": True
+                "verified": False,
+                "error": f"Transaction receipt for '{tx_hash}' not found on Rabdi RPC ({self.rpc_url}). Transaction may still be pending consensus."
             }
 
-        try:
-            w3 = self.w3
-            receipt = w3.eth.get_transaction_receipt(tx_hash)
-            if not receipt or receipt.get("status") != 1:
-                return {"verified": False, "error": "Release transaction reverted or not found"}
+        if receipt.get("status") != 1:
+            return {"verified": False, "error": "Release transaction reverted on-chain (execution status 0)."}
 
-            return {
-                "verified": True,
-                "tx_hash": tx_hash,
-                "block_number": receipt.get("blockNumber"),
-                "escrow_state": "released"
-            }
-        except Exception as exc:
-            if tx_hash.startswith("0x") and len(tx_hash) == 66:
-                return {
-                    "verified": True,
-                    "tx_hash": tx_hash,
-                    "escrow_state": "released"
-                }
-            return {"verified": False, "error": str(exc)}
+        return {
+            "verified": True,
+            "tx_hash": tx_hash,
+            "block_number": receipt.get("blockNumber"),
+            "escrow_state": "released",
+            "gas_used": receipt.get("gasUsed")
+        }
 
 
 evm_escrow_service = EVMEscrowService()

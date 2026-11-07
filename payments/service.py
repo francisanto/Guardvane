@@ -24,31 +24,14 @@ class PaymentService:
 
     def public_config(self) -> Dict[str, Any]:
         mode = payment_mode()
-        is_hedera_x402 = mode in ("testnet", "live")
-        from payments.config import (
-            HEDERA_MERCHANT_ACCOUNT_ID,
-            X402_ASSET_ID,
-            X402_FACILITATOR_URL,
-            X402_NETWORK,
-        )
-        from payments.blocky402 import get_facilitator_fee_payer, get_hbar_usd_rate
         return {
             "mode": mode,
-            "network": "hedera",
-            "x402_network": X402_NETWORK if is_hedera_x402 else "hedera:testnet",
-            "asset_id": X402_ASSET_ID if is_hedera_x402 else "0.0.0",
-            "facilitator_url": X402_FACILITATOR_URL if is_hedera_x402 else None,
-            "merchant_account": HEDERA_MERCHANT_ACCOUNT_ID if is_hedera_x402 else None,
-            "fee_payer": get_facilitator_fee_payer() if is_hedera_x402 else None,
-            "usd_per_hbar": get_hbar_usd_rate() if is_hedera_x402 else None,
-            "separate_from_arkiv": True,
-            "x402_implemented": is_hedera_x402,
-            "can_confirm_test_payment": mode == "test",
-            "notice": (
-                "Native Hedera x402 payments via Blocky402 Hosted Testnet facilitator."
-                if is_hedera_x402
-                else "No live payment gateway configured."
-            ),
+            "network": "rabdi",
+            "escrow_contract": "0x176B2d2eCE7a48d0B6780709B168aC06a5834501",
+            "chain_id": 7794095,
+            "currency": "tGLM",
+            "ai_execution": "0g_direct",
+            "notice": "Autonomous smart escrow on Arkiv Rabdi Testnet (Chain ID 7794095) for specialist security reviews. Direct 0G Private Computer AI reasoning for automated agents.",
         }
 
     def create_intent(self, order_id: str, amount: float, currency: str = "USD") -> PaymentIntent:

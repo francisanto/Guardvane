@@ -107,7 +107,7 @@ class ArkivClient:
                 network=cli_res.get("network", "Rabdi Testnet"),
                 currency=cli_res.get("currency", "tGLM"),
                 rpc_url=cli_res.get("rpc_url", self.rpc_url),
-                explorer_url=cli_res.get("explorer_url", "https://explorer.rabdi.db-chain.testnet.arkiv.network"),
+                explorer_url=cli_res.get("explorer_url", "https://rabdi.explorer.arkiv.network"),
                 current_block=cli_res.get("current_block"),
                 last_sync_timestamp=now,
                 mode="live_public_client",

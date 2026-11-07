@@ -1,8 +1,7 @@
 """
 Payment boundary for OpiHub service requests.
 
-Payment is independent of Arkiv/Rabdi. Hedera x402 will plug into this package
-later; this module never treats a wallet signature as proof of payment.
+Direct 0G AI reasoning for automated agents; EVM Smart Escrow on Rabdi Testnet for specialists.
 """
 
 from payments.gateway import PaymentGateway, PaymentIntent, get_payment_gateway

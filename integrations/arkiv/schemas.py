@@ -19,7 +19,7 @@ class ArkivSyncStatus(BaseModel):
     network: str = "Rabdi Testnet"
     currency: str = "tGLM"
     rpc_url: str = "https://rpc.rabdi.db-chain.testnet.arkiv.network"
-    explorer_url: str = "https://explorer.rabdi.db-chain.testnet.arkiv.network"
+    explorer_url: str = "https://rabdi.explorer.arkiv.network"
     current_block: Optional[int] = None
     last_sync_timestamp: Optional[str] = None
     mode: str = "live_public_client"

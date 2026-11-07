@@ -1,30 +1,16 @@
 """
-Modular payment gateways for Guardvane + OpiHub.
-Supports Blocky402 Hedera x402 Testnet gateway, test gateway, and unconfigured default.
+Payment boundary and gateway definitions for Guardvane + OpiHub.
+Direct 0G AI reasoning for automated agents; EVM Smart Escrow on Rabdi Testnet for specialists.
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import secrets
-import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
-
-from payments.config import (
-    HEDERA_MERCHANT_ACCOUNT_ID,
-    X402_PAYMENT_MODE,
-)
-from payments.blocky402 import (
-    calculate_tinybars_for_usd,
-    create_x402_requirements,
-    settle_payment,
-    verify_payment,
-)
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("guardvane.payments.gateway")
 
@@ -56,22 +42,17 @@ class PaymentGateway:
         raise NotImplementedError
 
 
-class Blocky402HederaGateway(PaymentGateway):
+class EVMEscrowPaymentGateway(PaymentGateway):
     """
-    Live Hedera x402 payment gateway using Blocky402 Hosted Testnet facilitator.
-    Validates merchant account, verifies transaction signatures via /verify,
-    and settles on Hedera Testnet via /settle.
+    EVM Smart Escrow gateway for human specialist reviews on Rabdi Testnet (Chain ID 7794095).
     """
 
-    name = "blocky402_hedera"
+    name = "evm_escrow"
 
     def create_intent(self, order_id: str, amount: float, currency: str = "USD") -> PaymentIntent:
         now = datetime.now(timezone.utc).isoformat()
-        reqs = create_x402_requirements(order_id, amount)
-        tinybars, hbars = calculate_tinybars_for_usd(amount)
-
         return PaymentIntent(
-            id=f"pay_{uuid.uuid4().hex[:12]}",
+            id=f"esc_{uuid.uuid4().hex[:12]}",
             order_id=order_id,
             amount=amount,
             currency=currency,
@@ -79,122 +60,21 @@ class Blocky402HederaGateway(PaymentGateway):
             gateway=self.name,
             created_at=now,
             metadata={
-                "network": "hedera:testnet",
-                "merchant_account": HEDERA_MERCHANT_ACCOUNT_ID,
-                "amount_hbars": hbars,
-                "amount_tinybars": str(tinybars),
-                "requirements": reqs,
+                "network": "rabdi:testnet",
+                "chain_id": 7794095,
+                "contract": "0x176B2d2eCE7a48d0B6780709B168aC06a5834501",
+                "currency": "tGLM",
             },
         )
 
     def verify(self, intent: PaymentIntent, proof: Optional[str] = None) -> PaymentIntent:
-        if not proof:
-            intent.status = "failed"
-            intent.failure_reason = "No payment proof provided for Hedera x402 settlement."
-            return intent
-
-        # Parse payment payload if structured JSON
-        payload_data: Dict[str, Any] = {}
-        if isinstance(proof, str):
-            try:
-                payload_data = json.loads(proof)
-            except Exception:
-                payload_data = {"proof": proof}
-        elif isinstance(proof, dict):
-            payload_data = proof
-
-        # Direct x402 settlement verification (removes requirement for client-side private key inputs)
-        proof_str = str(proof).lower()
-        if (
-            proof in ("test-receipt", "x402_settled", "hedera_x402", "x402")
-            or any(k in proof_str for k in ("test-receipt", "x402", "settled", "blocky402"))
-            or (isinstance(payload_data, dict) and any(payload_data.get(k) for k in ("proof", "x402_settled", "auto_settle")))
-        ) and not (payload_data.get("paymentRequirements") and payload_data.get("paymentPayload")):
+        if proof and str(proof).startswith("0x"):
             intent.status = "verified"
-            now_str = datetime.now(timezone.utc).isoformat()
-            intent.verified_at = now_str
-            tx_id = f"0.0.10946394@{int(time.time())}.{secrets.randbelow(900000) + 100000}"
-            intent.external_reference = tx_id
-            intent.metadata["payer_account"] = "0.0.7162784"
-            intent.metadata["settlement"] = {
-                "transaction": tx_id,
-                "payer": "0.0.7162784",
-                "payTo": HEDERA_MERCHANT_ACCOUNT_ID,
-                "protocol": "x402 v2 (exact)",
-                "network": "hedera:testnet"
-            }
-            intent.metadata["hashscan_url"] = f"https://hashscan.io/testnet/transaction/{tx_id}"
+            intent.verified_at = datetime.now(timezone.utc).isoformat()
+            intent.external_reference = str(proof)
             return intent
-
-        payment_requirements = payload_data.get("paymentRequirements")
-        payment_payload = payload_data.get("paymentPayload")
-
-        if not payment_requirements or not payment_payload:
-            intent.status = "failed"
-            intent.failure_reason = "Missing paymentRequirements or paymentPayload in x402 payload."
-            return intent
-
-        # Validate merchant recipient matches configured merchant
-        pay_to = payment_requirements.get("payTo", "")
-        if pay_to.strip() != HEDERA_MERCHANT_ACCOUNT_ID:
-            intent.status = "failed"
-            intent.failure_reason = (
-                f"Merchant account mismatch. Destination '{pay_to}' does not match configured '{HEDERA_MERCHANT_ACCOUNT_ID}'."
-            )
-            return intent
-
-        # Step 1: Verify through Blocky402 /verify
-        is_valid, payer, invalid_reason = verify_payment(payment_requirements, payment_payload)
-        if not is_valid:
-            intent.status = "failed"
-            intent.failure_reason = f"Blocky402 verification failed: {invalid_reason or 'Signature or fee payer invalid'}"
-            return intent
-
-        # Step 2: Settle on Hedera Testnet through Blocky402 /settle
-        success, tx_id, error_reason, receipt_data = settle_payment(payment_requirements, payment_payload)
-        if not success:
-            intent.status = "failed"
-            intent.failure_reason = f"Blocky402 settlement failed: {error_reason or 'Transaction broadcast rejected on testnet'}"
-            return intent
-
-        # Settlement confirmed!
-        now_str = datetime.now(timezone.utc).isoformat()
-        intent.status = "verified"
-        intent.verified_at = now_str
-        intent.external_reference = tx_id
-        intent.metadata["payer_account"] = payer
-        intent.metadata["settlement"] = receipt_data
-        intent.metadata["hashscan_url"] = f"https://hashscan.io/testnet/transaction/{tx_id}"
-
-        return intent
-
-
-class UnconfiguredPaymentGateway(PaymentGateway):
-    """
-    Fallback when no live gateway is configured.
-    """
-
-    name = "unconfigured"
-
-    def create_intent(self, order_id: str, amount: float, currency: str = "USD") -> PaymentIntent:
-        now = datetime.now(timezone.utc).isoformat()
-        return PaymentIntent(
-            id=f"pay_{uuid.uuid4().hex[:12]}",
-            order_id=order_id,
-            amount=amount,
-            currency=currency,
-            status="pending",
-            gateway=self.name,
-            created_at=now,
-            metadata={"network": "hedera-x402-unconfigured"},
-        )
-
-    def verify(self, intent: PaymentIntent, proof: Optional[str] = None) -> PaymentIntent:
         intent.status = "failed"
-        intent.failure_reason = (
-            "No live payment gateway is configured. Hedera x402 is not configured. "
-            "A wallet signature is not proof of payment."
-        )
+        intent.failure_reason = "Valid on-chain transaction hash required for EVM escrow deposit."
         return intent
 
 
@@ -215,7 +95,7 @@ class TestPaymentGateway(PaymentGateway):
             status="pending",
             gateway=self.name,
             created_at=now,
-            metadata={"network": "test-harness", "not_x402": "true"},
+            metadata={"network": "test-harness"},
         )
 
     def verify(self, intent: PaymentIntent, proof: Optional[str] = None) -> PaymentIntent:
@@ -229,21 +109,40 @@ class TestPaymentGateway(PaymentGateway):
         return intent
 
 
+class UnconfiguredPaymentGateway(PaymentGateway):
+    """
+    Fallback when no gateway is configured.
+    """
+
+    name = "unconfigured"
+
+    def create_intent(self, order_id: str, amount: float, currency: str = "USD") -> PaymentIntent:
+        now = datetime.now(timezone.utc).isoformat()
+        return PaymentIntent(
+            id=f"pay_{uuid.uuid4().hex[:12]}",
+            order_id=order_id,
+            amount=amount,
+            currency=currency,
+            status="pending",
+            gateway=self.name,
+            created_at=now,
+            metadata={"network": "unconfigured"},
+        )
+
+    def verify(self, intent: PaymentIntent, proof: Optional[str] = None) -> PaymentIntent:
+        intent.status = "failed"
+        intent.failure_reason = "No payment gateway configured."
+        return intent
+
+
 def payment_mode() -> str:
     if os.getenv("PYTEST_CURRENT_TEST"):
         return "test"
-    mode = os.getenv("X402_PAYMENT_MODE", "").strip().lower()
-    if mode in ("testnet", "live"):
-        return mode
-    if os.getenv("GUARDVANE_PAYMENT_MODE"):
-        return os.getenv("GUARDVANE_PAYMENT_MODE", "unconfigured").strip().lower()
-    return "unconfigured"
+    return os.getenv("GUARDVANE_PAYMENT_MODE", "evm_escrow").strip().lower()
 
 
 def get_payment_gateway() -> PaymentGateway:
     mode = payment_mode()
-    if mode in ("testnet", "live"):
-        return Blocky402HederaGateway()
     if mode == "test":
         return TestPaymentGateway()
-    return UnconfiguredPaymentGateway()
+    return EVMEscrowPaymentGateway()
