@@ -4,7 +4,7 @@
 > **Network:** Rabdi Testnet (Arkiv DB-Chain)  
 > **Chain ID:** `7794095` (`0x76ee8f`)  
 > **RPC URL:** `https://rpc.rabdi.db-chain.testnet.arkiv.network`  
-> **Explorer:** [https://explorer.rabdi.db-chain.testnet.arkiv.network](https://explorer.rabdi.db-chain.testnet.arkiv.network)  
+> **Explorer:** [https://rabdi.explorer.arkiv.network](https://rabdi.explorer.arkiv.network)  
 > **Currency:** `tGLM`
 
 ---
@@ -14,7 +14,7 @@
 Our on-chain security service listing has been confirmed and anchored to Rabdi Testnet using the official `@arkiv-network/sdk`.
 
 - **Transaction Hash:**  
-  [`0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c`](https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
+  [`0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c`](https://rabdi.explorer.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
 - **Active Schema:**  
   `guardvane.services.v1`
 - **Entity Key:**  
@@ -141,7 +141,7 @@ Guardvane maintains a strict separation of concerns between public decentralized
 | Specialist Profiles | Arkiv (`guardvane.specialists.v1`) | **Yes** | Portable reputation and skills catalog |
 | Customer Prompt & System Instructions | Local Confidential Memory / 0G Private Computer | **NO** | Proprietary customer IP and sensitive security vectors |
 | Vulnerability Findings & Reports | Encrypted Supabase / Customer Session | **NO** | Confidential security scan deliverables |
-| Hedera x402 Payment Secrets / Nonces | Client Local Browser Storage | **NO** | Cryptographic security |
+| Escrow Authentication Signatures & Nonces | Client MetaMask / Local Ephemeral Memory | **NO** | Cryptographic security |
 
 ### Honest Verification Principle
 The Guardvane UI **never** reports a service as on-chain verified based only on a local database record. A green verified badge is rendered if and only if:

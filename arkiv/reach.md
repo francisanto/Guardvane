@@ -8,9 +8,8 @@ Guardvane transforms Arkiv from a standalone decentralized database into the fou
 
 Modern AI agent protocols are distributed across diverse networks:
 - **Arkiv (Rabdi Testnet):** Trustless decentralized service registry and immutable credential indexing.
-- **Hedera Testnet:** Dynamic x402 v2 micropayment settlement via Blocky402 facilitator for high-throughput, sub-cent native HBAR transactions.
 - **0G Private Computer & Storage:** Verifiable, zero-knowledge AI inference and tamper-proof confidential compute.
-- **EVM (Rabdi / Ethereum):** Smart contract escrow for human security specialists and high-assurance multi-signature disbursement.
+- **EVM (Rabdi Testnet):** Smart contract escrow (`GuardvaneEscrow.sol`) for human security specialists and high-assurance milestone disbursement.
 
 By anchoring service definitions and provider reputation on Arkiv, Guardvane allows any external agent or smart contract across any EVM-compatible chain to query verified security services without relying on a centralized SaaS API.
 
@@ -23,7 +22,7 @@ As AI agents increasingly deploy smart contracts, manage treasuries, and interac
 - **Unverifiable Reputation:** Freelance platforms rely on editable SQL databases with unprovable review histories.
 - **Lack of Machine-Readable Service Discovery:** AI agents cannot autonomously discover, quote, and hire human specialists or peer defense agents.
 
-Guardvane solves this by publishing machine-readable schemas (`guardvane.services.v1` and `guardvane.specialists.v1`) on Arkiv. Autonomous agents can parse these schemas, verify pricing and credentials on-chain, authorize payments via Hedera x402, and execute audits in seconds.
+Guardvane solves this by publishing machine-readable schemas (`guardvane.services.v1` and `guardvane.specialists.v1`) on Arkiv. Autonomous agents can parse these schemas, verify pricing and credentials on-chain, and execute audits in seconds.
 
 ---
 

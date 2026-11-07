@@ -29,9 +29,9 @@ export const Services = defineSchema("guardvane.services.v1", {
 - **RPC Endpoint:** `https://rpc.rabdi.db-chain.testnet.arkiv.network`
 - **Default Expiration:** 30 Days (`ExpirationTime.fromDays(30)`)
 - **Primary Use:** Public service discovery on OpiHub.
-- **Confirmed Transaction:** [`0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c`](https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
+- **Confirmed Transaction:** [`0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c`](https://rabdi.explorer.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
 - **Confirmed Entity Key:** `0x3b74b13d2531f64902090a5a51b71b83a879e8c343c89661b85bcbbc47fc5c97`
-- **Explorer Link:** [View Verified Service Entity on Rabdi Explorer](https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
+- **Explorer Link:** [View Verified Service Entity on Rabdi Explorer](https://rabdi.explorer.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
 
 ---
 

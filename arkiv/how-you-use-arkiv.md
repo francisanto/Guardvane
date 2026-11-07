@@ -58,7 +58,7 @@ console.log('Entity Key:', serviceEntity.entityKey);
 - **Schema:** `guardvane.services.v1`
 - **Transaction Hash:** `0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c`
 - **Entity Key:** `0x3b74b13d2531f64902090a5a51b71b83a879e8c343c89661b85bcbbc47fc5c97`
-- **Explorer:** [View On-Chain Entity on Rabdi Explorer](https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
+- **Explorer:** [View On-Chain Entity on Rabdi Explorer](https://rabdi.explorer.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c)
 
 ---
 
