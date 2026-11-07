@@ -22574,7 +22574,7 @@ ${prettyStateOverride(stateOverride)}`;
   var RABDI_CHAIN_ID = 7794095;
   var RABDI_CHAIN_ID_HEX = "0x76ee8f";
   var RABDI_RPC_URL = "https://rpc.rabdi.db-chain.testnet.arkiv.network";
-  var RABDI_EXPLORER_URL = "https://explorer.rabdi.db-chain.testnet.arkiv.network";
+  var RABDI_EXPLORER_URL = "https://rabdi.explorer.arkiv.network";
   var SpecialistsSchema = defineSchema("guardvane.specialists.v1", {
     wallet_address: addr().indexed(),
     display_name: str().indexed(),

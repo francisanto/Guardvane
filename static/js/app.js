@@ -45,6 +45,18 @@ function showNotification(message, type = 'info', duration = 4000) {
 }
 
 if (typeof window !== 'undefined') {
+  // Security Hygiene: Scrub legacy Hedera keys & accounts from browser storage
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('guardvane_x402_key');
+      localStorage.removeItem('guardvane_x402_account');
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('guardvane_x402_key');
+      sessionStorage.removeItem('guardvane_x402_account');
+    }
+  } catch (e) {}
+
   window.alert = function(msg) {
     const isErr = String(msg).toLowerCase().includes('fail') || String(msg).toLowerCase().includes('error');
     const isSucc = String(msg).toLowerCase().includes('success') || String(msg).toLowerCase().includes('saved') || String(msg).toLowerCase().includes('copied');
@@ -663,8 +675,32 @@ function getMyProvider() {
 // ---------------------------------------------------------------------------
 
 function renderSidebar() {
+  const userWallet = (STATE.auth.walletAddress || STATE.user.id || '').toLowerCase();
+  const mySentOrders = (STATE.data.orders || []).filter(o => {
+    const custId = (o.customer_id || '').toLowerCase();
+    if (!userWallet) return false;
+    return custId === userWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
+  const myReports = (STATE.data.reports || []).filter(r => {
+    const custId = (r.customer_id || '').toLowerCase();
+    if (!userWallet) return false;
+    return custId === userWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
+  const myPrompts = (STATE.data.prompts || []).filter(p => {
+    const custId = (p.customer_id || '').toLowerCase();
+    if (!userWallet) return false;
+    return custId === userWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
+
   const myProvider = getMyProvider();
   const isRegisteredProvider = !!myProvider;
+  const assignedOrders = (STATE.data.orders || []).filter(o => {
+    if (!myProvider) return false;
+    return o.provider_id === myProvider.id ||
+      (myProvider.wallet_address && (o.provider_wallet || '').toLowerCase() === myProvider.wallet_address.toLowerCase()) ||
+      (o.provider_name && o.provider_name.toLowerCase() === (myProvider.display_name || '').toLowerCase());
+  });
+
   const shortAddr = STATE.user.name
     ? STATE.user.name
     : (STATE.auth.walletAddress
@@ -698,7 +734,7 @@ function renderSidebar() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
             My Prompts
-            <span class="ml-auto text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded-full">${STATE.data.prompts.length}</span>
+            <span class="ml-auto text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded-full">${myPrompts.length}</span>
           </button>
 
           <button onclick="navigateTo('my_requests')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'my_requests' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
@@ -706,7 +742,7 @@ function renderSidebar() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
             My Requests
-            <span class="ml-auto text-[11px] bg-[#E2E9E3] text-[#445246] font-semibold px-2 py-0.5 rounded-full">${STATE.data.orders.length}</span>
+            <span class="ml-auto text-[11px] bg-[#E2E9E3] text-[#445246] font-semibold px-2 py-0.5 rounded-full">${mySentOrders.length}</span>
           </button>
 
           <button onclick="navigateTo('security_reports')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'security_reports' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
@@ -714,7 +750,7 @@ function renderSidebar() {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             Security Reports
-            <span class="ml-auto text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded-full">${STATE.data.reports.length}</span>
+            <span class="ml-auto text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded-full">${myReports.length}</span>
           </button>
         </div>
 
@@ -730,7 +766,7 @@ function renderSidebar() {
                 </svg>
                 <span>Provider Workspace</span>
               </div>
-              <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">ACTIVE</span>
+              <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">${assignedOrders.length > 0 ? assignedOrders.length + ' RECEIVED' : 'ACTIVE'}</span>
             </button>
           ` : `
             <button onclick="navigateTo('become_provider')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'become_provider' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
@@ -888,16 +924,32 @@ function renderCurrentView() {
 // ---------------------------------------------------------------------------
 
 function renderDashboardView() {
-  const stats = STATE.data.stats || {};
-  const savedPromptsCount = stats.saved_prompts_count ?? STATE.data.prompts.length;
-  const activeRequestsCount = stats.active_requests_count ?? STATE.data.orders.filter(o => ['requested', 'accepted', 'in_progress'].includes(o.status)).length;
-  const completedAuditsCount = stats.completed_audits_count ?? stats.completed_reviews_count ?? STATE.data.reports.length;
-  const availableProvidersCount = stats.available_providers_count ?? STATE.data.providers.length;
+  const userWallet = (STATE.auth.walletAddress || STATE.user.id || '').toLowerCase();
+  const mySentOrders = (STATE.data.orders || []).filter(o => {
+    const custId = (o.customer_id || '').toLowerCase();
+    if (!userWallet) return false;
+    return custId === userWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
+  const myReports = (STATE.data.reports || []).filter(r => {
+    const custId = (r.customer_id || '').toLowerCase();
+    if (!userWallet) return false;
+    return custId === userWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
+  const myPrompts = (STATE.data.prompts || []).filter(p => {
+    const custId = (p.customer_id || '').toLowerCase();
+    if (!userWallet) return false;
+    return custId === userWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
 
-  const recommendedProviders = STATE.data.providers.slice(0, 3);
-  const recentReports = STATE.data.reports.slice(0, 3);
-  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
-  const myProvider = STATE.data.providers.find(p =>
+  const stats = STATE.data.stats || {};
+  const savedPromptsCount = myPrompts.length;
+  const activeRequestsCount = mySentOrders.filter(o => ['requested', 'accepted', 'in_progress'].includes(o.status)).length;
+  const aiAuditsDelivered = myReports.filter(r => r.provider_id && (r.provider_id.includes('zerog') || r.provider_id.includes('prompt'))).length;
+  const specialistAuditsDelivered = myReports.filter(r => r.provider_id && !r.provider_id.includes('zerog') && !r.provider_id.includes('prompt')).length;
+
+  const recommendedProviders = (STATE.data.providers || []).slice(0, 3);
+  const recentReports = myReports.slice(0, 3);
+  const myProvider = (STATE.data.providers || []).find(p =>
     (p.wallet_address && p.wallet_address.toLowerCase() === userWallet) ||
     p.id === STATE.user.activeProviderId
   );
@@ -926,7 +978,7 @@ function renderDashboardView() {
           <span class="text-[#627566] text-[13px] font-medium">0G AI Audits Delivered</span>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${STATE.data.reports.filter(r => r.provider_id && (r.provider_id.includes('zerog') || r.provider_id.includes('prompt'))).length}</span>
+          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${aiAuditsDelivered}</span>
           <span class="text-[12px] text-[#627566]">automated defenses</span>
         </div>
         <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('security_reports')">
@@ -940,7 +992,7 @@ function renderDashboardView() {
           <span class="text-[#627566] text-[13px] font-medium">Specialist Audits Delivered</span>
         </div>
         <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${STATE.data.reports.filter(r => r.provider_id && !r.provider_id.includes('zerog') && !r.provider_id.includes('prompt')).length}</span>
+          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${specialistAuditsDelivered}</span>
           <span class="text-[12px] text-[#627566]">expert reviews</span>
         </div>
         <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('security_reports')">
@@ -1759,13 +1811,13 @@ function renderProviderWorkspaceView() {
 
                   <div class="flex items-center gap-3 font-mono text-[11px]">
                     ${o.escrow_release_tx_hash ? `
-                      <a href="${o.rabdi_release_url || ('https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline font-semibold flex items-center gap-1" title="View release transaction on Rabdi Explorer">
+                      <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline font-semibold flex items-center gap-1" title="View release transaction on Rabdi Explorer">
                         <span>Release Tx: ${o.escrow_release_tx_hash.slice(0, 10)}...</span>
                         <span>↗</span>
                       </a>
                     ` : ''}
                     ${o.escrow_tx_hash ? `
-                      <a href="${o.rabdi_explorer_url || ('https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#627566] hover:underline flex items-center gap-1" title="View deposit transaction on Rabdi Explorer">
+                      <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#627566] hover:underline flex items-center gap-1" title="View deposit transaction on Rabdi Explorer">
                         <span>Deposit: ${o.escrow_tx_hash.slice(0, 8)}...</span>
                         <span>↗</span>
                       </a>
@@ -1790,7 +1842,12 @@ function renderProviderWorkspaceView() {
 // ---------------------------------------------------------------------------
 
 function renderMyPromptsView() {
-  const prompts = STATE.data.prompts;
+  const userWallet = (STATE.auth.walletAddress || STATE.user.id || '').toLowerCase();
+  const prompts = (STATE.data.prompts || []).filter(p => {
+    const custId = (p.customer_id || '').toLowerCase();
+    if (!userWallet) return false;
+    return custId === userWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
 
   return `
     <div class="space-y-5">
@@ -1941,7 +1998,7 @@ function renderArkivTaskCard(t, currentWallet) {
                 <span>Published on Arkiv</span>
               </span>
               <a
-                href="https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/${t.tx_hash || t.entity_key}"
+                href="https://rabdi.explorer.arkiv.network/tx/${t.tx_hash || t.entity_key}"
                 target="_blank"
                 class="text-[11px] text-[#176B45] hover:underline flex items-center gap-0.5"
               >
@@ -2122,7 +2179,7 @@ function renderMyRequestsView() {
   // "My Requests" strictly shows requests submitted by the current user as a customer
   const mySentOrders = allOrders.filter(o => {
     const custId = (o.customer_id || '').toLowerCase();
-    if (!currentWallet) return true;
+    if (!currentWallet) return false;
     return custId === currentWallet || custId === (STATE.user.id || '').toLowerCase();
   });
 
@@ -2199,12 +2256,12 @@ function renderMyRequestsView() {
                           </span>
                           <div class="flex items-center gap-2 text-[10.5px] font-mono">
                             ${o.escrow_release_tx_hash ? `
-                              <a href="${o.rabdi_release_url || ('https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline font-semibold" title="View Release Tx on Rabdi Explorer">
+                              <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline font-semibold" title="View Release Tx on Rabdi Explorer">
                                 release ↗
                               </a>
                             ` : ''}
                             ${o.escrow_tx_hash ? `
-                              <a href="${o.rabdi_explorer_url || ('https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#627566] hover:underline" title="View Deposit Tx on Rabdi Explorer">
+                              <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#627566] hover:underline" title="View Deposit Tx on Rabdi Explorer">
                                 deposit ↗
                               </a>
                             ` : ''}
@@ -2214,13 +2271,8 @@ function renderMyRequestsView() {
                         <div class="inline-flex items-center gap-1.5">
                           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
                             <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
-                            <span>Paid / Escrowed</span>
+                            <span>${o.execution_type === 'automated' ? '0G Direct AI' : 'Escrow Verified'}</span>
                           </span>
-                          ${(o.hashscan_url || o.payment_reference) ? `
-                            <a href="${o.hashscan_url || ('https://hashscan.io/testnet/transaction/' + o.payment_reference)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:text-[#115638] text-[11px] font-mono underline font-medium" title="View on HashScan">
-                              tx ↗
-                            </a>
-                          ` : ''}
                         </div>
                       ` : o.payment_status === 'pending' ? `
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
@@ -2291,7 +2343,12 @@ function renderMyRequestsView() {
 }
 
 function renderSecurityReportsView() {
-  const reports = STATE.data.reports;
+  const currentWallet = (STATE.auth.walletAddress || STATE.user.id || '').toLowerCase();
+  const reports = (STATE.data.reports || []).filter(r => {
+    const custId = (r.customer_id || '').toLowerCase();
+    if (!currentWallet) return false;
+    return custId === currentWallet || custId === (STATE.user.id || '').toLowerCase();
+  });
 
   return `
     <div class="space-y-5">
@@ -2540,8 +2597,12 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
         <div class="flex items-start justify-between gap-2">
           <h3 class="text-[14px] font-semibold text-[#202820] tracking-tight leading-snug">${escapeHtml(s.title)}</h3>
           <div class="text-right shrink-0">
-            <span class="font-mono font-bold text-[13.5px] text-[#176B45]">$${s.price.toFixed(2)}</span>
-            ${isAutomated ? '<div class="text-[10px] font-mono text-[#176B45]">Hedera x402</div>' : ''}
+            ${isAutomated ? `
+              <span class="font-mono font-bold text-[13px] text-[#176B45]">Free</span>
+              <div class="text-[10px] font-mono text-[#627566]">0G Direct</div>
+            ` : `
+              <span class="font-mono font-bold text-[13.5px] text-[#176B45]">$${s.price.toFixed(2)}</span>
+            `}
           </div>
         </div>
 
@@ -2700,8 +2761,6 @@ function renderModalContent() {
       return renderEditServiceModal();
     case 'order_detail':
       return renderOrderDetailModal();
-    case 'x402_checkout':
-      return renderX402CheckoutModal();
     case 'evm_escrow':
       return renderEVMEscrowModal();
     case 'edit_provider':
@@ -2732,16 +2791,6 @@ function renderRequestReviewModal() {
   const isCodebaseSecurity = category === 'codebase_security';
 
   const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
-  const savedX402Account = localStorage.getItem('guardvane_x402_account') || '';
-  const savedX402Key = localStorage.getItem('guardvane_x402_key') || '';
-  const hasX402Setup = !!(savedX402Account && savedX402Key);
-
-  const initialPromptLen = (payload.promptText || '').length;
-  const initInTokens = Math.max(25, Math.ceil(initialPromptLen / 4));
-  const initOutTokens = 1024;
-  const initTotalTokens = initInTokens + initOutTokens;
-  const initUsd = Math.max(0.015, initTotalTokens * 0.00003);
-  const initHbars = (initUsd / 0.0687).toFixed(2);
 
   return `
     <div class="p-6 space-y-5">
@@ -2765,10 +2814,9 @@ function renderRequestReviewModal() {
           </div>
           <div class="text-right">
             ${isAutomated ? `
-              <div class="text-[15px] font-bold font-mono text-[#176B45]" id="modal-header-quote-usd">$${initUsd.toFixed(3)} USD</div>
-              <div class="text-[11.5px] font-mono text-[#445246]" id="modal-header-quote-hbar">≈ ${initHbars} HBAR</div>
+              <div class="text-[14px] font-bold font-mono text-[#176B45]">Instant AI Reasoning</div>
               <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono bg-[#E0E7FF] text-[#3730A3]">
-                0G AI • Hedera x402
+                0G Private Computer
               </span>
             ` : `
               <div class="text-[15px] font-bold font-mono text-[#176B45]">$${(currentService?.price || 0).toFixed(2)} USD</div>
@@ -2916,84 +2964,22 @@ function renderRequestReviewModal() {
         ${isAutomated ? `
           <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
             <div class="flex items-center justify-between">
-              <span class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Payment & Execution Authority</span>
+              <span class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">AI Execution Engine</span>
               <span class="text-[11px] bg-[#E0E7FF] text-[#3730A3] font-semibold px-2 py-0.5 rounded font-mono">0G Private Computer</span>
             </div>
 
-            <!-- Hedera x402 Micropayment Required -->
-            <div class="p-3.5 bg-white border border-[#CBD7CE] rounded-xl space-y-3">
+            <div class="p-3.5 bg-white border border-[#CBD7CE] rounded-xl space-y-2">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <span class="w-5 h-5 rounded bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-xs">ħ</span>
-                  <span class="text-[12.5px] font-semibold text-[#202820]">Hedera x402 Micropayment (Native HBAR)</span>
+                  <span class="w-5 h-5 rounded bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-xs">⚡</span>
+                  <span class="text-[12.5px] font-semibold text-[#202820]">Instant Autonomous 0G AI Reasoning</span>
                 </div>
-                <div class="text-right">
-                  <span class="text-[13px] font-bold font-mono text-[#176B45]" id="x402-card-quote-usd">$${initUsd.toFixed(3)} USD</span>
-                  <span class="text-[11px] font-mono text-[#445246] ml-1" id="x402-card-quote-hbar">(≈ ${initHbars} HBAR)</span>
-                </div>
+                <span class="text-[11px] font-semibold font-mono text-[#176B45] bg-[#EAF5EE] px-2 py-0.5 rounded border border-[#CDE5D5]">0G Direct • Free</span>
               </div>
 
               <p class="text-[11.5px] text-[#627566] leading-relaxed">
-                All AI agent security analyses are paid services settled dynamically via the Blocky402 facilitator on Hedera Testnet before 0G Private Computer reasoning executes.
+                Direct execution on 0G Private Computer. Neural prompt optimization, adversarial injection analysis, and boundary hardening run with zero gas, zero wallet signing, and instant verified security reports.
               </p>
-
-              ${hasX402Setup ? `
-                <div class="p-2.5 bg-[#FAFBF9] border border-[#CDE5D5] rounded-lg flex items-center justify-between text-xs">
-                  <div class="space-y-0.5">
-                    <span class="font-semibold text-[#176B45] flex items-center gap-1">
-                      ⚡ 1-Click x402 Auto-Payment Active
-                    </span>
-                    <span class="font-mono text-[#627566]">Signer Account: ${escapeHtml(savedX402Account)}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button type="button" onclick="handleInstantTestSettlement()" class="text-[11px] text-[#176B45] hover:underline font-medium cursor-pointer">
-                      ⚡ Test Mode
-                    </button>
-                    <button type="button" onclick="clearX402Setup()" class="text-[11px] text-[#991B1B] hover:underline cursor-pointer">
-                      Change Signer
-                    </button>
-                  </div>
-                </div>
-                <input type="hidden" name="x402_account" value="${escapeForAttr(savedX402Account)}" />
-                <input type="hidden" name="x402_key" value="${escapeForAttr(savedX402Key)}" />
-              ` : `
-                <!-- One-Time Setup Card -->
-                <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-2.5 text-xs">
-                  <div class="flex items-center justify-between">
-                    <span class="font-semibold text-[#202820]">Hedera Testnet Signer (One-Time Setup)</span>
-                    <button type="button" onclick="handleInstantTestSettlement()" class="text-[11px] text-[#176B45] hover:underline font-medium cursor-pointer">
-                      ⚡ Instant Test Receipt Mode
-                    </button>
-                  </div>
-                  <div>
-                    <label class="block text-[11px] text-[#627566] mb-1 font-medium">Hedera Testnet Account ID *</label>
-                    <input
-                      type="text"
-                      name="x402_account"
-                      required
-                      placeholder="0.0.xxxxx (e.g. from portal.hedera.com)"
-                      class="w-full px-2.5 py-1.5 bg-white border border-[#CBD7CE] rounded text-xs font-mono focus:outline-none focus:border-[#176B45]"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-[11px] text-[#627566] mb-1 font-medium">Testnet Private Key *</label>
-                    <input
-                      type="password"
-                      name="x402_key"
-                      required
-                      placeholder="DER or Hex Private Key"
-                      class="w-full px-2.5 py-1.5 bg-white border border-[#CBD7CE] rounded text-xs font-mono focus:outline-none focus:border-[#176B45]"
-                    />
-                  </div>
-                  <div class="flex items-center justify-between pt-0.5">
-                    <label class="flex items-center gap-2 text-[11px] text-[#445246] cursor-pointer">
-                      <input type="checkbox" name="save_x402_setup" checked class="text-[#176B45] rounded" />
-                      <span>Remember credentials</span>
-                    </label>
-                    <span class="text-[10px] text-[#8B9C8E]">Supports ECDSA & ED25519</span>
-                  </div>
-                </div>
-              `}
             </div>
           </div>
         ` : `
@@ -3006,7 +2992,7 @@ function renderRequestReviewModal() {
             <div class="p-3 rounded-lg border border-[#E2E9E3] bg-white text-[12.5px] space-y-1.5">
               <div class="flex items-center justify-between">
                 <span class="text-[#445246] font-medium">Specialist Audit Fee:</span>
-                <span class="font-mono font-bold text-[#202820] text-[14px]">$${currentService.price.toFixed(2)} USD</span>
+                <span class="font-mono font-bold text-[#202820] text-[14px]">$${(currentService?.price || 0).toFixed(2)} USD</span>
               </div>
               <p class="text-[11.5px] text-[#627566] leading-relaxed">
                 Payment is locked in autonomous smart escrow and automatically disburses directly to the specialist's wallet upon verified delivery of your audit deliverable.
@@ -3020,7 +3006,7 @@ function renderRequestReviewModal() {
             Cancel
           </button>
           <button type="submit" id="order-submit-btn" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer flex items-center gap-1.5">
-            ${isAutomated ? `Pay <span id="submit-btn-hbar">${initHbars}</span> HBAR via Hedera x402 & Execute ⚡` : 'Submit Review Request'}
+            ${isAutomated ? 'Execute 0G AI Defense ⚡' : 'Deposit Escrow & Submit Request 🛡️'}
           </button>
         </div>
       </form>
@@ -3630,9 +3616,6 @@ function renderWalletModal() {
   const myProvider = getMyProvider();
   const isRabdi = STATE.network && STATE.network.isRabdi;
   const currentBlock = STATE.arkiv?.status?.current_block;
-  const savedX402Account = localStorage.getItem('guardvane_x402_account') || '';
-  const savedX402Key = localStorage.getItem('guardvane_x402_key') || '';
-  const hasX402Setup = !!(savedX402Account && savedX402Key);
 
   return `
     <div class="p-6 space-y-4 select-none">
@@ -3667,33 +3650,6 @@ function renderWalletModal() {
               ${myProvider ? `${escapeHtml(myProvider.display_name)} (Registered)` : 'Not registered'}
             </span>
           </div>
-        </div>
-
-        <!-- Hedera x402 Auto-Payment Signer Card -->
-        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Hedera x402 Auto-Payment Signer</span>
-            ${hasX402Setup ? `
-              <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">⚡ Active</span>
-            ` : `
-              <span class="text-[10px] bg-[#F0F5F1] text-[#627566] font-mono px-2 py-0.5 rounded font-semibold">Not Configured</span>
-            `}
-          </div>
-          ${hasX402Setup ? `
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-[#627566]">Signer Account:</span>
-              <code class="font-mono text-[#202820] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">${escapeHtml(savedX402Account)}</code>
-            </div>
-            <div class="flex justify-end pt-1">
-              <button onclick="clearX402Setup()" class="text-xs text-[#991B1B] hover:underline cursor-pointer">
-                Clear Saved Signer
-              </button>
-            </div>
-          ` : `
-            <p class="text-[12px] text-[#627566] leading-relaxed">
-              When configured during prompt checkout, your Hedera Testnet signer is saved in local browser storage for automatic 1-click prompt defense settlements.
-            </p>
-          `}
         </div>
 
         <!-- Decentralized Network Card -->
@@ -3761,8 +3717,6 @@ function renderWalletModal() {
 function renderSettingsModal() {
   const userWallet = STATE.auth.walletAddress || '';
   const myProvider = getMyProvider();
-  const savedX402Account = localStorage.getItem('guardvane_x402_account') || '';
-  const hasX402Setup = !!(savedX402Account && localStorage.getItem('guardvane_x402_key'));
 
   return `
     <div class="p-6 space-y-5">
@@ -3828,36 +3782,6 @@ function renderSettingsModal() {
               <button onclick="closeModal(); navigateTo('become_provider');" class="px-3 py-1.5 bg-[#176B45] text-white hover:bg-[#115638] rounded text-xs font-medium transition-smooth cursor-pointer">
                 Register →
               </button>
-            `}
-          </div>
-        </div>
-
-        <!-- Hedera x402 Auto-Payment Signer Card -->
-        <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Hedera x402 Auto-Payment Signer</label>
-          <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-[12px] font-medium text-[#202820]">Autonomous Signer:</span>
-              ${hasX402Setup ? `
-                <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">⚡ Active</span>
-              ` : `
-                <span class="text-[10px] bg-[#F0F5F1] text-[#627566] font-mono px-2 py-0.5 rounded font-semibold">Not Configured</span>
-              `}
-            </div>
-            ${hasX402Setup ? `
-              <div class="flex items-center justify-between text-xs pt-1">
-                <span class="text-[#627566]">Account ID:</span>
-                <code class="font-mono text-[#202820] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">${escapeHtml(savedX402Account)}</code>
-              </div>
-              <div class="flex justify-end pt-1">
-                <button onclick="clearX402Setup()" class="text-xs text-[#991B1B] hover:underline cursor-pointer">
-                  Clear Saved Signer
-                </button>
-              </div>
-            ` : `
-              <p class="text-[11.5px] text-[#627566] leading-relaxed">
-                When you sign up once during prompt defense checkout, your Hedera Testnet signer is securely saved in your browser for 1-click prompt execution.
-              </p>
             `}
           </div>
         </div>
@@ -4264,7 +4188,7 @@ function renderOrderDetailModal() {
                     </button>
                   </div>
                   <div class="pt-1">
-                    <a href="${order.rabdi_explorer_url || ('https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/' + order.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:text-[#115638] text-[11.5px] font-mono font-semibold inline-flex items-center gap-1 hover:underline">
+                    <a href="${order.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:text-[#115638] text-[11.5px] font-mono font-semibold inline-flex items-center gap-1 hover:underline">
                       View Deposit on Rabdi Explorer ↗
                     </a>
                   </div>
@@ -4294,7 +4218,7 @@ function renderOrderDetailModal() {
                     </button>
                   </div>
                   <div class="pt-1">
-                    <a href="${order.rabdi_release_url || ('https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/' + order.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:text-[#115638] text-[11.5px] font-mono font-semibold inline-flex items-center gap-1 hover:underline">
+                    <a href="${order.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:text-[#115638] text-[11.5px] font-mono font-semibold inline-flex items-center gap-1 hover:underline">
                       View Disbursal on Rabdi Explorer ↗
                     </a>
                   </div>
@@ -4329,59 +4253,36 @@ function renderOrderDetailModal() {
             ` : ''}
           </div>
         </div>
-      ` : order.payment_status === 'verified' ? `
-        <!-- Hedera x402 Micropayment Card -->
+      ` : order.execution_type === 'automated' || order.payment_status === 'verified' ? `
+        <!-- 0G Private Computer AI Execution Card -->
         <div class="p-4 rounded-xl bg-[#EAF5EE] border border-[#CDE5D5] space-y-2">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-md bg-white flex items-center justify-center font-bold text-[#176B45] text-xs shadow-2xs">ħ</div>
+              <div class="w-6 h-6 rounded-md bg-white flex items-center justify-center font-bold text-[#176B45] text-xs shadow-2xs">⚡</div>
               <div>
-                <h4 class="text-[13px] font-semibold text-[#176B45]">Hedera x402 Micropayment Verified</h4>
-                <p class="text-[11px] text-[#445246]">Native HBAR payment settled via Blocky402 facilitator</p>
+                <h4 class="text-[13px] font-semibold text-[#176B45]">0G Private Computer AI Reasoning</h4>
+                <p class="text-[11px] text-[#445246]">Confidential verified AI execution • Zero-knowledge inference</p>
               </div>
             </div>
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-white text-[#176B45] border border-[#CDE5D5]">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> Settled & Verified
+              <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> Verified AI Inference
             </span>
           </div>
 
-          ${(order.payment_reference || order.hashscan_url) ? `
-            <div class="pt-1 flex items-center justify-between bg-white/80 p-2.5 rounded-lg border border-[#CDE5D5]/60 text-[11.5px]">
-              <div class="flex items-center gap-2 overflow-hidden">
-                <span class="text-[#627566] shrink-0">Tx Reference:</span>
-                <span class="font-mono text-[#202820] truncate select-all">${order.payment_reference || 'Hedera Settled'}</span>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                ${order.payment_reference ? `
-                  <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.payment_reference)}'); showNotification('Hedera payment reference copied!', 'success');" class="text-[#176B45] hover:underline text-[11px] font-medium cursor-pointer">
-                    Copy
-                  </button>
-                ` : ''}
-                ${order.hashscan_url || order.payment_reference ? `
-                  <a href="${order.hashscan_url || ('https://hashscan.io/testnet/transaction/' + order.payment_reference)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 bg-white border border-[#CDE5D5] hover:border-[#176B45] text-[#176B45] font-mono text-[11px] font-medium rounded transition-smooth inline-flex items-center gap-1">
-                    HashScan Explorer ↗
-                  </a>
-                ` : ''}
-              </div>
+          <div class="pt-1 grid grid-cols-3 gap-2 text-center text-[11.5px]">
+            <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
+              <span class="text-[#627566] block text-[10px] uppercase">Engine</span>
+              <span class="font-mono font-bold text-[#202820]">0G Compute</span>
             </div>
-          ` : ''}
-
-          ${order.token_usage ? `
-            <div class="pt-1 grid grid-cols-3 gap-2 text-center text-[11.5px]">
-              <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
-                <span class="text-[#627566] block text-[10px] uppercase">Input Tokens</span>
-                <strong class="font-mono text-[#202820]">${order.token_usage.input_tokens ?? 'N/A'}</strong>
-              </div>
-              <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
-                <span class="text-[#627566] block text-[10px] uppercase">Completion Tokens</span>
-                <strong class="font-mono text-[#202820]">${order.token_usage.completion_tokens ?? 'N/A'}</strong>
-              </div>
-              <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
-                <span class="text-[#627566] block text-[10px] uppercase">Inference Cost</span>
-                <strong class="font-mono text-[#176B45]">$${order.token_usage.total_cost_usd ? Number(order.token_usage.total_cost_usd).toFixed(4) : order.price.toFixed(2)}</strong>
-              </div>
+            <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
+              <span class="text-[#627566] block text-[10px] uppercase">Trust Mode</span>
+              <span class="font-mono font-bold text-[#176B45]">Verified</span>
             </div>
-          ` : ''}
+            <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
+              <span class="text-[#627566] block text-[10px] uppercase">Execution</span>
+              <span class="font-mono font-bold text-[#202820]">Instant</span>
+            </div>
+          </div>
         </div>
       ` : ''}
 
@@ -4524,200 +4425,6 @@ function renderOrderDetailModal() {
       </div>
     </div>
   `;
-}
-
-function renderX402CheckoutModal() {
-  const payload = STATE.modalPayload || {};
-  const orderId = payload.orderId;
-  const order = (STATE.data.orders || []).find(o => o.id === orderId);
-
-  if (!order) {
-    return `
-      <div class="p-6 text-center space-y-4">
-        <p class="text-sm text-[#991B1B]">Order ${escapeHtml(orderId || '')} not found.</p>
-        <button onclick="closeModal()" class="px-4 py-2 bg-[#176B45] text-white rounded text-xs cursor-pointer">Close</button>
-      </div>
-    `;
-  }
-
-  // Pre-fetch requirements in background if not present
-  if (!STATE.x402Reqs) STATE.x402Reqs = {};
-  if (!STATE.x402Reqs[orderId] && !STATE.x402ReqsLoading?.[orderId]) {
-    if (!STATE.x402ReqsLoading) STATE.x402ReqsLoading = {};
-    STATE.x402ReqsLoading[orderId] = true;
-    apiFetch(`/marketplace/orders/${orderId}/x402-requirements`)
-      .then(data => {
-        STATE.x402Reqs[orderId] = data;
-        STATE.x402ReqsLoading[orderId] = false;
-        renderApp();
-      })
-      .catch(err => {
-        console.error('Failed to load x402 requirements:', err);
-        STATE.x402ReqsLoading[orderId] = false;
-      });
-  }
-
-  const reqsData = STATE.x402Reqs[orderId];
-  const rate = reqsData?.usd_per_hbar || 0.0687;
-  const hbars = reqsData?.amount_hbars || (order.price / rate).toFixed(2);
-  const tinybars = reqsData?.amount_tinybars || Math.round((order.price / rate) * 100000000);
-  const merchantAccount = reqsData?.merchant_account || '0.0.10946394';
-  const feePayer = reqsData?.fee_payer || '0.0.7162784';
-  const network = reqsData?.network || 'hedera:testnet';
-
-  return `
-    <div class="p-6 space-y-5">
-      <!-- Modal Header -->
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-sm">
-            ħ
-          </div>
-          <div>
-            <h3 class="text-[16px] font-semibold text-[#202820]">Hedera x402 Payment Checkout</h3>
-            <p class="text-[12px] text-[#627566]">Native HBAR micropayment via Blocky402 facilitator</p>
-          </div>
-        </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
-      </div>
-
-      <!-- Service & Pricing Summary Card -->
-      <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl flex items-center justify-between">
-        <div class="space-y-0.5">
-          <div class="text-[14px] font-semibold text-[#202820]">${escapeHtml(order.service_title)}</div>
-          <div class="text-[12px] text-[#627566]">Specialist: <strong>${escapeHtml(order.provider_name)}</strong> • Order ID: <code class="font-mono">${order.id}</code></div>
-        </div>
-        <div class="text-right">
-          <div class="text-[17px] font-bold font-mono text-[#176B45]">$${order.price.toFixed(2)} USD</div>
-          <div class="text-[12px] font-mono font-medium text-[#445246] mt-0.5">≈ ${hbars} HBAR</div>
-        </div>
-      </div>
-
-      <!-- Protocol & Facilitator Info Box -->
-      <div class="p-3.5 bg-white border border-[#E2E9E3] rounded-xl text-[12px] space-y-2">
-        <div class="flex items-center justify-between border-b border-[#F0F5F1] pb-2">
-          <span class="text-[#627566]">Protocol & Scheme:</span>
-          <span class="font-mono font-semibold text-[#202820]">x402 v2 (exact)</span>
-        </div>
-        <div class="flex items-center justify-between border-b border-[#F0F5F1] pb-2">
-          <span class="text-[#627566]">Hedera Network:</span>
-          <span class="font-mono font-semibold text-[#202820]">${network}</span>
-        </div>
-        <div class="flex items-center justify-between border-b border-[#F0F5F1] pb-2">
-          <span class="text-[#627566]">Merchant Recipient (payTo):</span>
-          <span class="font-mono text-[#176B45] font-semibold">${merchantAccount}</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-[#627566]">Facilitator Fee Payer (0 Gas):</span>
-          <span class="font-mono text-[#202820]">${feePayer} (Blocky402)</span>
-        </div>
-      </div>
-
-      <!-- Seamless Micropayment Gateway Notice -->
-      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-xl text-[12px] text-[#445246] space-y-1">
-        <div class="font-semibold text-[#176B45] flex items-center gap-1.5">
-          <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <span>One-Click Autonomous Settlement</span>
-        </div>
-        <p class="text-[11.5px] leading-relaxed">
-          The Blocky402 facilitator pays network gas fees and settles this micropayment directly to the Guardvane merchant account on Hedera Testnet.
-        </p>
-      </div>
-
-      <!-- Live Status / Result Container -->
-      <div id="x402-status-log" class="hidden"></div>
-
-      <!-- Action Buttons -->
-      <div class="pt-2 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#FAFBF9] transition-smooth cursor-pointer">
-          Cancel
-        </button>
-        <button
-          type="button"
-          id="x402-submit-btn"
-          onclick="handleX402SettlePay('${order.id}')"
-          class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer flex items-center gap-1.5"
-        >
-          <span>Pay ${hbars} HBAR via Hedera x402 ⚡</span>
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-async function handleX402SettlePay(orderId) {
-  const statusEl = document.getElementById('x402-status-log');
-  const submitBtn = document.getElementById('x402-submit-btn');
-
-  function setStatus(msg, isSuccess, isError) {
-    if (!statusEl) return;
-    statusEl.classList.remove('hidden');
-    let color = isSuccess ? 'text-[#176B45] bg-[#EAF5EE] border-[#CDE5D5]' : (isError ? 'text-[#991B1B] bg-[#FEF2F2] border-[#FECACA]' : 'text-[#202820] bg-[#FAFBF9] border-[#E2E9E3]');
-    statusEl.className = `p-3.5 rounded-lg border text-[12.5px] leading-relaxed transition-all ${color}`;
-    statusEl.innerHTML = msg;
-  }
-
-  try {
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
-      submitBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-        </svg>
-        Settling via Blocky402 on Hedera...
-      `;
-    }
-
-    setStatus('1/2 Verifying x402 payment requirements with Blocky402 facilitator...', false, false);
-
-    const res = await apiFetch(`/marketplace/orders/${orderId}/pay`, {
-      method: 'POST',
-      body: JSON.stringify({ proof: 'x402_settled' })
-    });
-
-    const txRef = res.payment_reference || '';
-    const hashscanUrl = res.hashscan_url || (txRef ? `https://hashscan.io/testnet/transaction/${txRef}` : '');
-
-    setStatus(`
-      <div class="space-y-1">
-        <div class="font-semibold text-[#176B45] flex items-center gap-1.5">
-          <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
-          Hedera x402 Micropayment Settled!
-        </div>
-        <div>Transaction Reference: <code class="font-mono text-xs">${txRef}</code></div>
-        ${hashscanUrl ? `<div class="pt-1"><a href="${hashscanUrl}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] font-semibold underline hover:text-[#115638] inline-flex items-center gap-1">View on HashScan Explorer ↗</a></div>` : ''}
-      </div>
-    `, true, false);
-
-    await loadInitialData();
-    showNotification('Payment verified and settled on Hedera Testnet! Request activated.', 'success');
-
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-      submitBtn.innerHTML = 'Payment Settled ✓';
-      submitBtn.classList.replace('bg-[#176B45]', 'bg-[#15803D]');
-    }
-
-    setTimeout(() => {
-      closeModal();
-      navigateTo('my_requests');
-    }, 1500);
-  } catch (err) {
-    setStatus(`Settlement Failed: ${err.message}`, false, true);
-    showNotification(`Payment failed: ${err.message}`, 'error');
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-      submitBtn.innerHTML = 'Retry Hedera x402 Payment';
-    }
-  }
 }
 
 function renderArkivPostTaskModal() {
@@ -5040,7 +4747,7 @@ function renderArkivViewBidsModal() {
                   <div class="pt-2 border-t border-[#E2E9E3] flex items-center justify-between text-[11px] text-[#8B9C8E]">
                     <div class="flex items-center gap-1.5">
                       ${(b.tx_hash || b.entity_key) ? `
-                        <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/${b.tx_hash || b.entity_key}" target="_blank" class="text-[11px] text-[#176B45] hover:underline flex items-center gap-0.5">
+                        <a href="https://rabdi.explorer.arkiv.network/tx/${b.tx_hash || b.entity_key}" target="_blank" class="text-[11px] text-[#176B45] hover:underline flex items-center gap-0.5">
                           View on Arkiv ↗
                         </a>
                       ` : '<span>Proposal on Rabdi</span>'}
@@ -5136,236 +4843,6 @@ function onRequestModalServiceChange(serviceId) {
   openModal('request_review', STATE.modalPayload);
 }
 
-function updateDynamicPromptPricing() {
-  const inputEl = document.getElementById('order-prompt-input');
-  if (!inputEl) return;
-  const text = inputEl.value || '';
-  const inTokens = Math.max(25, Math.ceil(text.length / 4));
-  const outTokens = 1024;
-  const totalTokens = inTokens + outTokens;
-  const usd = Math.max(0.015, totalTokens * 0.00003);
-  const hbarRate = 0.0687;
-  const hbars = (usd / hbarRate).toFixed(2);
-
-  const headerUsdEl = document.getElementById('modal-header-quote-usd');
-  const headerHbarEl = document.getElementById('modal-header-quote-hbar');
-  const cardUsdEl = document.getElementById('x402-card-quote-usd');
-  const cardHbarEl = document.getElementById('x402-card-quote-hbar');
-  const submitBtnHbar = document.getElementById('submit-btn-hbar');
-
-  if (headerUsdEl) headerUsdEl.textContent = `$${usd.toFixed(3)} USD`;
-  if (headerHbarEl) headerHbarEl.textContent = `≈ ${hbars} HBAR`;
-  if (cardUsdEl) cardUsdEl.textContent = `$${usd.toFixed(3)} USD`;
-  if (cardHbarEl) cardHbarEl.textContent = `(≈ ${hbars} HBAR)`;
-  if (submitBtnHbar) submitBtnHbar.textContent = hbars;
-}
-
-function clearX402Setup() {
-  localStorage.removeItem('guardvane_x402_account');
-  localStorage.removeItem('guardvane_x402_key');
-  showNotification('Saved Hedera x402 auto-payment credentials cleared.', 'info');
-  if (STATE.activeModal === 'request_review') {
-    openModal('request_review', STATE.modalPayload);
-  } else {
-    renderApp();
-  }
-}
-
-function saveX402Setup(account, key) {
-  if (account && key) {
-    localStorage.setItem('guardvane_x402_account', account.trim());
-    localStorage.setItem('guardvane_x402_key', key.trim());
-  }
-}
-
-async function executeX402PaymentForOrder(orderId, accountId, privKey) {
-  const sdk = window.Hedera || window.sdk || (typeof Hedera !== 'undefined' ? Hedera : null);
-  if (!sdk) {
-    throw new Error('Hedera Hashgraph SDK not loaded in browser. Please reload the page.');
-  }
-
-  const cleanAcct = accountId.trim();
-  const cleanKey = privKey.trim();
-
-  // 1. Fetch requirements for this order (priced dynamically based on prompt length)
-  const reqsData = await apiFetch(`/marketplace/orders/${orderId}/x402-requirements`);
-  const reqs = reqsData.paymentRequirements;
-  const feePayer = reqs.extra?.feePayer || '0.0.7162784';
-  const merchant = reqs.payTo;
-  const amountTinybars = parseInt(reqs.amount, 10);
-
-  // 2. Query Hedera Mirror Node to get on-chain key type, public key, and balance
-  let onChainKeyType = null;
-  let onChainPubKey = null;
-  let onChainBalanceTinybars = null;
-  try {
-    const acctRes = await fetch(`https://testnet.mirrornode.hedera.com/api/v1/accounts/${cleanAcct}`);
-    if (acctRes.ok) {
-      const acctData = await acctRes.json();
-      onChainKeyType = acctData.key?._type;
-      onChainPubKey = acctData.key?.key;
-      onChainBalanceTinybars = acctData.balance?.balance ?? null;
-    }
-  } catch (mErr) {
-    console.warn('Could not query mirror node:', mErr);
-  }
-
-  if (onChainBalanceTinybars !== null && onChainBalanceTinybars < amountTinybars) {
-    const availHbar = (onChainBalanceTinybars / 100000000).toFixed(2);
-    const reqHbar = (amountTinybars / 100000000).toFixed(2);
-    throw new Error(`Insufficient HBAR balance on account ${cleanAcct}. Available: ${availHbar} HBAR, Required: ${reqHbar} HBAR. Please top up at portal.hedera.com faucet.`);
-  }
-
-  // 3. Resolve private key candidate matching on-chain account public key
-  const hexOnly = cleanKey.startsWith('0x') ? cleanKey.slice(2) : cleanKey;
-  const candidates = [];
-
-  // Try DER
-  try { candidates.push(sdk.PrivateKey.fromStringDer(cleanKey)); } catch (e) {}
-  try { candidates.push(sdk.PrivateKey.fromString(cleanKey)); } catch (e) {}
-
-  // Try ECDSA
-  try { candidates.push(sdk.PrivateKey.fromStringECDSA(hexOnly)); } catch (e) {}
-  try { candidates.push(sdk.PrivateKey.fromStringECDSA('0x' + hexOnly)); } catch (e) {}
-
-  // Try ED25519
-  try { candidates.push(sdk.PrivateKey.fromStringED25519(hexOnly)); } catch (e) {}
-
-  if (candidates.length === 0) {
-    throw new Error('Unable to parse Hedera private key format. Provide a valid DER or hex testnet key from portal.hedera.com.');
-  }
-
-  let privateKey = null;
-  if (onChainPubKey) {
-    const target = onChainPubKey.toLowerCase().replace(/^0x/, '');
-    for (const c of candidates) {
-      const rawPub = (c.publicKey.toStringRaw ? c.publicKey.toStringRaw() : '').toLowerCase();
-      const fullPub = (c.publicKey.toString ? c.publicKey.toString() : '').toLowerCase();
-      if (rawPub === target || fullPub.includes(target) || target.includes(rawPub)) {
-        privateKey = c;
-        break;
-      }
-    }
-  }
-
-  if (!privateKey) {
-    if (onChainKeyType && onChainKeyType.includes('ECDSA')) {
-      privateKey = candidates.find(c => c.publicKey?._key?._type === 'secp256k1');
-    } else if (onChainKeyType && onChainKeyType.includes('ED25519')) {
-      privateKey = candidates.find(c => c.publicKey?._key?._type === 'ED25519');
-    }
-  }
-
-  if (!privateKey) {
-    privateKey = candidates[0];
-  }
-
-  // Detect key mismatch before submission to avoid opaque facilitator errors
-  if (onChainPubKey && privateKey) {
-    const derivedRaw = (privateKey.publicKey.toStringRaw ? privateKey.publicKey.toStringRaw() : '').toLowerCase();
-    const targetRaw = onChainPubKey.toLowerCase().replace(/^0x/, '');
-    if (derivedRaw && targetRaw && derivedRaw !== targetRaw && !targetRaw.includes(derivedRaw)) {
-      throw new Error(`Hedera key mismatch: Private key generates public key 0x${derivedRaw.slice(0, 8)}... (${privateKey.publicKey?._key?._type || 'secp256k1'}), but account ${cleanAcct} on Hedera Testnet requires key 0x${targetRaw.slice(0, 8)}... (${onChainKeyType || 'on-chain'}). Please check the private key copied from portal.hedera.com or click "⚡ Instant Test Receipt Mode" above.`);
-    }
-  }
-
-  // 4. Build frozen TransferTransaction with Blocky402 fee payer
-  const payerId = sdk.AccountId.fromString(cleanAcct);
-  const merchantId = sdk.AccountId.fromString(merchant.trim());
-  const feePayerId = sdk.AccountId.fromString(feePayer.trim());
-
-  const tx = new sdk.TransferTransaction()
-    .setNodeAccountIds([new sdk.AccountId(3)])
-    .setTransactionId(sdk.TransactionId.generate(feePayerId))
-    .addHbarTransfer(payerId, sdk.Hbar.fromTinybars(-amountTinybars))
-    .addHbarTransfer(merchantId, sdk.Hbar.fromTinybars(amountTinybars))
-    .freeze();
-
-  await tx.sign(privateKey);
-  const bytes = tx.toBytes();
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  const b64 = window.btoa(binary);
-
-  // 5. Submit real payload to backend for Blocky402 /verify and /settle
-  const payPayload = {
-    paymentRequirements: reqs,
-    paymentPayload: {
-      x402Version: 2,
-      accepted: reqs,
-      payload: {
-        transaction: b64
-      }
-    }
-  };
-
-  const res = await apiFetch(`/marketplace/orders/${orderId}/pay`, {
-    method: 'POST',
-    body: JSON.stringify(payPayload)
-  });
-
-  return res;
-}
-
-async function handleInstantTestSettlement() {
-  const form = document.querySelector('#modal-container form');
-  if (!form) return;
-  const serviceId = form.service_id?.value;
-  const promptContent = form.prompt_content?.value || '';
-  const requirements = form.requirements?.value || '';
-
-  if (!promptContent.trim()) {
-    showNotification('Please enter the prompt or agent instruction under review before executing.', 'error');
-    return;
-  }
-
-  const submitBtn = form.querySelector('button[type="submit"]');
-  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
-    submitBtn.innerHTML = `
-      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-      </svg>
-      Settling via Blocky402 Facilitator & Executing 0G AI...
-    `;
-  }
-
-  try {
-    const order = await apiFetch('/marketplace/orders', {
-      method: 'POST',
-      body: JSON.stringify({
-        service_id: serviceId,
-        prompt_content: promptContent,
-        requirements: requirements,
-        customer_id: STATE.user.id || STATE.auth.walletAddress || 'cust_anonymous',
-        customer_name: STATE.user.name || 'Customer'
-      })
-    });
-
-    await apiFetch(`/marketplace/orders/${order.id}/pay`, {
-      method: 'POST',
-      body: JSON.stringify({ proof: 'x402_settled' })
-    });
-
-    closeModal();
-    await loadInitialData();
-    showNotification('Hedera x402 settlement confirmed via Blocky402 facilitator! 0G Defense generated.', 'success');
-    navigateTo('security_reports');
-  } catch (err) {
-    showNotification(`Settlement error: ${err.message}`, 'error');
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-      submitBtn.innerHTML = originalHtml;
-    }
-  }
-}
-
 function toggleTicketForm(orderId, isOpen) {
   STATE.activeTicketFormOrderId = isOpen ? orderId : null;
   const rep = STATE.modalPayload;
@@ -5389,20 +4866,8 @@ async function handleOrderSubmit(e) {
   const cancelBtn = form.querySelector('button[type="button"]');
   const originalHtml = submitBtn ? submitBtn.innerHTML : '';
 
-  // 1. Automated AI Route: Paid via Hedera x402 Native HBAR
+  // 1. Automated AI Route: Direct 0G Private Computer AI Execution
   if (isAutomated) {
-    let accountId = form.x402_account?.value?.trim() || localStorage.getItem('guardvane_x402_account');
-    let privKey = form.x402_key?.value?.trim() || localStorage.getItem('guardvane_x402_key');
-
-    if (!accountId || !privKey) {
-      showNotification('Please enter your Hedera Testnet Account ID and Private Key to authorize x402 payment.', 'error');
-      return;
-    }
-
-    if (form.save_x402_setup?.checked || !localStorage.getItem('guardvane_x402_account')) {
-      saveX402Setup(accountId, privKey);
-    }
-
     if (submitBtn) {
       submitBtn.disabled = true;
       if (cancelBtn) cancelBtn.disabled = true;
@@ -5412,12 +4877,11 @@ async function handleOrderSubmit(e) {
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
         </svg>
-        Creating Dynamic Prompt Quote...
+        Executing 0G Private Computer AI Reasoning...
       `;
     }
 
     try {
-      // Step 1: Create order (backend calculates authoritative prompt price)
       const order = await apiFetch('/marketplace/orders', {
         method: 'POST',
         body: JSON.stringify({
@@ -5432,26 +4896,17 @@ async function handleOrderSubmit(e) {
         })
       });
 
-      // Step 2: Sign and settle x402 payment on Hedera Testnet
-      if (submitBtn) {
-        submitBtn.innerHTML = `
-          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-          </svg>
-          Settling via Blocky402 & Executing 0G Defense...
-        `;
-      }
-
-      await executeX402PaymentForOrder(order.id, accountId, privKey);
-
       closeModal();
       await loadInitialData();
-      showNotification('Hedera x402 micropayment confirmed! 0G Defense generated.', 'success');
-      navigateTo('security_reports');
+      showNotification('0G AI Defense executed successfully! Security report generated.', 'success');
+      if (order && order.report_id) {
+        viewReport(order.report_id);
+      } else {
+        navigateTo('security_reports');
+      }
       return;
     } catch (err) {
-      showNotification(`x402 Settlement error: ${err.message}`, 'error');
+      showNotification(`0G Execution failed: ${err.message}`, 'error');
       if (submitBtn) {
         submitBtn.disabled = false;
         if (cancelBtn) cancelBtn.disabled = false;
@@ -5722,13 +5177,7 @@ async function handleRejectSubmit(e, orderId) {
 }
 
 function handleInitiatePayment(orderId) {
-  const order = (STATE.data.orders || []).find(o => o.id === orderId);
-  const isHuman = order && (order.execution_type === 'manual' || order.payment_type === 'evm_escrow' || (order.provider_id && !order.provider_id.startsWith('prov_zero') && !order.provider_id.startsWith('prov_prompt')));
-  if (isHuman) {
-    openModal('evm_escrow', { orderId: orderId });
-  } else {
-    openModal('x402_checkout', { orderId: orderId });
-  }
+  openModal('evm_escrow', { orderId: orderId });
 }
 
 async function handleAddServiceSubmit(e, providerId) {
@@ -6720,6 +6169,18 @@ function showNotification(message, type = 'info', duration = 4000) {
 
 // In-App replacement for browser alerts
 if (typeof window !== 'undefined') {
+  // Security Hygiene: Scrub legacy Hedera keys & accounts from browser storage
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('guardvane_x402_key');
+      localStorage.removeItem('guardvane_x402_account');
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('guardvane_x402_key');
+      sessionStorage.removeItem('guardvane_x402_account');
+    }
+  } catch (e) {}
+
   window.alert = function(msg) {
     showNotification(msg, 'info');
   };
@@ -6861,39 +6322,43 @@ async function executeEVMEscrowDeposit(orderId) {
   }
 
   try {
-    let txHash = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('');
-    if (window.ethereum) {
-      try {
-        const cfg = await apiFetch(`/marketplace/orders/${orderId}/escrow-config`);
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const payer = accounts[0];
-        txHash = await window.ethereum.request({
-          method: 'eth_sendTransaction',
-          params: [{
-            from: payer,
-            to: cfg.contract_address,
-            value: '0x' + BigInt(cfg.amount_wei).toString(16),
-            data: '0x'
-          }]
-        });
-      } catch (txErr) {
-        if (txErr.code === 4001) throw new Error('Transaction rejected by user in MetaMask.');
-        txHash = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('');
-      }
+    if (!window.ethereum) {
+      throw new Error('MetaMask or EVM Web3 wallet not detected. Please install or connect MetaMask to execute smart escrow on Rabdi Testnet.');
+    }
+
+    const cfg = await apiFetch(`/marketplace/orders/${orderId}/escrow-config`);
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || !accounts[0]) {
+      throw new Error('No account authorized in MetaMask.');
+    }
+    const payer = accounts[0];
+
+    const txHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: payer,
+        to: cfg.contract_address,
+        value: '0x' + BigInt(cfg.amount_wei).toString(16),
+        data: '0x'
+      }]
+    });
+
+    if (!txHash || typeof txHash !== 'string' || !txHash.startsWith('0x')) {
+      throw new Error('Deposit transaction was not confirmed or broadcast by MetaMask.');
     }
 
     await apiFetch(`/marketplace/orders/${orderId}/escrow-deposit`, {
       method: 'POST',
-      body: JSON.stringify({ tx_hash: txHash, payer_wallet: STATE.auth.walletAddress || '0xpayer' })
+      body: JSON.stringify({ tx_hash: txHash, payer_wallet: payer })
     });
 
     closeModal();
     await loadInitialData();
-    showNotification('Escrow deposit confirmed on Rabdi Testnet! The specialist has received your request in their workspace.', 'success');
+    showNotification(`Escrow deposit confirmed on Rabdi Testnet! Tx: ${txHash.slice(0, 10)}... The specialist has received your request.`, 'success');
   } catch (err) {
     if (statusBox) {
       statusBox.innerHTML = `
-        <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12px] text-[#991B1B]">
+        <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12.5px] text-[#991B1B]">
           ${escapeHtml(err.message || 'Escrow deposit failed.')}
         </div>
       `;
@@ -6907,34 +6372,34 @@ async function executeEVMEscrowDeposit(orderId) {
 
 async function executeEVMEscrowRelease(orderId) {
   try {
-    // Generate valid 32-byte transaction hash for on-chain disbursal
-    let txHash = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('');
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const payer = accounts[0];
-        const order = (STATE.data.orders || []).find(o => o.id === orderId) || (STATE.data.incoming_orders || []).find(o => o.id === orderId);
-        const recipient = (order?.provider_wallet && order.provider_wallet.startsWith('0x')) ? order.provider_wallet : payer;
-        try {
-          const metamaskTx = await window.ethereum.request({
-            method: 'eth_sendTransaction',
-            params: [{
-              from: payer,
-              to: recipient,
-              value: '0x0',
-              data: '0x'
-            }]
-          });
-          if (metamaskTx && typeof metamaskTx === 'string' && metamaskTx.startsWith('0x')) {
-            txHash = metamaskTx;
-          }
-        } catch (txErr) {
-          console.warn('MetaMask transaction rejected or skipped, recording cryptographically verified release receipt:', txErr);
-        }
-      } catch (e) {
-        console.warn('MetaMask account request error:', e);
-      }
+    if (!window.ethereum) {
+      throw new Error('MetaMask or compatible EVM wallet not detected. Please connect MetaMask to release escrow funds on Rabdi Testnet.');
     }
+
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || !accounts[0]) {
+      throw new Error('No account authorized in MetaMask.');
+    }
+    const payer = accounts[0];
+    const order = (STATE.data.orders || []).find(o => o.id === orderId) || (STATE.data.incoming_orders || []).find(o => o.id === orderId);
+    const recipient = (order?.provider_wallet && order.provider_wallet.startsWith('0x')) ? order.provider_wallet : payer;
+
+    showNotification('Please approve the escrow release transaction in MetaMask...', 'info');
+
+    const txHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: payer,
+        to: recipient,
+        value: '0x0',
+        data: '0x'
+      }]
+    });
+
+    if (!txHash || typeof txHash !== 'string' || !txHash.startsWith('0x')) {
+      throw new Error('Release transaction was not confirmed or broadcast by MetaMask.');
+    }
+
     await apiFetch(`/marketplace/orders/${orderId}/escrow-release`, {
       method: 'POST',
       body: JSON.stringify({ tx_hash: txHash })
@@ -7023,7 +6488,7 @@ function renderArkivVerifyModal() {
   const error = payload.error;
   const serviceTitle = payload.serviceTitle || 'Security Service';
 
-  const explorerBase = 'https://explorer.rabdi.db-chain.testnet.arkiv.network';
+  const explorerBase = 'https://rabdi.explorer.arkiv.network';
 
   return `
     <div class="p-6 space-y-5 select-none">
@@ -7272,7 +6737,7 @@ function renderArkivInspectorModal() {
 
         <div class="flex items-center justify-between pt-1">
           <div class="text-[11px] text-[#627566]">
-            Confirmed Transaction: <a href="https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c" target="_blank" class="font-mono text-[#176B45] hover:underline">0xce3c...058c ↗</a>
+            Confirmed Transaction: <a href="https://rabdi.explorer.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c" target="_blank" class="font-mono text-[#176B45] hover:underline">0xce3c...058c ↗</a>
           </div>
           <button
             type="submit"
@@ -7310,7 +6775,7 @@ function renderArkivInspectorModal() {
 
       <div class="flex items-center justify-between pt-3 border-t border-[#E2E9E3] text-xs">
         <a
-          href="https://explorer.rabdi.db-chain.testnet.arkiv.network"
+          href="https://rabdi.explorer.arkiv.network"
           target="_blank"
           class="text-[#176B45] hover:underline flex items-center gap-1 font-mono"
         >

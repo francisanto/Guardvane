@@ -7,7 +7,7 @@ import { custom, http } from "viem";
 export const RABDI_CHAIN_ID = 7794095;
 export const RABDI_CHAIN_ID_HEX = "0x76ee8f";
 export const RABDI_RPC_URL = "https://rpc.rabdi.db-chain.testnet.arkiv.network";
-export const RABDI_EXPLORER_URL = "https://explorer.rabdi.db-chain.testnet.arkiv.network";
+export const RABDI_EXPLORER_URL = "https://rabdi.explorer.arkiv.network";
 
 // ---------------------------------------------------------------------------
 // 1. Schemas
