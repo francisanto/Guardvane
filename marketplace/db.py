@@ -143,7 +143,7 @@ class MarketplaceDB:
         self._detect_backend()
 
     def _detect_backend(self):
-        """Attempts connection to PostgreSQL, falling back to SQLite if unreachable."""
+        """Attempts connection to PostgreSQL (Supabase), falling back to SQLite only if unreachable."""
         import psycopg
         urls_to_try = []
         env_url = os.getenv("DATABASE_URL")
@@ -156,21 +156,21 @@ class MarketplaceDB:
                 sep = "&" if "?" in clean else "?"
                 clean = f"{clean}{sep}hostaddr=54.64.190.72"
             urls_to_try.append(clean)
-        urls_to_try.append("postgresql://localhost:5432/guardvane")
 
         for url in urls_to_try:
-            try:
-                conn = psycopg.connect(url, connect_timeout=3)
-                self.use_postgres = True
-                self.pg_url = url
-                logger.info(f"MarketplaceDB successfully connected to PostgreSQL backend.")
-                self._init_postgres_db(conn)
-                conn.close()
-                return
-            except Exception as e:
-                logger.debug(f"PostgreSQL connection to {url} skipped: {e}")
+            for attempt in range(2):
+                try:
+                    conn = psycopg.connect(url, connect_timeout=12)
+                    self.use_postgres = True
+                    self.pg_url = url
+                    logger.info("MarketplaceDB successfully connected to Supabase PostgreSQL backend.")
+                    self._init_postgres_db(conn)
+                    conn.close()
+                    return
+                except Exception as e:
+                    logger.warning(f"PostgreSQL connection attempt {attempt + 1} to Supabase skipped: {e}")
 
-        logger.info("MarketplaceDB using SQLite persistent backend.")
+        logger.info("MarketplaceDB using SQLite fallback backend.")
         self.use_postgres = False
         self._init_sqlite_db()
 

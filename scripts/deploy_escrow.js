@@ -53,7 +53,7 @@ async function main() {
   console.log('\n=============================================');
   console.log('GuardvaneEscrow Deployed Successfully!');
   console.log('Contract Address:', contractAddress);
-  console.log('Explorer URL:', `https://explorer.rabdi.db-chain.testnet.arkiv.network/address/${contractAddress}`);
+  console.log('Explorer URL:', `https://rabdi.explorer.arkiv.network/address/${contractAddress}`);
   console.log('=============================================\n');
 
   console.log('Add this address to your .env file:');

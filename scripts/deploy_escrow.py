@@ -74,7 +74,7 @@ def main():
     print("\n=============================================")
     print("GuardvaneEscrow Deployed Successfully!")
     print(f"Contract Address: {contract_address}")
-    print(f"Explorer URL: https://explorer.rabdi.db-chain.testnet.arkiv.network/address/{contract_address}")
+    print(f"Explorer URL: https://rabdi.explorer.arkiv.network/address/{contract_address}")
     print("=============================================\n")
 
 if __name__ == "__main__":

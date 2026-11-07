@@ -21,7 +21,6 @@ from integrations.arkiv.schemas import (
     ReconcileBidRequest,
     ReconcileAwardRequest,
 )
-from integrations.hedera.client import hedera_client
 from integrations.swarm.client import swarm_client
 from integrations.zero_g import zero_g_optimizer, ZeroGClient
 from marketplace.schemas import (
@@ -420,47 +419,6 @@ def deliver_order(
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.get("/orders/{order_id}/x402-requirements")
-def get_order_x402_requirements(
-    order_id: str,
-    auth: Dict[str, Any] = Depends(get_current_user)
-):
-    """
-    Returns Hedera x402 v2 exact payment requirements and mirror node pricing for an order.
-    """
-    ord_item = marketplace_service.get_order(order_id)
-    if not ord_item:
-        raise HTTPException(status_code=404, detail=f"Order '{order_id}' not found.")
-
-    from payments.blocky402 import (
-        calculate_tinybars_for_usd,
-        create_x402_requirements,
-        get_facilitator_fee_payer,
-        get_hbar_usd_rate,
-    )
-    from payments.config import HEDERA_MERCHANT_ACCOUNT_ID, X402_ASSET_ID, X402_NETWORK
-
-    reqs = create_x402_requirements(order_id, ord_item.price)
-    tinybars, hbars = calculate_tinybars_for_usd(ord_item.price)
-    fee_payer = get_facilitator_fee_payer()
-    rate = get_hbar_usd_rate()
-
-    return {
-        "order_id": order_id,
-        "service_title": ord_item.service_title,
-        "provider_name": ord_item.provider_name,
-        "amount_usd": ord_item.price,
-        "amount_hbars": hbars,
-        "amount_tinybars": str(tinybars),
-        "usd_per_hbar": rate,
-        "network": X402_NETWORK,
-        "asset": X402_ASSET_ID,
-        "merchant_account": HEDERA_MERCHANT_ACCOUNT_ID,
-        "fee_payer": fee_payer,
-        "paymentRequirements": reqs,
-    }
-
-
 @router.post("/orders/{order_id}/pay", response_model=OrderResponse)
 def pay_order(
     order_id: str,
@@ -729,7 +687,7 @@ def get_dashboard_stats(
 @router.get("/integrations/status", response_model=IntegrationStatusResponse)
 def get_integrations_status():
     """
-    Inspect Phase 1 readiness of external integration boundaries: Arkiv, 0G, Swarm, and Hedera.
+    Inspect Phase 1 readiness of external integration boundaries: Arkiv, 0G, and Swarm.
     """
     return IntegrationStatusResponse(
         arkiv=arkiv_client.get_status().model_dump(),
@@ -743,8 +701,7 @@ def get_integrations_status():
             "phase": "Verified 0G Inference Ready" if zero_g_optimizer.client.is_configured else "Phase 1 - Local Fallback Ready",
             "notice": "0G Private Computer client active with verified trust-mode header and credential sanitization."
         },
-        swarm=swarm_client.get_status().model_dump(),
-        hedera=hedera_client.get_status().model_dump()
+        swarm=swarm_client.get_status().model_dump()
     )
 
 
@@ -765,7 +722,7 @@ def get_arkiv_config():
         "currency": "tGLM",
         "rpc_url": arkiv_client.rpc_url,
         "access_key": arkiv_client.access_key,
-        "explorer_url": "https://explorer.rabdi.db-chain.testnet.arkiv.network"
+        "explorer_url": "https://rabdi.explorer.arkiv.network"
     }
 
 
@@ -878,6 +835,6 @@ def get_arkiv_entity(
         "schema": schema,
         "entity_key": entity_key,
         "entity": entity,
-        "explorer_url": "https://explorer.rabdi.db-chain.testnet.arkiv.network"
+        "explorer_url": "https://rabdi.explorer.arkiv.network"
     }
 

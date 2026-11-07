@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from analyzers.prompt_analyzer import analyze_prompt
 from integrations.arkiv.client import arkiv_client
 from integrations.arkiv.server_writer import arkiv_server_writer
-from integrations.hedera.client import hedera_client
 from integrations.swarm.client import swarm_client
 from integrations.zero_g import zero_g_optimizer
 from marketplace.catalogue import validate_human_category
@@ -532,7 +531,7 @@ class MarketplaceService:
                 "entity_key": entity_key,
                 "tx_hash": tx_hash,
                 "schema_tag": "guardvane.services.v1",
-                "explorer_url": f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{tx_hash}" if tx_hash else None,
+                "explorer_url": f"https://rabdi.explorer.arkiv.network/tx/{tx_hash}" if tx_hash else None,
                 "verification_source": "arkiv_live_rpc",
                 "error": f"Rabdi node did not return an active entity for key '{entity_key}'. Entity may have expired or is unindexed.",
                 "checked_at": datetime.now(timezone.utc).isoformat()
@@ -545,7 +544,7 @@ class MarketplaceService:
             "entity_key": entity_key,
             "tx_hash": tx_hash,
             "schema_tag": "guardvane.services.v1",
-            "explorer_url": f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{tx_hash}" if tx_hash else None,
+            "explorer_url": f"https://rabdi.explorer.arkiv.network/tx/{tx_hash}" if tx_hash else None,
             "verification_source": "arkiv_live_rpc",
             "on_chain_entity": live_entity,
             "checked_at": datetime.now(timezone.utc).isoformat()
@@ -730,30 +729,13 @@ class MarketplaceService:
                 "product_link": product_link,
                 "docs_link": docs_link,
                 "test_env_notes": test_env_notes,
-                "payment_mode": "x402_autonomous" if is_automated else "evm_escrow"
+                "payment_mode": "0g_direct" if is_automated else "evm_escrow"
             }
             stored_requirements = json.dumps(req_data)
 
         if is_automated:
-            # 1. Automated AI service flow (Hedera x402 Route)
-            # Dynamic prompt pricing based on prompt token consumption ($0.03 / 1k tokens)
-            estimated_input = max(25, math.ceil(len(prompt_content) / 4))
-            max_completion = 1024
-            quoted_total = estimated_input + max_completion
-            dynamic_price = round(max(0.015, quoted_total * 0.00003), 3)
-
-            quoted_usage = json.dumps({
-                "quoted_input_tokens": estimated_input,
-                "quoted_completion_tokens": max_completion,
-                "quoted_total_tokens": quoted_total,
-                "price_per_token_usd": 0.00003,
-                "quoted_price_usd": dynamic_price,
-                "status": "quoted"
-            })
-
-            # ALL AI executions MUST be paid via Hedera x402
-            # 0G Private Computer AI reasoning executes ONLY after confirmed payment settlement
-            intent = payment_service.create_intent(order_id, dynamic_price, "HBAR")
+            # 1. Automated AI service flow: Direct 0G Private Computer AI Reasoning
+            # No HBAR payment, no wallet signing, no facilitator, no settlement gates.
             with conn:
                 conn.execute(
                     """
@@ -769,13 +751,14 @@ class MarketplaceService:
                         order_id, customer_id, customer_name, service.provider_id,
                         service.provider_name, service.provider_type.value, service.id,
                         service.title, service.category, prompt_content, stored_requirements,
-                        dynamic_price, service.currency, OrderStatus.PENDING_PAYMENT.value,
-                        ServiceExecutionType.AUTOMATED.value, PaymentStatus.PENDING.value,
-                        None, f"Awaiting Hedera x402 payment settlement via Blocky402 (${dynamic_price:.3f} USD for {quoted_total} tokens).",
-                        now, now, intent.id, "hedera_x402", "pending", quoted_usage
+                        0.0, service.currency, OrderStatus.IN_PROGRESS.value,
+                        ServiceExecutionType.AUTOMATED.value, PaymentStatus.VERIFIED.value,
+                        None, "Executing direct 0G Private Computer AI reasoning...",
+                        now, now, None, "0g_direct", "not_applicable", None
                     )
                 )
-            return self.get_order(order_id)
+            # Execute 0G Private Computer reasoning immediately and return completed order
+            return self.execute_automated_ai_order(order_id)
         else:
             # 2. Human Specialist Flow (MetaMask EVM Escrow Route)
             # Order starts in 'pending_payment' state with EVM escrow deposit required
@@ -817,29 +800,6 @@ class MarketplaceService:
         order = self.get_order(order_id)
         if not order:
             raise ValueError(f"Order '{order_id}' not found.")
-
-        # Payment settlement check: all AI requests MUST be confirmed paid
-        if order.payment_status not in (PaymentStatus.VERIFIED.value, "verified", "settled"):
-            # Check if there is a verified on-chain payment intent for this order
-            conn = self.db._get_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT id, status FROM payment_intents WHERE order_id = ? AND status = 'verified' LIMIT 1",
-                (order_id,)
-            )
-            v_intent = cursor.fetchone()
-            if v_intent:
-                with conn:
-                    conn.execute(
-                        "UPDATE orders SET payment_status = ?, payment_intent_id = ?, updated_at = ? WHERE id = ?",
-                        (PaymentStatus.VERIFIED.value, v_intent["id"], datetime.now(timezone.utc).isoformat(), order_id)
-                    )
-                order = self.get_order(order_id)
-            else:
-                raise PermissionError(
-                    f"Order '{order_id}' cannot execute: payment status is '{order.payment_status}'. "
-                    "Confirmed Hedera x402 payment settlement via Blocky402 is required."
-                )
 
         findings = []
         rec_list = []
@@ -1005,8 +965,7 @@ class MarketplaceService:
 
         deliverable_text = (
             f"0G Private Computer AI reasoning completed in verified trust mode ({latency_ms:.1f}ms). "
-            f"Token usage: {actual_total_tokens} actual / {quoted_total} quoted allowance. "
-            f"Unused credit: ${unused_credit_usd:.4f} USD tracked for customer."
+            f"Processed {actual_total_tokens} tokens with 0G Private Computer inference."
         )
 
         conn = self.db._get_connection()
@@ -1233,7 +1192,6 @@ class MarketplaceService:
     def _order_from_row(self, row, conn=None) -> OrderResponse:
         intent_id = _row_value(row, "payment_intent_id")
         ext_ref = None
-        hashscan_url = None
         if intent_id:
             try:
                 c = conn or self.db._get_connection()
@@ -1242,24 +1200,18 @@ class MarketplaceService:
                 irow = cur.fetchone()
                 if irow and irow["external_reference"]:
                     ext_ref = irow["external_reference"]
-                    if not ext_ref.startswith("test:"):
-                        hashscan_url = f"https://hashscan.io/testnet/transaction/{ext_ref}"
             except Exception:
                 pass
 
         escrow_deposit_hash = _row_value(row, "escrow_tx_hash")
         escrow_release_hash = _row_value(row, "escrow_release_tx_hash")
-        if not escrow_release_hash and _row_value(row, "escrow_state") == "released":
-            import hashlib
-            dep = str(escrow_deposit_hash or row["id"])
-            escrow_release_hash = "0x" + hashlib.sha256(f"{row['id']}:release:{dep}".encode()).hexdigest()
 
         rabdi_explorer_url = None
         rabdi_release_url = None
         if escrow_deposit_hash and str(escrow_deposit_hash).startswith("0x") and not str(escrow_deposit_hash).startswith("0xpayer"):
-            rabdi_explorer_url = f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{escrow_deposit_hash}"
+            rabdi_explorer_url = f"https://rabdi.explorer.arkiv.network/tx/{escrow_deposit_hash}"
         if escrow_release_hash and str(escrow_release_hash).startswith("0x") and not str(escrow_release_hash).startswith("0xpayer"):
-            rabdi_release_url = f"https://explorer.rabdi.db-chain.testnet.arkiv.network/tx/{escrow_release_hash}"
+            rabdi_release_url = f"https://rabdi.explorer.arkiv.network/tx/{escrow_release_hash}"
 
         prov_wallet = None
         try:
@@ -1294,7 +1246,7 @@ class MarketplaceService:
             rejection_reason=_row_value(row, "rejection_reason"),
             payment_intent_id=intent_id,
             payment_reference=ext_ref,
-            hashscan_url=hashscan_url,
+            hashscan_url=None,
             payment_type=_row_value(row, "payment_type"),
             escrow_tx_hash=escrow_deposit_hash,
             escrow_release_tx_hash=escrow_release_hash,
@@ -1754,20 +1706,21 @@ class MarketplaceService:
         cursor.execute("SELECT COUNT(*) FROM services WHERE is_active = 1")
         total_services = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM orders WHERE customer_id = ?", (customer_id,))
+        cid_lower = (customer_id or "").lower()
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE LOWER(customer_id) = ?", (cid_lower,))
         my_requests = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status = 'completed'", (customer_id,))
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE LOWER(customer_id) = ? AND status = 'completed'", (cid_lower,))
         completed_reviews = cursor.fetchone()[0]
 
         # Specific metrics for Guardvane Dashboard
-        cursor.execute("SELECT COUNT(*) FROM saved_prompts WHERE customer_id = ?", (customer_id,))
+        cursor.execute("SELECT COUNT(*) FROM saved_prompts WHERE LOWER(customer_id) = ?", (cid_lower,))
         saved_prompts_count = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status IN ('requested', 'accepted', 'in_progress')", (customer_id,))
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE LOWER(customer_id) = ? AND status IN ('requested', 'accepted', 'in_progress')", (cid_lower,))
         active_requests_count = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status = 'completed'", (customer_id,))
+        cursor.execute("SELECT COUNT(*) FROM orders WHERE LOWER(customer_id) = ? AND status = 'completed'", (cid_lower,))
         completed_audits_count = cursor.fetchone()[0]
 
         cursor.execute("SELECT COUNT(*) FROM providers WHERE availability = 'available' AND status = 'published'")
@@ -1778,10 +1731,10 @@ class MarketplaceService:
             """
             SELECT id, service_title, provider_name, status, price, updated_at
             FROM orders
-            WHERE customer_id = ?
+            WHERE LOWER(customer_id) = ?
             ORDER BY updated_at DESC LIMIT 5
             """,
-            (customer_id,)
+            (cid_lower,)
         )
         recent_orders = [
             {

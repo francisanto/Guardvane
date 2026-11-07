@@ -312,5 +312,5 @@ class IntegrationStatusResponse(BaseModel):
     arkiv: Dict[str, Any]
     zero_g: Dict[str, Any]
     swarm: Dict[str, Any]
-    hedera: Dict[str, Any]
+    hedera: Optional[Dict[str, Any]] = None
 
