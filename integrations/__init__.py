@@ -4,7 +4,6 @@ Third-party and decentralized infrastructure integrations.
 
 - Arkiv: Decentralized provider discovery and marketplace listings
 - Zero_G: Confidential AI reasoning and prompt optimization
-- Swarm: Decentralized, content-addressed security report storage
 """
 
 from integrations.arkiv.client import arkiv_client, ArkivClient
