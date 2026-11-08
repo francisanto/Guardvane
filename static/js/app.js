@@ -45,18 +45,6 @@ function showNotification(message, type = 'info', duration = 4000) {
 }
 
 if (typeof window !== 'undefined') {
-  // Security Hygiene: Scrub legacy Hedera keys & accounts from browser storage
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('guardvane_x402_key');
-      localStorage.removeItem('guardvane_x402_account');
-    }
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem('guardvane_x402_key');
-      sessionStorage.removeItem('guardvane_x402_account');
-    }
-  } catch (e) {}
-
   window.alert = function(msg) {
     const isErr = String(msg).toLowerCase().includes('fail') || String(msg).toLowerCase().includes('error');
     const isSucc = String(msg).toLowerCase().includes('success') || String(msg).toLowerCase().includes('saved') || String(msg).toLowerCase().includes('copied');
@@ -287,6 +275,7 @@ async function connectAndSignWithMetaMask() {
     STATE.auth.statusText = '';
 
     await loadInitialData();
+    startBackgroundSync();
     const myProv = (STATE.data.providers || []).find(p => p.wallet_address && p.wallet_address.toLowerCase() === verifyData.user.wallet_address.toLowerCase());
     if (myProv) {
       STATE.user.activeProviderId = myProv.id;
@@ -2231,20 +2220,31 @@ function renderMyRequestsView() {
             </thead>
             <tbody class="divide-y divide-[#E2E9E3]">
               ${orders.map(o => {
-                const isManualEscrow = (o.execution_type === 'manual' || o.escrow_tx_hash || o.escrow_state);
+                const isAutomated = (
+                  o.execution_type === 'automated' ||
+                  o.payment_type === '0g_direct' ||
+                  (o.provider_id && (o.provider_id.startsWith('prov_zero') || o.provider_id.startsWith('prov_prompt') || o.provider_id === 'prov_zerog')) ||
+                  Number(o.price) === 0
+                );
+                const isManualEscrow = !isAutomated && (o.execution_type === 'manual' || !!o.escrow_tx_hash || (o.escrow_state && o.escrow_state !== 'not_applicable' && o.escrow_state !== 'none'));
                 return `
                   <tr class="hover:bg-[#FAFBF9]/80 transition-smooth">
                     <td class="px-5 py-3.5 font-mono text-[12px] text-[#627566]">${o.id}</td>
                     <td class="px-5 py-3.5 font-medium text-[#202820]">
                       <div>${escapeHtml(o.service_title)}</div>
                       <div class="text-[11px] text-[#627566] font-normal mt-0.5">
-                        ${o.execution_type === 'automated' ? 'Autonomous AI Defense' : 'Specialist Security Review'}
+                        ${isAutomated ? 'Autonomous AI Defense' : 'Specialist Security Review'}
                       </div>
                     </td>
                     <td class="px-5 py-3.5 text-[#445246]">${escapeHtml(o.provider_name)}</td>
                     <td class="px-5 py-3.5">${renderStatusBadge(o.status)}</td>
                     <td class="px-5 py-3.5">
-                      ${isManualEscrow ? `
+                      ${isAutomated ? `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
+                          <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
+                          <span>0G Direct AI (Free)</span>
+                        </span>
+                      ` : isManualEscrow ? `
                         <div class="flex flex-col gap-1 items-start">
                           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                             o.escrow_state === 'released' ? 'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]' :
@@ -2271,13 +2271,13 @@ function renderMyRequestsView() {
                         <div class="inline-flex items-center gap-1.5">
                           <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
                             <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
-                            <span>${o.execution_type === 'automated' ? '0G Direct AI' : 'Escrow Verified'}</span>
+                            <span>Escrow Verified</span>
                           </span>
                         </div>
                       ` : o.payment_status === 'pending' ? `
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
                           <span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
-                          <span>Pending Payment</span>
+                          <span>Pending Escrow Deposit</span>
                         </span>
                       ` : o.payment_status === 'failed' ? `
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
@@ -2287,19 +2287,19 @@ function renderMyRequestsView() {
                         <span class="text-[11px] text-[#627566] capitalize">${escapeHtml(o.payment_status || 'N/A')}</span>
                       `}
                     </td>
-                    <td class="px-5 py-3.5 font-mono font-medium text-[#202820]">$${o.price.toFixed(2)}</td>
+                    <td class="px-5 py-3.5 font-mono font-medium text-[#202820]">${isAutomated ? '<span class="text-[#176B45] font-semibold">Free</span>' : '$' + o.price.toFixed(2)}</td>
                     <td class="px-5 py-3.5 text-[#627566]">${new Date(o.created_at).toLocaleDateString()}</td>
                     <td class="px-5 py-3.5 text-right">
                       <div class="flex items-center justify-end gap-2">
                         <button onclick="openModal('order_detail', '${o.id}')" class="px-2.5 py-1 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] font-medium text-[12px] rounded transition-smooth cursor-pointer">
                           Details
                         </button>
-                        ${(o.payment_status === 'pending' || o.payment_status === 'failed') && o.status !== 'rejected' && o.status !== 'cancelled' ? `
+                        ${!isAutomated && (o.payment_status === 'pending' || o.payment_status === 'failed') && o.status !== 'rejected' && o.status !== 'cancelled' ? `
                           <button
                             onclick="handleInitiatePayment('${o.id}')"
                             class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white font-medium text-[12px] rounded shadow-xs transition-smooth cursor-pointer"
                           >
-                            ${o.payment_status === 'failed' ? 'Retry Pay' : 'Pay $' + o.price.toFixed(2)}
+                            Deposit Escrow ($${o.price.toFixed(2)})
                           </button>
                         ` : ''}
                         ${o.report_id ? `
@@ -2787,8 +2787,18 @@ function renderRequestReviewModal() {
   const isAutomated = currentService?.execution_type === 'automated';
   const category = currentService?.category || '';
   const prompts = STATE.data.prompts;
-  const isApplicationTesting = category === 'application_testing';
-  const isCodebaseSecurity = category === 'codebase_security';
+  const isApplicationTesting = !isAutomated && category === 'application_testing';
+  const isCodebaseSecurity = !isAutomated && category === 'codebase_security';
+
+  const isPromptEngineering = isAutomated && (
+    category === 'prompt_engineering' ||
+    category === 'loop_engineering' ||
+    category === 'prompt_optimization' ||
+    (currentService?.title || '').toLowerCase().includes('engineering') ||
+    (currentService?.title || '').toLowerCase().includes('loop') ||
+    (currentService?.title || '').toLowerCase().includes('optimization')
+  );
+  const isPromptSecurity = isAutomated && !isPromptEngineering;
 
   const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
 
@@ -2797,9 +2807,11 @@ function renderRequestReviewModal() {
       <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
         <div>
           <h3 class="text-[16px] font-semibold text-[#202820]">
-            ${isAutomated ? 'Execute Autonomous 0G Defense' : 'Request Specialist Security Review'}
+            ${isPromptEngineering ? 'Autonomous 0G Prompt Engineering & Loop Defense' : isPromptSecurity ? 'Autonomous 0G Deep Security Vulnerability Scan' : 'Request Specialist Security Review'}
           </h3>
-          <p class="text-[12px] text-[#627566] mt-0.5">${formatCategoryName(category)} • ${escapeHtml(currentService?.provider_name || '')}</p>
+          <p class="text-[12px] text-[#627566] mt-0.5">
+            ${isPromptEngineering ? 'Fast Prompt Delivery • Loop Bounds Hardening • 0G Defence Agent' : isPromptSecurity ? 'Vulnerability Analysis & Architecture Audit • Prompt Guard Agent' : `${formatCategoryName(category)} • ${escapeHtml(currentService?.provider_name || '')}`}
+          </p>
         </div>
         <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
       </div>
@@ -2926,6 +2938,38 @@ function renderRequestReviewModal() {
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
             >${payload.promptText || ''}</textarea>
           </div>
+        ` : (isPromptSecurity ? `
+          <!-- Prompt Security Analysis Inputs -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[13px] font-medium text-[#202820]">System Prompt or Security Context Under Review *</label>
+              ${prompts.length > 0 ? `
+                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] text-[#176B45] border border-[#CBD7CE] rounded px-2 py-0.5">
+                  <option value="">Insert from Saved Prompts...</option>
+                  ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
+                </select>
+              ` : ''}
+            </div>
+            <textarea
+              id="order-prompt-input"
+              name="prompt_content"
+              rows="5"
+              required
+              placeholder="Enter system prompt, untrusted input template, or security boundary instructions to audit for injection, jailbreaks, and sensitive data..."
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+            >${payload.promptText || ''}</textarea>
+          </div>
+
+          <div>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Relevant Files, Architecture Designs, or Schemas (Optional)</label>
+            <textarea
+              name="requirements"
+              rows="3"
+              placeholder="Paste backend route code, OpenAPI/Swagger schemas, database access designs, or architecture notes to audit for cross-boundary vulnerabilities."
+              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
+            ></textarea>
+            <p class="text-[11.5px] text-[#627566] mt-1">💡 Share relevant files, architecture designs, or endpoint code for a comprehensive security and file audit.</p>
+          </div>
         ` : `
           <!-- Prompt / Loop Engineering Inputs -->
           <div>
@@ -2944,21 +2988,22 @@ function renderRequestReviewModal() {
               rows="5"
               required
               oninput="updateDynamicPromptPricing()"
-              placeholder=""
+              placeholder="Enter system prompt, agent task instructions, or multi-turn workflow you want hardened with bounded loop architecture..."
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
             >${payload.promptText || ''}</textarea>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Specific Hardening Constraints & Target LLM</label>
+            <label class="block text-[13px] font-medium text-[#202820] mb-1">Agent Loop Parameters & Constraints (Optional)</label>
             <textarea
               name="requirements"
               rows="2"
-              placeholder=""
+              placeholder="e.g. Target LLM (Claude 3.5, GPT-4o, Llama 3), Max Loop Iterations (default: 5), Tool Calling schemas, or downstream workflow goals."
               class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
             ></textarea>
+            <p class="text-[11px] text-[#176B45] mt-1 font-medium">⚡ 0G AI will enforce MAX_ITERATIONS (5), recursion controls, and generate 3 chained next-prompt recommendations.</p>
           </div>
-        `)}
+        `))}
 
         <!-- Payment & Authority Architecture Section -->
         ${isAutomated ? `
@@ -3001,12 +3046,41 @@ function renderRequestReviewModal() {
           </div>
         `}
 
+        <!-- Live AI Execution Progress Status Container (Initially Hidden) -->
+        <div id="order-progress-container" class="hidden p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-2.5 transition-smooth">
+          <div class="flex items-center justify-between text-[12px] font-semibold text-[#166534]">
+            <span class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[#16A34A] animate-ping"></span>
+              <span>0G Private Computer Reasoning in Progress</span>
+            </span>
+            <span class="font-mono text-[11px] text-[#15803D]">Verified Trust Mode</span>
+          </div>
+          <div class="space-y-1.5 text-[11.5px] text-[#166534]">
+            <div class="flex items-center gap-2">
+              <span class="text-[#16A34A] font-bold">✓</span>
+              <span>Input boundary delimiter & vulnerability scan</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="animate-pulse text-[#15803D] font-bold">●</span>
+              <span>Executing confidential reasoning on 0G Private Computer</span>
+            </div>
+            <div class="flex items-center gap-2 text-[#4ADE80]">
+              <span>○</span>
+              <span>${isPromptEngineering ? 'Synthesizing loop bounds (MAX_ITERATIONS: 5) & next prompts' : 'Auditing architecture designs, files & threat surfaces'}</span>
+            </div>
+            <div class="flex items-center gap-2 text-[#4ADE80]">
+              <span>○</span>
+              <span>Publishing verified security report deliverable</span>
+            </div>
+          </div>
+        </div>
+
         <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
             Cancel
           </button>
           <button type="submit" id="order-submit-btn" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer flex items-center gap-1.5">
-            ${isAutomated ? 'Execute 0G AI Defense ⚡' : 'Deposit Escrow & Submit Request 🛡️'}
+            ${isPromptEngineering ? 'Execute Prompt Engineering & Loop Defense ⚡' : isPromptSecurity ? 'Run Deep Security Vulnerability Audit 🛡️' : 'Deposit Escrow & Submit Request 🛡️'}
           </button>
         </div>
       </form>
@@ -4085,7 +4159,13 @@ function renderOrderDetailModal() {
   } catch (e) {}
 
   const isCustomer = STATE.auth.walletAddress && order.customer_id && order.customer_id.toLowerCase() === STATE.auth.walletAddress.toLowerCase();
-  const isManualEscrow = (order.execution_type === 'manual' || order.escrow_tx_hash || order.escrow_state || order.escrow_release_tx_hash);
+  const isAutomated = (
+    order.execution_type === 'automated' ||
+    order.payment_type === '0g_direct' ||
+    (order.provider_id && (order.provider_id.startsWith('prov_zero') || order.provider_id.startsWith('prov_prompt') || order.provider_id === 'prov_zerog')) ||
+    Number(order.price) === 0
+  );
+  const isManualEscrow = !isAutomated && (order.execution_type === 'manual' || !!order.escrow_tx_hash || (order.escrow_state && order.escrow_state !== 'not_applicable' && order.escrow_state !== 'none'));
 
   return `
     <div class="p-5 sm:p-5.5 space-y-3.5">
@@ -4303,7 +4383,11 @@ function renderOrderDetailModal() {
         <div>
           <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Payment & Escrow</span>
           <div class="mt-1">
-            ${isManualEscrow ? `
+            ${isAutomated ? `
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> 0G Direct (Free)
+              </span>
+            ` : isManualEscrow ? `
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
                 order.escrow_state === 'released' ? 'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]' :
                 order.escrow_state === 'funded' ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]' :
@@ -4314,7 +4398,7 @@ function renderOrderDetailModal() {
               </span>
             ` : order.payment_status === 'verified' ? `
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> Paid / Escrowed
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> Verified AI Execution
               </span>
             ` : order.payment_status === 'pending' ? `
               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
@@ -4335,7 +4419,7 @@ function renderOrderDetailModal() {
       <div class="border border-[#E2E9E3] rounded-xl p-4 bg-white space-y-3">
         <h4 class="text-[13px] font-semibold text-[#202820] flex items-center justify-between border-b border-[#F0F5F1] pb-2">
           <span>Target Scope & Deliverable Focus</span>
-          <span class="font-mono text-[12px] text-[#176B45] font-bold">$${order.price.toFixed(2)} USD</span>
+          <span class="font-mono text-[12px] text-[#176B45] font-bold">${isAutomated ? 'Free (0G Direct AI)' : '$' + order.price.toFixed(2) + ' USD'}</span>
         </h4>
 
         ${scopeInfo.repo_url ? `
@@ -4868,6 +4952,10 @@ async function handleOrderSubmit(e) {
 
   // 1. Automated AI Route: Direct 0G Private Computer AI Execution
   if (isAutomated) {
+    const progressContainer = document.getElementById('order-progress-container');
+    if (progressContainer) {
+      progressContainer.classList.remove('hidden');
+    }
     if (submitBtn) {
       submitBtn.disabled = true;
       if (cancelBtn) cancelBtn.disabled = true;
@@ -4907,6 +4995,7 @@ async function handleOrderSubmit(e) {
       return;
     } catch (err) {
       showNotification(`0G Execution failed: ${err.message}`, 'error');
+      if (progressContainer) progressContainer.classList.add('hidden');
       if (submitBtn) {
         submitBtn.disabled = false;
         if (cancelBtn) cancelBtn.disabled = false;
@@ -6167,24 +6256,6 @@ function showNotification(message, type = 'info', duration = 4000) {
   }, duration);
 }
 
-// In-App replacement for browser alerts
-if (typeof window !== 'undefined') {
-  // Security Hygiene: Scrub legacy Hedera keys & accounts from browser storage
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('guardvane_x402_key');
-      localStorage.removeItem('guardvane_x402_account');
-    }
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem('guardvane_x402_key');
-      sessionStorage.removeItem('guardvane_x402_account');
-    }
-  } catch (e) {}
-
-  window.alert = function(msg) {
-    showNotification(msg, 'info');
-  };
-}
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -6206,11 +6277,40 @@ function escapeForAttr(str) {
     .replace(/\r/g, '');
 }
 
+// Background Auto-Sync for Live Requests & Orders (every 5 seconds)
+function startBackgroundSync() {
+  if (window._bgSyncTimer) return;
+  window._bgSyncTimer = setInterval(async () => {
+    // Only poll if user is authenticated and not actively editing modal inputs
+    if (!STATE.auth.walletAddress || STATE.activeModal === 'request_review') return;
+    try {
+      const orders = await apiFetch('/marketplace/orders');
+      if (Array.isArray(orders)) {
+        const oldSign = (STATE.data.orders || []).map(o => `${o.id}:${o.status}:${o.payment_status}:${o.escrow_state || ''}:${o.report_id || ''}`).join('|');
+        const newSign = orders.map(o => `${o.id}:${o.status}:${o.payment_status}:${o.escrow_state || ''}:${o.report_id || ''}`).join('|');
+        if (oldSign !== newSign) {
+          STATE.data.orders = orders;
+          try {
+            const reports = await apiFetch('/marketplace/reports');
+            if (Array.isArray(reports)) STATE.data.reports = reports;
+          } catch (re) {}
+          if (['my_requests', 'provider_workspace', 'dashboard'].includes(STATE.currentView) && !STATE.activeModal) {
+            renderApp();
+          }
+        }
+      }
+    } catch (e) {
+      // Background poll failure is silent
+    }
+  }, 5000);
+}
+
 // Initialize on DOM load
 window.addEventListener('DOMContentLoaded', async () => {
   const hasSession = await checkAuthSession();
   if (hasSession) {
     await loadInitialData();
+    startBackgroundSync();
   } else {
     renderApp();
   }

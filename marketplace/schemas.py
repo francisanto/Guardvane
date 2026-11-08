@@ -38,9 +38,6 @@ class PaymentStatus(str, Enum):
 
     @classmethod
     def _missing_(cls, value):
-        # Legacy marketplace values from the bidding/x402-simulation era.
-        if value in ("escrowed_x402",):
-            return cls.PENDING
         if value in ("settled",):
             return cls.VERIFIED
         return None
@@ -62,7 +59,6 @@ class ProviderBase(BaseModel):
     portfolio_url: Optional[str] = Field(default=None)
     endpoint_url: Optional[str] = Field(default=None)
     io_format: Optional[str] = Field(default="JSON / Prompt-in, Hardened-out")
-    x402_supported: bool = Field(default=False)
     availability: str = Field(default="available")
     status: str = Field(default="published")
 
@@ -260,7 +256,6 @@ class SecurityReportResponse(BaseModel):
     findings: List[Dict[str, Any]] = Field(default_factory=list)
     recommendations: List[str] = Field(default_factory=list)
     hardened_prompt: Optional[str] = None
-    swarm_reference: Optional[str] = None
     created_at: str
 
 
@@ -311,6 +306,4 @@ class DashboardStats(BaseModel):
 class IntegrationStatusResponse(BaseModel):
     arkiv: Dict[str, Any]
     zero_g: Dict[str, Any]
-    swarm: Dict[str, Any]
-    hedera: Optional[Dict[str, Any]] = None
 

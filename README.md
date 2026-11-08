@@ -13,7 +13,6 @@ ETH/
 ├── data/                            # Datasets & Security benchmarks
 ├── integrations/                    # External Protocol Bridges
 │   ├── arkiv/                       # Arkiv Rabdi Testnet client (Python bridge)
-│   ├── swarm/                       # Decentralized content-addressed report storage
 │   └── zero_g/                      # 0G Private Computer AI inference connectors
 ├── marketplace/                     # OpiHub Decentralized Marketplace Core
 │   ├── catalogue.py                 # Service discovery registry

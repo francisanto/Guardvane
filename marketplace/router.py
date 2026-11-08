@@ -21,7 +21,6 @@ from integrations.arkiv.schemas import (
     ReconcileBidRequest,
     ReconcileAwardRequest,
 )
-from integrations.swarm.client import swarm_client
 from integrations.zero_g import zero_g_optimizer, ZeroGClient
 from marketplace.schemas import (
     DashboardStats,
@@ -400,7 +399,7 @@ def deliver_order(
 ):
     """
     Submit completed audit findings and recommendations for an in-progress order.
-    Generates a security report and prepares decentralized Swarm reference.
+    Generates a security report and updates deliverable status.
     """
     try:
         order, report = marketplace_service.deliver_order(
@@ -687,7 +686,7 @@ def get_dashboard_stats(
 @router.get("/integrations/status", response_model=IntegrationStatusResponse)
 def get_integrations_status():
     """
-    Inspect Phase 1 readiness of external integration boundaries: Arkiv, 0G, and Swarm.
+    Inspect Phase 1 readiness of external integration boundaries: Arkiv and 0G Private Computer.
     """
     return IntegrationStatusResponse(
         arkiv=arkiv_client.get_status().model_dump(),
@@ -700,8 +699,7 @@ def get_integrations_status():
             "mode": "verified_inference" if zero_g_optimizer.client.is_configured else "deterministic_fallback_ready",
             "phase": "Verified 0G Inference Ready" if zero_g_optimizer.client.is_configured else "Phase 1 - Local Fallback Ready",
             "notice": "0G Private Computer client active with verified trust-mode header and credential sanitization."
-        },
-        swarm=swarm_client.get_status().model_dump()
+        }
     )
 
 

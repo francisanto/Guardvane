@@ -213,7 +213,7 @@ Index("ix_prompts_customer", SavedPrompt.customer_id)
 
 
 class PaymentIntentRecord(Base):
-    """Payment intent independent of Arkiv. x402 will attach here later."""
+    """Payment intent tracking record."""
     __tablename__ = "payment_intents"
 
     id = Column(String(64), primary_key=True)

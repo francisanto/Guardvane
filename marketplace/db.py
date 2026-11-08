@@ -429,7 +429,7 @@ class MarketplaceDB:
                         display_name = ?, title = ?, provider_type = ?, description = ?,
                         skills = ?, categories = ?, wallet_address = NULL,
                         portfolio_url = NULL, endpoint_url = NULL,
-                        io_format = ?, x402_supported = 0, availability = 'available',
+                        io_format = ?, availability = 'available',
                         verified = 0, status = 'published', reputation_metadata = ?,
                         is_platform_managed = 1, updated_at = ?
                     WHERE id = ?
@@ -453,9 +453,9 @@ class MarketplaceDB:
                     INSERT INTO providers (
                         id, display_name, title, provider_type, description, avatar_url,
                         skills, categories, wallet_address, portfolio_url, endpoint_url,
-                        io_format, x402_supported, availability, verified, status,
+                        io_format, availability, verified, status,
                         reputation_metadata, created_at, is_platform_managed, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         agent["id"],
@@ -470,7 +470,6 @@ class MarketplaceDB:
                         None,
                         None,
                         "JSON / Prompt-in, analysis-out",
-                        0,
                         "available",
                         0,
                         "published",
