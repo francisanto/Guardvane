@@ -49,5 +49,5 @@ Many Web3 projects inadvertently leak sensitive user data onto public ledgers by
 ### The Guardvane Solution
 - **Strict Separation of Concerns:**
   - **Public State on Arkiv:** Public catalog discovery, verified auditor identity, pricing parameters, and attestation hashes.
-  - **Private Execution off Arkiv:** Client prompts and vulnerability reports remain end-to-end encrypted and held in off-chain secure memory or decentralized content-addressed encrypted storage (Swarm / local encrypted state).
+  - **Private Execution off Arkiv:** Client prompts and vulnerability reports remain end-to-end encrypted and held in off-chain secure memory or confidential compute (0G Private Computer / local encrypted state).
 
