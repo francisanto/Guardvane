@@ -38,7 +38,7 @@ CATALOGUE: List[Dict[str, object]] = [
         "label": "Prompt Security Analysis",
         "description": "Scan prompts for injection, secret leakage, and application-risk labels.",
         "human_offered": True,
-        "automated_backends": ["prov_promptguard"],
+        "automated_backends": ["prov_zerog"],
     },
     {
         "id": "codebase_security",

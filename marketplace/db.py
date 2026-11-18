@@ -527,7 +527,29 @@ class MarketplaceDB:
                             now,
                         ),
                     )
-        logger.info("Platform-managed agents ensured (0G Defence Agent, Prompt Guard Agent).")
+        logger.info("Platform-managed agent ensured (0G Defence Agent).")
+
+        # -- Migration: retire former Prompt Guard Agent (prov_promptguard) ----
+        # Reassign any existing orders and services to the unified prov_zerog.
+        try:
+            conn.execute(
+                """UPDATE orders SET provider_id = 'prov_zerog',
+                       provider_name = '0G Defence Agent'
+                   WHERE provider_id = 'prov_promptguard'"""
+            )
+            conn.execute(
+                """UPDATE services SET provider_id = 'prov_zerog',
+                       is_active = 0
+                   WHERE provider_id = 'prov_promptguard'"""
+            )
+            conn.execute(
+                """UPDATE providers SET is_active = 0,
+                       status = 'retired',
+                       availability = 'offline'
+                   WHERE id = 'prov_promptguard'"""
+            )
+        except Exception:
+            pass  # table/column may not exist on first boot
 
 
 db = MarketplaceDB()
