@@ -89,12 +89,14 @@ jobs:
           python -c "
           from main import app
           schema = app.openapi()
-          routes = [route.path for route in app.routes]
+          paths = schema.get('paths', {})
+          routes = [route.path for route in app.routes if hasattr(route, 'path')]
+          assert len(paths) >= 20, f'Expected substantial OpenAPI paths, found {len(paths)}'
           assert len(routes) >= 20, f'Expected substantial route table, found {len(routes)}'
           assert 'paths' in schema, 'OpenAPI schema missing paths'
-          assert '/auth/nonce' in schema['paths'], 'Missing /auth/nonce in OpenAPI schema'
-          assert '/marketplace/orders' in schema['paths'], 'Missing /marketplace/orders in OpenAPI schema'
-          print(f'✓ FastAPI route table and OpenAPI v{schema.get(\"openapi\")} schema validated across {len(routes)} routes.')
+          assert '/auth/nonce' in paths, 'Missing /auth/nonce in OpenAPI schema'
+          assert '/marketplace/orders' in paths, 'Missing /marketplace/orders in OpenAPI schema'
+          print(f'✓ FastAPI route table ({len(routes)} routes) and OpenAPI v{schema.get(\"openapi\")} schema ({len(paths)} paths) validated successfully.')
           "
 
       - name: Execute pytest test suite
