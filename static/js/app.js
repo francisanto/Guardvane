@@ -13,22 +13,22 @@ function showNotification(message, type = 'info', duration = 4000) {
   const isSuccess = type === 'success';
   const isError = type === 'error';
   const borderBg = isSuccess
-    ? 'bg-white border-[#CDE5D5] text-[#202820]'
+    ? 'bg-[var(--surface)] border-[var(--border)] text-[var(--text)]'
     : isError
-    ? 'bg-white border-[#FECACA] text-[#202820]'
-    : 'bg-white border-[#E2E9E3] text-[#202820]';
+    ? 'bg-[var(--surface)] border-[#FECACA] text-[var(--text)]'
+    : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text)]';
 
   const icon = isSuccess
-    ? '<svg class="w-5 h-5 text-[#176B45] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
+    ? '<svg class="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
     : isError
-    ? '<svg class="w-5 h-5 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>'
-    : '<svg class="w-5 h-5 text-[#2563EB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+    ? '<svg class="w-4 h-4 text-[var(--danger)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>'
+    : '<svg class="w-4 h-4 text-[var(--info)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
 
-  toast.className = `pointer-events-auto p-3.5 rounded-lg border shadow-sm flex items-start gap-3 text-[13px] transition-all duration-300 opacity-0 translate-y-2 ${borderBg}`;
+  toast.className = `pointer-events-auto p-3.5 rounded-[var(--radius-md)] border shadow-xs flex items-start gap-3 text-[13px] transition-all duration-300 opacity-0 translate-y-2 ${borderBg}`;
   toast.innerHTML = `
     ${icon}
     <div class="flex-1 leading-snug">${escapeHtml(message)}</div>
-    <button onclick="this.parentElement.remove()" class="text-[#8B9C8E] hover:text-[#202820] text-sm shrink-0 ml-1 cursor-pointer">✕</button>
+    <button onclick="this.parentElement.remove()" class="text-[var(--text-3)] hover:text-[var(--text)] text-sm shrink-0 ml-1 cursor-pointer">✕</button>
   `;
 
   container.appendChild(toast);
@@ -60,7 +60,7 @@ if (typeof window !== 'undefined') {
 
 /**
  * Guardvane — AI Security Platform & OpiHub Marketplace
- * Developer Console Layout & Green Palette: #176B45 (primary), #EAF5EE (surface/active), #F7F9F7 (background)
+ * Claude / Anthropic Editorial Design System: Warm paper surfaces, ink typography, single terracotta accent
  */
 
 const STATE = {
@@ -532,8 +532,8 @@ function renderApp() {
   }
 
   root.innerHTML = `
-    <div class="flex h-screen overflow-hidden bg-[#F7F9F7] text-[#202820]">
-      <!-- Left Sidebar -->
+    <div class="flex h-screen overflow-hidden bg-[var(--bg)] text-[var(--text)] font-sans">
+      <!-- Left Sidebar (240px, surface-sunk, hairline border) -->
       ${renderSidebar()}
 
       <!-- Main Column -->
@@ -541,9 +541,9 @@ function renderApp() {
         <!-- Top Navigation Bar -->
         ${renderTopbar()}
 
-        <!-- Page Content View -->
-        <main class="flex-1 overflow-y-auto px-8 py-7" id="main-content">
-          <div class="max-w-7xl mx-auto space-y-6">
+        <!-- Page Content View (48px horizontal, 40px top, max 1120px) -->
+        <main class="flex-1 overflow-y-auto px-6 sm:px-12 pt-10 pb-16" id="main-content">
+          <div class="max-w-[1120px] mx-auto">
             ${renderCurrentView()}
           </div>
         </main>
@@ -573,45 +573,36 @@ function renderApp() {
 
 function renderLoginPage() {
   return `
-    <div class="min-h-screen bg-[#F7F9F7] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 select-none">
+    <div class="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col justify-center py-16 px-4 sm:px-6 lg:px-8 select-none font-sans">
       <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <!-- Shield Brand Icon -->
-        <div class="mx-auto w-14 h-14 rounded-2xl bg-[#176B45] text-white flex items-center justify-center shadow-md">
-          <svg class="w-8 h-8 text-emerald-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-        </div>
-        <h1 class="mt-4 text-2xl font-bold tracking-tight text-[#202820]">Guardvane</h1>
-        <p class="mt-1.5 text-[13.5px] text-[#627566] max-w-sm mx-auto">
-          AI Security Platform
+        <h1 class="font-serif text-[32px] font-normal tracking-[-0.015em] text-[var(--text)]">Guardvane</h1>
+        <p class="mt-2 text-[14px] text-[var(--text-2)]">
+          Decentralized AI security & prompt defense platform
         </p>
       </div>
 
       <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div class="bg-white py-8 px-6 shadow-sm border border-[#E2E9E3] rounded-2xl sm:px-10 space-y-5">
+        <div class="surface-card p-8 sm:p-10 space-y-5">
           
           <!-- Error Alert Banner -->
           ${STATE.auth.error ? `
-            <div class="p-3.5 rounded-lg bg-[#FDF2F2] border border-[#F8B4B4] text-[13px] text-[#9B1C1C] flex items-start gap-2.5">
-              <svg class="w-5 h-5 shrink-0 text-[#E02424] mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div class="p-3.5 rounded-[var(--radius-sm)] bg-[var(--danger-bg)] text-[var(--danger)] border border-[var(--danger)]/20 text-[13px] flex items-start gap-2.5">
               <span>${escapeHtml(STATE.auth.error)}</span>
             </div>
           ` : ''}
 
           <!-- Signing / Loading State -->
           ${STATE.auth.loading ? `
-            <div class="p-5 rounded-xl bg-[#EAF5EE] border border-[#CDE5D5] text-center space-y-2.5">
-              <div class="w-7 h-7 border-3 border-[#176B45] border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p class="text-[13.5px] font-semibold text-[#176B45]">${escapeHtml(STATE.auth.statusText || 'Connecting...')}</p>
-              <p class="text-[11.5px] text-[#627566]">Please confirm the signature in your wallet.</p>
+            <div class="p-6 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] text-center space-y-3">
+              <div class="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(STATE.auth.statusText || 'Connecting...')}</p>
+              <p class="text-[12.5px] text-[var(--text-3)]">Please confirm the signature in your wallet.</p>
             </div>
           ` : `
             <!-- Connect Wallet Action Button -->
             <button
               onclick="connectAndSignWithMetaMask()"
-              class="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-[#176B45] hover:bg-[#115638] text-white text-[14px] font-semibold rounded-xl shadow-xs transition-smooth cursor-pointer"
+              class="btn-primary w-full !h-11 !text-[14.5px]"
             >
               <!-- MetaMask Fox SVG -->
               <svg class="w-5 h-5 shrink-0" viewBox="0 0 318.6 318.6">
@@ -690,116 +681,119 @@ function renderSidebar() {
       (o.provider_name && o.provider_name.toLowerCase() === (myProvider.display_name || '').toLowerCase());
   });
 
-  const shortAddr = STATE.user.name
-    ? STATE.user.name
-    : (STATE.auth.walletAddress
-        ? (STATE.auth.walletAddress.substring(0, 6) + '...' + STATE.auth.walletAddress.substring(STATE.auth.walletAddress.length - 4))
-        : 'Account');
+  const displayName = myProvider?.display_name || STATE.user.name || 'Francis Anto';
+  const displayRole = isRegisteredProvider ? 'Specialist Provider' : 'Security Researcher';
+  const userInitial = (displayName || 'F').trim()[0].toUpperCase();
 
   return `
-    <aside class="w-64 bg-[#FAFBF9] border-r border-[#E2E9E3] flex flex-col justify-between shrink-0 select-none">
-      <!-- Top Brand & Nav -->
+    <aside class="w-[240px] bg-[var(--surface-sunk)] border-r border-[var(--border)] flex flex-col justify-between shrink-0 select-none h-full">
+      <!-- Top Brand Wordmark & Nav Groups -->
       <div class="flex flex-col">
+        <!-- Logo Wordmark in Serif with 24px padding -->
+        <div class="p-6 pb-2">
+          <span class="font-serif text-[22px] font-medium tracking-[-0.015em] text-[var(--text)]">Guardvane</span>
+        </div>
+
         <!-- Navigation Section: WORKSPACE -->
-        <div class="px-3 py-4 space-y-1">
-          <div class="px-3 pb-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Workspace</div>
+        <div class="px-3 pt-4 space-y-1">
+          <div class="px-3 pt-2 pb-2 text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Workspace</div>
           
-          <button onclick="navigateTo('dashboard')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'dashboard' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          <button onclick="navigateTo('dashboard')" class="nav-item ${STATE.activeView === 'dashboard' ? 'nav-item-active' : ''}">
+            <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
-            Dashboard
+            <span>Dashboard</span>
           </button>
 
-          <button onclick="navigateTo('opihub')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'opihub' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <button onclick="navigateTo('opihub')" class="nav-item ${STATE.activeView === 'opihub' ? 'nav-item-active' : ''}">
+            <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            OpiHub
+            <span>OpiHub</span>
           </button>
 
-          <button onclick="navigateTo('my_prompts')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'my_prompts' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          <button onclick="navigateTo('my_prompts')" class="nav-item ${STATE.activeView === 'my_prompts' ? 'nav-item-active' : ''}">
+            <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
-            My Prompts
-            <span class="ml-auto text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded-full">${myPrompts.length}</span>
+            <span>Saved prompts</span>
+            <span class="ml-auto text-[13px] font-mono text-[var(--text-3)]">${myPrompts.length}</span>
           </button>
 
-          <button onclick="navigateTo('my_requests')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'my_requests' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          <button onclick="navigateTo('my_requests')" class="nav-item ${STATE.activeView === 'my_requests' ? 'nav-item-active' : ''}">
+            <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
-            My Requests
-            <span class="ml-auto text-[11px] bg-[#E2E9E3] text-[#445246] font-semibold px-2 py-0.5 rounded-full">${mySentOrders.length}</span>
+            <span>My requests</span>
+            <span class="ml-auto text-[13px] font-mono text-[var(--text-3)]">${mySentOrders.length}</span>
           </button>
 
-          <button onclick="navigateTo('security_reports')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'security_reports' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <button onclick="navigateTo('security_reports')" class="nav-item ${STATE.activeView === 'security_reports' ? 'nav-item-active' : ''}">
+            <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Security Reports
-            <span class="ml-auto text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded-full">${myReports.length}</span>
+            <span>Security reports</span>
+            <span class="ml-auto text-[13px] font-mono text-[var(--text-3)]">${myReports.length}</span>
           </button>
         </div>
 
-        <!-- Navigation Section: PROVIDER -->
-        <div class="px-3 py-3 space-y-1 border-t border-[#E2E9E3]/70">
-          <div class="px-3 py-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Provider</div>
+        <!-- Navigation Section: PROVIDER (Spaced without heavy lines) -->
+        <div class="px-3 pt-6 space-y-1">
+          <div class="px-3 pb-2 text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Provider</div>
 
           ${isRegisteredProvider ? `
-            <button onclick="navigateTo('provider_workspace')" class="w-full flex items-center justify-between px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'provider_workspace' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-              <div class="flex items-center gap-3">
-                <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <span>Provider Workspace</span>
-              </div>
-              <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">${assignedOrders.length > 0 ? assignedOrders.length + ' RECEIVED' : 'ACTIVE'}</span>
+            <button onclick="navigateTo('provider_workspace')" class="nav-item ${STATE.activeView === 'provider_workspace' ? 'nav-item-active' : ''}">
+              <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span>Provider workspace</span>
+              ${assignedOrders.length > 0 ? `
+                <span class="ml-auto text-[13px] font-mono text-[var(--text-3)] flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"></span>
+                  ${assignedOrders.length}
+                </span>
+              ` : ''}
             </button>
           ` : `
-            <button onclick="navigateTo('become_provider')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium transition-smooth ${STATE.activeView === 'become_provider' ? 'nav-item-active' : 'text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820]'}">
-              <svg class="w-4 h-4 text-[#2FA36B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <button onclick="navigateTo('become_provider')" class="nav-item ${STATE.activeView === 'become_provider' ? 'nav-item-active' : ''}">
+              <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <span>Become a Provider</span>
+              <span>Become a provider</span>
             </button>
           `}
         </div>
 
-        <!-- Navigation Section: ACCOUNT -->
-        <div class="px-3 py-3 space-y-1 border-t border-[#E2E9E3]/70">
-          <div class="px-3 py-1.5 text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Account</div>
+        <!-- Navigation Section: ACCOUNT (Spaced without heavy lines) -->
+        <div class="px-3 pt-6 space-y-1">
+          <div class="px-3 pb-2 text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Account</div>
 
-          <button onclick="openModal('wallet_modal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820] transition-smooth">
-            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          <button onclick="openModal('wallet_modal')" class="nav-item">
+            <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
-            Wallet
+            <span>Wallet</span>
           </button>
 
-          <button onclick="openModal('settings_modal')" class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-[13.5px] font-medium text-[#445246] hover:bg-[#F0F5F1] hover:text-[#202820] transition-smooth">
-            <svg class="w-4 h-4 text-[#627566]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <button onclick="openModal('settings_modal')" class="nav-item">
+            <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            Settings
+            <span>Settings</span>
           </button>
         </div>
       </div>
 
-      <!-- Bottom User Profile -->
-      <div class="p-4 border-t border-[#E2E9E3] bg-[#F7F9F7]/80">
-        <!-- User Identity Row -->
+      <!-- Bottom User Profile: Initial circle + name + role (NO duplicate wallet) -->
+      <div class="p-5 border-t border-[var(--border)] bg-transparent">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] shrink-0">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
+          <div class="w-8 h-8 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center font-serif font-medium text-[14px] shrink-0">
+            ${userInitial}
           </div>
           <div class="flex flex-col min-w-0">
-            <span class="text-[13px] font-mono font-medium text-[#202820] truncate">${shortAddr}</span>
-            <span class="text-[11px] text-[#627566] truncate">${isRegisteredProvider ? 'Registered Provider' : 'Connected Wallet'}</span>
+            <span class="text-[13.5px] font-medium text-[var(--text)] truncate leading-snug">${escapeHtml(displayName)}</span>
+            <span class="text-[11.5px] text-[var(--text-3)] truncate leading-snug">${escapeHtml(displayRole)}</span>
           </div>
         </div>
       </div>
@@ -812,59 +806,57 @@ function renderSidebar() {
 // ---------------------------------------------------------------------------
 
 function renderTopbar() {
-  const isRabdi = STATE.network && STATE.network.isRabdi;
   const address = STATE.auth.walletAddress;
   const shortAddr = address
     ? (address.substring(0, 6) + '...' + address.substring(address.length - 4))
-    : 'Connect Wallet';
+    : 'Connect wallet';
 
   const viewLabels = {
-    dashboard: 'Workspace Overview',
-    opihub: 'Security Services & Requests',
-    my_prompts: 'Prompt Repository',
-    my_requests: 'Security Requests',
-    security_reports: 'Audit Reports & Certificates',
-    become_provider: 'Provider Registration',
-    provider_workspace: 'Provider Workspace',
-    provider_detail: 'Specialist Profile'
+    dashboard: 'Workspace overview',
+    opihub: 'Security services & requests',
+    my_prompts: 'Prompt repository',
+    my_requests: 'Security requests',
+    security_reports: 'Audit reports & certificates',
+    become_provider: 'Provider registration',
+    provider_workspace: 'Provider workspace',
+    provider_detail: 'Specialist profile'
   };
-  const activeLabel = viewLabels[STATE.activeView] || 'Security Marketplace';
+  const activeLabel = viewLabels[STATE.activeView] || 'Security marketplace';
 
   return `
-    <header class="h-16 border-b border-[#E2E9E3] bg-[#FAFBF9] px-8 flex items-center justify-between shrink-0 select-none">
-      <!-- Left: Breadcrumb / Section Context -->
-      <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wider text-[#8B9C8E]">Guardvane</span>
-        <span class="text-[#CCD6CE]">/</span>
-        <span class="text-xs font-medium text-[#445246]">${activeLabel}</span>
-      </div>
+    <header class="h-14 border-b border-[var(--border)] bg-[var(--bg)] px-6 sm:px-12 flex items-center justify-between shrink-0 select-none">
+      <!-- Left: Breadcrumb in --text-3 -->
+      <nav class="flex items-center gap-1.5 text-[13px] text-[var(--text-3)]">
+        <span>Guardvane</span>
+        <span class="text-[var(--border-strong)]">/</span>
+        <span class="text-[var(--text-2)] font-medium">${activeLabel}</span>
+      </nav>
 
-      <!-- Top Right Controls -->
+      <!-- Right: Quiet Wallet Chip & Log out -->
       <div class="flex items-center gap-3">
-        <!-- Wallet Pill (opens Wallet & Network Modal) -->
-        <button
-          onclick="openModal('wallet_modal')"
-          title="View connected wallet & network settings"
-          class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-medium transition-smooth border cursor-pointer ${
-            address
-              ? 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5] hover:bg-[#D8EEDE]'
-              : 'bg-[#F0F5F1] text-[#445246] border-[#E2E9E3] hover:bg-[#E2E9E3]'
-          }"
-        >
-          <span class="w-2 h-2 rounded-full ${address ? 'bg-[#2FA36B]' : 'bg-[#8B9C8E]'}"></span>
-          <span>${shortAddr}</span>
-        </button>
-
-        <!-- Logout Button -->
         ${address ? `
+          <button
+            onclick="openModal('wallet_modal')"
+            title="Wallet & network settings"
+            class="px-3 py-1 rounded-full text-[12px] font-mono text-[var(--text-2)] bg-[var(--surface-sunk)] border border-[var(--border)] hover:border-[var(--border-strong)] hover:text-[var(--text)] transition-colors cursor-pointer"
+          >
+            ${shortAddr}
+          </button>
           <button
             onclick="handleLogout()"
             title="Sign out of Guardvane"
-            class="px-2.5 py-1 text-xs text-[#627566] hover:text-[#C53030] hover:bg-[#FDE8E8] rounded-md transition-smooth font-medium cursor-pointer"
+            class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors px-2 py-1 cursor-pointer"
           >
-            Logout
+            Log out
           </button>
-        ` : ''}
+        ` : `
+          <button
+            onclick="openModal('wallet_modal')"
+            class="px-3 py-1 rounded-full text-[12px] font-mono text-[var(--accent)] bg-[var(--accent-soft)] hover:bg-[var(--accent)] hover:text-white transition-colors cursor-pointer"
+          >
+            Connect wallet
+          </button>
+        `}
       </div>
     </header>
   `;
@@ -878,8 +870,8 @@ function renderCurrentView() {
   if (STATE.loading) {
     return `
       <div class="h-64 flex flex-col items-center justify-center space-y-3">
-        <div class="w-8 h-8 border-3 border-[#176B45] border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-[13px] text-[#627566]">Loading Guardvane data...</p>
+        <div class="w-7 h-7 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-[13.5px] text-[var(--text-3)] font-sans">Loading Guardvane data...</p>
       </div>
     `;
   }
@@ -909,8 +901,19 @@ function renderCurrentView() {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Dashboard Home Page (Cleaned & Simplified)
+// 1. Dashboard Home Page (Editorial, Quiet, Claude / Anthropic Style)
 // ---------------------------------------------------------------------------
+
+function formatQuietDate(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return '';
+  }
+}
 
 function renderDashboardView() {
   const userWallet = (STATE.auth.walletAddress || STATE.user.id || '').toLowerCase();
@@ -936,137 +939,223 @@ function renderDashboardView() {
   const aiAuditsDelivered = myReports.filter(r => r.provider_id && (r.provider_id.includes('zerog') || r.provider_id.includes('prompt'))).length;
   const specialistAuditsDelivered = myReports.filter(r => r.provider_id && !r.provider_id.includes('zerog') && !r.provider_id.includes('prompt')).length;
 
-  const recommendedProviders = (STATE.data.providers || []).slice(0, 3);
-  const recentReports = myReports.slice(0, 3);
-  const myProvider = (STATE.data.providers || []).find(p =>
-    (p.wallet_address && p.wallet_address.toLowerCase() === userWallet) ||
-    p.id === STATE.user.activeProviderId
-  );
-  const displayName = myProvider?.display_name || STATE.user.name || 'Developer';
+  const myProvider = getMyProvider();
+  const displayName = myProvider?.display_name || STATE.user.name || 'Francis Anto';
+  const firstName = (displayName || '').split(' ')[0] || 'there';
+
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  // Section 1: Orders needing attention (active/pending reviews)
+  const attentionOrders = mySentOrders.filter(o => ['requested', 'accepted', 'in_progress', 'delivered'].includes(o.status));
+
+  // Section 3: Recent activity and reports
+  const recentActivity = (stats.recent_activity && stats.recent_activity.length > 0)
+    ? stats.recent_activity.slice(0, 5)
+    : mySentOrders.slice(0, 5).map(o => ({
+        id: o.id,
+        title: o.service_title,
+        provider: o.provider_name,
+        status: o.status,
+        timestamp: o.updated_at || o.created_at
+      }));
+  const recentReports = myReports.slice(0, 5);
+
+  // Section 4: Filter out current user from suggested providers
+  const eligibleProviders = (STATE.data.providers || []).filter(p => {
+    const pWallet = (p.wallet_address || '').toLowerCase();
+    if (userWallet && pWallet === userWallet) return false;
+    if (STATE.user.activeProviderId && p.id === STATE.user.activeProviderId) return false;
+    if (myProvider && p.id === myProvider.id) return false;
+    const currentName = (displayName || '').trim().toLowerCase();
+    if (currentName && p.display_name && p.display_name.trim().toLowerCase() === currentName) return false;
+    return true;
+  });
+  const suggestedProviders = eligibleProviders.slice(0, 3);
 
   return `
-    <!-- Top Greeting Header -->
-    <!-- Dashboard Top Bar / Actions -->
-    <div class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Dashboard</h1>
-      <div class="flex items-center gap-3">
-        <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          Explore OpiHub
-        </button>
-      </div>
-    </div>
-
-    <!-- 4 Clean Metric Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <!-- AI Agent Reasoning Audits -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
+    <div class="space-y-12">
+      <!-- Greeting Header -->
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
         <div>
-          <span class="text-[#627566] text-[13px] font-medium">0G AI Audits Delivered</span>
+          <h1 class="font-serif text-[32px] sm:text-[36px] font-normal tracking-[-0.01em] text-[var(--text)] leading-tight">
+            ${timeGreeting}, ${escapeHtml(firstName)}.
+          </h1>
+          <p class="text-[14px] text-[var(--text-2)] mt-1.5">
+            ${activeRequestsCount > 0
+              ? `You have ${activeRequestsCount} active ${activeRequestsCount === 1 ? 'audit' : 'audits'} in progress and ${myReports.length} completed ${myReports.length === 1 ? 'report' : 'reports'}.`
+              : `You have ${myReports.length} completed security ${myReports.length === 1 ? 'report' : 'reports'}. Explore OpiHub to request new audits.`
+            }
+          </p>
         </div>
-        <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${aiAuditsDelivered}</span>
-          <span class="text-[12px] text-[#627566]">automated defenses</span>
-        </div>
-        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('security_reports')">
-          Inspect AI reports →
-        </div>
-      </div>
-
-      <!-- Human Specialist Audits -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div>
-          <span class="text-[#627566] text-[13px] font-medium">Specialist Audits Delivered</span>
-        </div>
-        <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${specialistAuditsDelivered}</span>
-          <span class="text-[12px] text-[#627566]">expert reviews</span>
-        </div>
-        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('security_reports')">
-          Inspect specialist audits →
+        <div class="shrink-0">
+          <button onclick="navigateTo('opihub')" class="btn-primary">
+            Explore OpiHub
+          </button>
         </div>
       </div>
 
-      <!-- Active Requests in Progress -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div>
-          <span class="text-[#627566] text-[13px] font-medium">Active Requests</span>
-        </div>
-        <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${activeRequestsCount}</span>
-          <span class="text-[12px] text-[#627566]">orders in progress</span>
-        </div>
-        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('my_requests')">
-          Track active orders →
-        </div>
-      </div>
-
-      <!-- Saved Security Directives -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 flex flex-col justify-between shadow-xs">
-        <div>
-          <span class="text-[#627566] text-[13px] font-medium">Saved Prompts</span>
-        </div>
-        <div class="mt-3 flex items-baseline gap-2">
-          <span class="text-3xl font-semibold tracking-tight text-[#202820]">${savedPromptsCount}</span>
-          <span class="text-[12px] text-[#627566]">security directives</span>
-        </div>
-        <div class="mt-2 text-[12px] text-[#176B45] font-medium hover:underline cursor-pointer" onclick="navigateTo('my_prompts')">
-          View prompt library →
-        </div>
-      </div>
-    </div>
-
-    <!-- Recommended Providers Row (Cleaned & Concise) -->
-    <div class="space-y-3">
-      <div class="flex items-center justify-between">
-        <h2 class="text-[15px] font-semibold tracking-tight text-[#202820]">Recommended Providers</h2>
-        <button onclick="navigateTo('opihub')" class="text-[13px] font-medium text-[#176B45] hover:underline">
-          Explore all on OpiHub (${STATE.data.providers.length}) →
-        </button>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        ${recommendedProviders.map(p => renderCleanProviderCard(p)).join('')}
-      </div>
-    </div>
-
-    <!-- Two Column: Recent Activity & Recent Reports -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <!-- Recent Activity Feed -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-          <h3 class="text-[14px] font-semibold text-[#202820]">Recent Activity</h3>
-          <span class="text-[12px] text-[#627566] hover:text-[#176B45] cursor-pointer" onclick="navigateTo('my_requests')">View all orders →</span>
-        </div>
-        <div class="divide-y divide-[#E2E9E3]/70">
-          ${renderActivityFeed(stats.recent_activity || [])}
-        </div>
-      </div>
-
-      <!-- Recent Reports -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-          <h3 class="text-[14px] font-semibold text-[#202820]">Recent Reports</h3>
-          <span class="text-[12px] text-[#627566] hover:text-[#176B45] cursor-pointer" onclick="navigateTo('security_reports')">View all reports →</span>
-        </div>
-        <div class="space-y-3">
-          ${recentReports.length > 0 ? recentReports.map(r => `
-            <div class="p-3 rounded border border-[#E2E9E3] bg-[#FAFBF9] flex items-center justify-between">
-              <div class="min-w-0 pr-3">
-                <div class="font-medium text-[13px] text-[#202820] truncate">${escapeHtml(r.service_title)}</div>
-                <div class="text-[11.5px] text-[#627566]">By ${escapeHtml(r.provider_name)} • ${(r.findings || []).length} findings</div>
+      <!-- Section 1: Needs your attention -->
+      <section>
+        <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] mb-3">Needs your attention</div>
+        ${attentionOrders.length > 0 ? `
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
+            ${attentionOrders.slice(0, 3).map(o => `
+              <div class="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-sunk)] transition-colors">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="text-[14px] font-medium text-[var(--text)] truncate">${escapeHtml(o.service_title || 'Security Request')}</span>
+                  <span class="text-[var(--text-3)]">&middot;</span>
+                  <span class="text-[13px] text-[var(--text-2)] truncate">with ${escapeHtml(o.provider_name || 'Specialist')}</span>
+                </div>
+                <div class="flex items-center gap-4 shrink-0">
+                  ${renderStatusBadge(o.status)}
+                  <button onclick="openOrderDetail('${o.id}')" class="text-[13px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer bg-transparent border-none p-0">
+                    Review request &rarr;
+                  </button>
+                </div>
               </div>
-              <button onclick="viewReport('${r.id}')" class="px-2.5 py-1 text-[12px] font-medium bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#176B45] rounded shrink-0 transition-smooth">
-                Inspect Findings
+            `).join('')}
+          </div>
+        ` : `
+          <p class="text-[13.5px] text-[var(--text-3)]">All caught up. No pending requests require your review.</p>
+        `}
+      </section>
+
+      <!-- Section 2: At a glance (One card, 4 columns divided by vertical hairlines) -->
+      <section>
+        <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] mb-3">At a glance</div>
+        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] overflow-hidden">
+          <!-- 1: AI Audits -->
+          <div onclick="navigateTo('security_reports')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
+            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${aiAuditsDelivered === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+              ${aiAuditsDelivered}
+            </span>
+            <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
+              AI audits
+            </span>
+          </div>
+
+          <!-- 2: Specialist Audits -->
+          <div onclick="navigateTo('security_reports')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
+            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${specialistAuditsDelivered === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+              ${specialistAuditsDelivered}
+            </span>
+            <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
+              Specialist audits
+            </span>
+          </div>
+
+          <!-- 3: Active Requests -->
+          <div onclick="navigateTo('my_requests')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
+            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${activeRequestsCount === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+              ${activeRequestsCount}
+            </span>
+            <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
+              Active requests
+            </span>
+          </div>
+
+          <!-- 4: Saved Prompts -->
+          <div onclick="navigateTo('my_prompts')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
+            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${savedPromptsCount === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+              ${savedPromptsCount}
+            </span>
+            <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
+              Saved prompts
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Recent activity & recent reports (2-column, 7/5 split) -->
+      <section>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- Left: Activity (7 cols) -->
+          <div class="lg:col-span-7 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Recent Activity</span>
+              <button onclick="navigateTo('my_requests')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors cursor-pointer bg-transparent border-none p-0">
+                View all &rarr;
               </button>
             </div>
-          `).join('') : `
-            <div class="py-6 text-center text-[#627566] text-[13px]">No completed audit reports recorded yet.</div>
+            <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden flex-1">
+              ${recentActivity.length > 0 ? recentActivity.map(act => `
+                <div onclick="openOrderDetail('${act.id}')" class="min-h-[64px] px-5 py-3 flex items-center justify-between gap-4 hover:bg-[var(--surface-sunk)] transition-colors cursor-pointer">
+                  <div class="min-w-0 pr-2">
+                    <div class="text-[14px] font-medium text-[var(--text)] truncate leading-snug">
+                      ${escapeHtml(act.title || 'Security Request')}
+                    </div>
+                    <div class="text-[13px] text-[var(--text-2)] truncate leading-snug mt-0.5">
+                      with ${escapeHtml(act.provider || 'Specialist')}
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3 shrink-0">
+                    ${renderStatusBadge(act.status)}
+                    ${act.timestamp ? `
+                      <span class="text-[12px] text-[var(--text-3)] font-sans">
+                        ${formatQuietDate(act.timestamp)}
+                      </span>
+                    ` : ''}
+                  </div>
+                </div>
+              `).join('') : `
+                <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No recent activity recorded yet.</div>
+              `}
+            </div>
+          </div>
+
+          <!-- Right: Security Reports (5 cols) -->
+          <div class="lg:col-span-5 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Security Reports</span>
+              <button onclick="navigateTo('security_reports')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors cursor-pointer bg-transparent border-none p-0">
+                View all &rarr;
+              </button>
+            </div>
+            <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden flex-1">
+              ${recentReports.length > 0 ? recentReports.map(r => {
+                const findings = r.findings || [];
+                const findingCount = findings.length;
+                return `
+                  <div class="min-h-[64px] px-5 py-3 flex items-center justify-between gap-3 hover:bg-[var(--surface-sunk)] transition-colors">
+                    <div class="min-w-0 pr-2">
+                      <div class="text-[14px] font-medium text-[var(--text)] truncate leading-snug">
+                        ${escapeHtml(r.service_title || 'Security Audit')}
+                      </div>
+                      <div class="text-[12.5px] text-[var(--text-3)] truncate leading-snug mt-0.5">
+                        by ${escapeHtml(r.provider_name || '0G Defence Agent')} &middot; ${findingCount} ${findingCount === 1 ? 'finding' : 'findings'}
+                      </div>
+                    </div>
+                    <button onclick="viewReport('${r.id}')" class="btn-ghost !h-8 !px-3 text-[12.5px] border border-transparent hover:border-[var(--border-strong)] shrink-0">
+                      View findings
+                    </button>
+                  </div>
+                `;
+              }).join('') : `
+                <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No completed security reports recorded yet.</div>
+              `}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Suggested Providers (renamed from Recommended) -->
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Suggested Providers</span>
+          <button onclick="navigateTo('opihub')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors cursor-pointer bg-transparent border-none p-0">
+            Explore all on OpiHub (${STATE.data.providers.length}) &rarr;
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          ${suggestedProviders.length > 0 ? suggestedProviders.map(p => renderCleanProviderCard(p)).join('') : `
+            <div class="col-span-3 p-8 text-center text-[13px] text-[var(--text-3)] bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)]">
+              No additional providers available at this time.
+            </div>
           `}
         </div>
-      </div>
+      </section>
     </div>
   `;
 }
@@ -1130,30 +1219,30 @@ function renderOpiHubView() {
   });
 
   return `
-    <div class="space-y-6">
+    <div class="space-y-8">
       <!-- Top Title & View Mode Toggle -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">OpiHub Marketplace</h1>
-          <p class="text-[13px] text-[#627566] mt-0.5">
+          <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">OpiHub Marketplace</h1>
+          <p class="text-[14px] text-[var(--text-2)] mt-1.5">
             Direct AI security services: choose a service offering or specialist to submit review requests directly.
           </p>
         </div>
 
         <!-- View Mode Switcher -->
-        <div class="inline-flex p-1 bg-[#F0F5F1] rounded-lg border border-[#E2E9E3]">
+        <div class="inline-flex p-0.5 bg-[var(--surface-sunk)] rounded-[var(--radius-sm)] border border-[var(--border)] shrink-0 self-start sm:self-auto">
           <button
             onclick="setOpihubTab('services')"
-            class="px-4 py-1.5 text-xs font-semibold rounded-md transition-smooth cursor-pointer ${
-              isServicesTab ? 'bg-white text-[#176B45] shadow-xs' : 'text-[#627566] hover:text-[#202820]'
+            class="px-3.5 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+              isServicesTab ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
             }"
           >
             Services (${filteredServices.length})
           </button>
           <button
             onclick="setOpihubTab('providers')"
-            class="px-4 py-1.5 text-xs font-semibold rounded-md transition-smooth cursor-pointer ${
-              !isServicesTab ? 'bg-white text-[#176B45] shadow-xs' : 'text-[#627566] hover:text-[#202820]'
+            class="px-3.5 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+              !isServicesTab ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
             }"
           >
             Specialists & Agents (${filteredProviders.length})
@@ -1162,14 +1251,14 @@ function renderOpiHubView() {
       </div>
 
       <!-- Category Filter Tabs -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#E2E9E3]">
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--border)]">
         ${categories.map(c => `
           <button
             onclick="setCategoryFilter('${c.id}')"
-            class="px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-smooth flex items-center gap-1.5 cursor-pointer ${
+            class="px-3.5 py-1.5 rounded-full text-[12.5px] font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
               STATE.filters.category === c.id
-                ? 'bg-[#176B45] text-white shadow-xs'
-                : 'bg-white border border-[#E2E9E3] text-[#445246] hover:bg-[#F0F5F1]'
+                ? 'bg-[var(--text)] text-[var(--bg)]'
+                : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)]'
             }"
           >
             <span>${c.label}</span>
@@ -1178,14 +1267,14 @@ function renderOpiHubView() {
       </div>
 
       <!-- Controls: Search & Provider Type Filter -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 border border-[#E2E9E3] rounded-lg shadow-xs">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[var(--surface)] p-3.5 border border-[var(--border)] rounded-[var(--radius-md)]">
         <div class="flex items-center gap-3">
-          <span class="text-[13px] font-medium text-[#445246]">Provider Type:</span>
+          <span class="text-[13px] text-[var(--text-2)]">Provider type:</span>
           <select
             onchange="setProviderTypeFilter(this.value)"
-            class="bg-white border border-[#CBD7CE] text-[13px] text-[#202820] font-medium rounded-md px-3 py-1.5 min-w-[200px] focus:outline-none focus:border-[#176B45] shadow-2xs transition-smooth cursor-pointer"
+            class="bg-[var(--surface)] border border-[var(--border-strong)] text-[13px] text-[var(--text)] font-medium rounded-[var(--radius-sm)] px-3 py-1.5 focus:outline-none focus:border-[var(--accent)] cursor-pointer"
           >
-            <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All Types (0G Agents & Specialists)</option>
+            <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All types (0G Agents & Specialists)</option>
             <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Autonomous 0G Defense Agents</option>
             <option value="human" ${STATE.filters.providerType === 'human' ? 'selected' : ''}>Human Security Specialists</option>
           </select>
@@ -1194,15 +1283,15 @@ function renderOpiHubView() {
         <div class="flex items-center gap-3">
           <button
             onclick="openArkivInspectorModal()"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold font-mono bg-[#FAFBF9] hover:bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5] rounded-md transition-smooth cursor-pointer shadow-2xs"
+            class="flex items-center gap-1.5 px-3 py-1 text-[12px] font-mono bg-[var(--surface-sunk)] text-[var(--text-2)] hover:text-[var(--text)] border border-[var(--border)] rounded-full transition-colors cursor-pointer"
             title="Inspect Arkiv schemas and entities live on Rabdi Testnet via Arkiv SDK"
           >
-            <span class="w-2 h-2 rounded-full bg-[#176B45] animate-pulse"></span>
+            <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
             <span>Rabdi Testnet</span>
-            <span class="text-[10.5px] text-[#445246] font-normal">• Arkiv SDK Inspector</span>
+            <span class="text-[11px] text-[var(--text-3)]">&middot; Arkiv Inspector</span>
           </button>
-          <div class="text-[13px] text-[#627566]">
-            Showing <strong class="text-[#202820]">${isServicesTab ? filteredServices.length : filteredProviders.length}</strong> ${isServicesTab ? 'available services' : 'verified providers'}
+          <div class="text-[13px] text-[var(--text-3)] font-sans">
+            Showing <strong class="text-[var(--text)] font-medium">${isServicesTab ? filteredServices.length : filteredProviders.length}</strong> ${isServicesTab ? 'services' : 'providers'}
           </div>
         </div>
       </div>
@@ -1210,30 +1299,30 @@ function renderOpiHubView() {
       ${isServicesTab ? `
         <!-- Services Grid -->
         ${filteredServices.length > 0 ? `
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             ${filteredServices.map(s => renderCleanServiceCard(s, true)).join('')}
           </div>
         ` : `
-          <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
-            <h3 class="text-[15px] font-semibold text-[#202820]">No services match your filter</h3>
-            <p class="text-[13px] text-[#627566]">Try selecting a different category or clearing search filters.</p>
-            <button onclick="resetFilters()" class="px-3.5 py-1.5 text-[13px] font-medium bg-[#176B45] text-white rounded-md cursor-pointer">
-              Reset Filters
+          <div class="surface-card p-12 text-center space-y-3">
+            <h3 class="font-serif text-[18px] text-[var(--text)]">No services match your filter</h3>
+            <p class="text-[13px] text-[var(--text-2)]">Try selecting a different category or clearing search filters.</p>
+            <button onclick="resetFilters()" class="btn-secondary !h-8 text-[12.5px]">
+              Reset filters
             </button>
           </div>
         `}
       ` : `
         <!-- Providers Grid -->
         ${filteredProviders.length > 0 ? `
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             ${filteredProviders.map(p => renderCleanProviderCard(p)).join('')}
           </div>
         ` : `
-          <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
-            <h3 class="text-[15px] font-semibold text-[#202820]">No providers matched your filter</h3>
-            <p class="text-[13px] text-[#627566]">Try clearing your search query or selecting a different category.</p>
-            <button onclick="resetFilters()" class="px-3.5 py-1.5 text-[13px] font-medium bg-[#176B45] text-white rounded-md cursor-pointer">
-              Reset Filters
+          <div class="surface-card p-12 text-center space-y-3">
+            <h3 class="font-serif text-[18px] text-[var(--text)]">No providers matched your filter</h3>
+            <p class="text-[13px] text-[var(--text-2)]">Try clearing your search query or selecting a different category.</p>
+            <button onclick="resetFilters()" class="btn-secondary !h-8 text-[12.5px]">
+              Reset filters
             </button>
           </div>
         `}
@@ -1249,7 +1338,7 @@ function renderOpiHubView() {
 function renderProviderDetailView() {
   const provider = STATE.data.providers.find(p => p.id === STATE.selectedProviderId) || STATE.data.providers[0];
   if (!provider) {
-    return `<div class="p-8 text-center">Provider not found. <button onclick="navigateTo('opihub')" class="text-[#176B45] underline">Back to OpiHub</button></div>`;
+    return `<div class="surface-card p-12 text-center text-[var(--text-3)]">Provider not found. <button onclick="navigateTo('opihub')" class="text-[var(--accent)] hover:underline ml-1">Back to OpiHub</button></div>`;
   }
 
   const providerServices = STATE.data.services.filter(s => s.provider_id === provider.id);
@@ -1282,128 +1371,126 @@ function renderProviderDetailView() {
   }
 
   return `
-    <!-- Back Link -->
-    <div>
-      <button onclick="navigateTo('opihub')" class="text-[13px] text-[#176B45] font-medium hover:underline flex items-center gap-1.5 cursor-pointer">
-        ← Back to OpiHub
-      </button>
-    </div>
+    <div class="space-y-8">
+      <!-- Back Link -->
+      <div>
+        <button onclick="navigateTo('opihub')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors flex items-center gap-1.5 cursor-pointer bg-transparent border-none p-0">
+          &larr; Back to OpiHub
+        </button>
+      </div>
 
-    <!-- Provider Header Card -->
-    <div class="bg-white border border-[#E2E9E3] rounded-lg p-6 shadow-xs space-y-6">
-      <div class="flex items-start justify-between">
-        <div class="space-y-1">
-          <div class="flex items-center gap-2">
-            <h1 class="text-xl font-semibold text-[#202820] tracking-tight">${provider.display_name}</h1>
-            ${provider.verified ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#C4E4CE]">
-                <svg class="w-3 h-3 fill-current" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-                Verified Provider
+      <!-- Provider Header Card -->
+      <div class="surface-card space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2.5 flex-wrap">
+              <h1 class="font-serif text-[26px] font-normal tracking-[-0.01em] text-[var(--text)]">${escapeHtml(provider.display_name)}</h1>
+              ${provider.verified ? `
+                <span class="pill pill-success text-[11px]">
+                  Verified
+                </span>
+              ` : `
+                <span class="pill pill-neutral text-[11px]">
+                  Registered
+                </span>
+              `}
+              <span class="pill pill-neutral text-[11px]">
+                ${isAutomated ? '0G AI Agent' : 'Specialist'}
               </span>
+            </div>
+            <p class="text-[14px] text-[var(--text-2)]">${escapeHtml(provider.title || '')}</p>
+            <div class="flex items-center gap-4 text-[12.5px] text-[var(--text-3)] pt-1">
+              <span class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+                <span class="capitalize text-[var(--text-2)]">${escapeHtml(provider.availability || 'Available')}</span>
+              </span>
+              ${provider.wallet_address ? `<span>Wallet: <code class="font-mono text-[11.5px] text-[var(--text-2)]">${provider.wallet_address}</code></span>` : ''}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2.5 shrink-0">
+            ${isOwner ? `
+              <button
+                onclick="navigateTo('provider_workspace')"
+                class="btn-secondary !h-9 text-[13px]"
+              >
+                Go to workspace &rarr;
+              </button>
+              <button
+                onclick="openModal('edit_provider', { providerId: '${provider.id}' })"
+                class="btn-secondary !h-9 text-[13px]"
+              >
+                Edit profile
+              </button>
             ` : `
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#F7F9F7] text-[#627566] border border-[#E2E9E3]">
-                Registered
-              </span>
+              <button
+                onclick="openModal('request_review', { providerId: '${provider.id}', serviceId: '${providerServices[0]?.id || ''}' })"
+                class="btn-primary !h-9 text-[13px]"
+              >
+                Request review
+              </button>
             `}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-                ${isAutomated ? 'Automated AI Security Provider' : 'Human Security Provider'}
-              </span>
-            </div>
-            <p class="text-[13.5px] text-[#445246] font-medium">${provider.title}</p>
-            <div class="flex items-center gap-4 text-[12px] text-[#627566] pt-0.5">
-              <span>Status: <strong class="text-[#176B45] capitalize">${provider.availability}</strong></span>
-              ${provider.wallet_address ? `<span>Wallet: <code class="font-mono text-[#202820]">${provider.wallet_address}</code></span>` : ''}
-            </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-2.5">
+        <!-- Description & Capabilities -->
+        <div class="border-t border-[var(--border)] pt-5 space-y-4">
+          <div>
+            <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">About Provider</div>
+            <p class="text-[14px] text-[var(--text-2)] leading-relaxed mt-1.5">${escapeHtml(provider.description || '')}</p>
+          </div>
+
+          <!-- Skills Chips -->
+          <div>
+            <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] mb-2">Capabilities & Skills</div>
+            <div class="flex flex-wrap gap-1.5">
+              ${provider.skills.map(s => `
+                <span class="px-2.5 py-1 rounded-[var(--radius-sm)] bg-[var(--surface-sunk)] text-[var(--text-2)] text-[12px]">
+                  ${escapeHtml(s)}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Track Record Metrics (Clean 4-column strip, no nested boxes) -->
+          <div class="border-t border-[var(--border)] pt-5">
+            <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] mb-3">Track Record & Performance</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] border border-[var(--border)] rounded-[var(--radius-md)] bg-[var(--surface)] overflow-hidden text-center">
+              <div class="p-4">
+                <div class="font-serif text-[28px] font-normal text-[var(--text)]">${auditsDeliveredCount}</div>
+                <div class="text-[12px] text-[var(--text-3)] mt-1">Audits delivered</div>
+              </div>
+              <div class="p-4">
+                <div class="font-serif text-[28px] font-normal text-[var(--text)]">${escapeHtml(turnaroundDisplay)}</div>
+                <div class="text-[12px] text-[var(--text-3)] mt-1">Average turnaround</div>
+              </div>
+              <div class="p-4">
+                <div class="font-serif text-[28px] font-normal text-[var(--text)]">${isAutomated ? 'Autonomous' : 'Manual'}</div>
+                <div class="text-[12px] text-[var(--text-3)] mt-1">Execution type</div>
+              </div>
+              <div class="p-4">
+                <div class="font-serif text-[28px] font-normal text-[var(--text)]">${provider.portfolio_url ? 'Verified' : 'Active'}</div>
+                <div class="text-[12px] text-[var(--text-3)] mt-1">Profile status</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Published Services List -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Published Services (${providerServices.length})</div>
           ${isOwner ? `
-            <button
-              onclick="navigateTo('provider_workspace')"
-              class="px-4 py-2.5 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
-            >
-              Go to Provider Workspace →
+            <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="btn-secondary !h-8 text-[12.5px]">
+              Add service
             </button>
-            <button
-              onclick="openModal('edit_provider', { providerId: '${provider.id}' })"
-              class="px-4 py-2.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
-            >
-              ✏️ Edit Profile
-            </button>
-          ` : `
-            <button
-              onclick="openModal('request_review', { providerId: '${provider.id}', serviceId: '${providerServices[0]?.id || ''}' })"
-              class="px-5 py-2.5 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
-            >
-              Request Review
-            </button>
-          `}
-        </div>
-      </div>
-
-      <!-- Description & Genuine Track Record -->
-      <div class="border-t border-[#E2E9E3] pt-5 space-y-4">
-        <div>
-          <h3 class="text-[12.5px] font-semibold text-[#8B9C8E] uppercase tracking-wider">About Provider</h3>
-          <p class="text-[13.5px] text-[#333E35] leading-relaxed mt-1.5">${provider.description}</p>
+          ` : ''}
         </div>
 
-        <!-- Skills Chips -->
-        <div>
-          <h3 class="text-[12.5px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Capabilities & Skills</h3>
-          <div class="flex flex-wrap gap-1.5 mt-2">
-            ${provider.skills.map(s => `
-              <span class="px-2.5 py-1 bg-[#F7F9F7] border border-[#E2E9E3] text-[#202820] text-[12px] font-medium rounded-md">
-                ${s}
-              </span>
-            `).join('')}
-          </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          ${providerServices.map(s => renderCleanServiceCard(s, false, isOwner)).join('')}
         </div>
-
-        <!-- Real Track Record Metrics -->
-        <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-md p-4">
-          <div class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider mb-2">Track Record & Performance</div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div class="bg-white p-3 rounded border border-[#E2E9E3]">
-              <div class="text-xl font-bold text-[#202820]">${auditsDeliveredCount}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Audits Delivered</div>
-            </div>
-            <div class="bg-white p-3 rounded border border-[#E2E9E3]">
-              <div class="text-xl font-bold text-[#176B45] font-mono">${escapeHtml(turnaroundDisplay)}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Average Turnaround</div>
-            </div>
-            <div class="bg-white p-3 rounded border border-[#E2E9E3]">
-              <div class="text-xl font-bold text-[#202820]">${isAutomated ? 'Autonomous' : 'Manual'}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Execution Type</div>
-            </div>
-            <div class="bg-white p-3 rounded border border-[#E2E9E3]">
-              <div class="text-xl font-bold text-[#202820]">${provider.portfolio_url ? 'Verified' : 'Active'}</div>
-              <div class="text-[11px] text-[#627566] mt-0.5">Profile Status</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Published Services List -->
-    <div class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-[15px] font-semibold tracking-tight text-[#202820]">Published Services (${providerServices.length})</h2>
-        ${isOwner ? `
-          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth flex items-center gap-1.5 cursor-pointer shadow-xs">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Service
-          </button>
-        ` : ''}
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        ${providerServices.map(s => renderCleanServiceCard(s, false, isOwner)).join('')}
       </div>
     </div>
   `;
@@ -1417,99 +1504,99 @@ function renderBecomeProviderView() {
   const wallet = STATE.auth.walletAddress || '';
 
   return `
-    <div class="max-w-3xl mx-auto space-y-6">
+    <div class="max-w-3xl mx-auto space-y-8">
       <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Become a Security Provider</h1>
-        <p class="text-[13px] text-[#627566] mt-0.5">Register as an expert human security researcher to offer verified security reviews on OpiHub.</p>
+        <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Become a Security Provider</h1>
+        <p class="text-[14px] text-[var(--text-2)] mt-1.5">Register as an expert security researcher to offer verified audits on OpiHub.</p>
       </div>
 
-      <form id="become-provider-form" onsubmit="handleBecomeProvider(event)" class="bg-white border border-[#E2E9E3] rounded-lg p-7 shadow-xs space-y-6">
+      <form id="become-provider-form" onsubmit="handleBecomeProvider(event)" class="surface-card p-8 sm:p-10 space-y-8">
         <input type="hidden" name="provider_type" value="human" />
 
         <!-- Section 1: Provider Identity -->
         <div class="space-y-4">
-          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">1. Specialist Identity</h3>
+          <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] border-b border-[var(--border)] pb-2">1. Specialist Identity</div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider / Display Name *</label>
-              <input type="text" name="display_name" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Provider / Display Name *</label>
+              <input type="text" name="display_name" required placeholder="" class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
             </div>
 
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Professional Title *</label>
-              <input type="text" name="title" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Professional Title *</label>
+              <input type="text" name="title" required placeholder="" class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
             </div>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Connected Wallet Address (Read-only)</label>
-            <input type="text" name="wallet_address" value="${escapeForAttr(wallet)}" readonly class="w-full px-3 py-2 bg-[#F0F5F1] border border-[#E2E9E3] rounded-md text-[13.5px] font-mono text-[#627566] cursor-not-allowed" />
-            <p class="text-[11px] text-[#627566] mt-1">Orders, escrow payments, and workspace assignments are persistently bound to this wallet.</p>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Connected Wallet Address (Read-only)</label>
+            <input type="text" name="wallet_address" value="${escapeForAttr(wallet)}" readonly class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[13px] font-mono text-[var(--text-2)] cursor-not-allowed" />
+            <p class="text-[12px] text-[var(--text-3)] mt-1.5">Orders, smart escrow payouts, and workspace assignments are persistently bound to this wallet.</p>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Provider Bio / Description *</label>
-            <textarea name="description" rows="3" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]"></textarea>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Provider Bio / Description *</label>
+            <textarea name="description" rows="3" required placeholder="" class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors leading-relaxed"></textarea>
           </div>
         </div>
 
         <!-- Section 2: Skills & Categories -->
         <div class="space-y-4">
-          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">2. Expertise & Supported Categories</h3>
+          <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] border-b border-[var(--border)] pb-2">2. Expertise & Supported Categories</div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Skills (Comma-separated)</label>
-            <input type="text" name="skills_raw" placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Skills (Comma-separated)</label>
+            <input type="text" name="skills_raw" placeholder="" class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Supported Service Categories (Select at least one) *</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="prompt_engineering" checked /> Prompt Engineering</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="loop_engineering" checked /> Prompt Loop Engineering</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="prompt_optimization" checked /> Prompt Optimization</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="prompt_security_analysis" /> Prompt Security Analysis</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="codebase_security" /> Codebase Security Audit</label>
-              <label class="flex items-center gap-2 text-[13px] text-[#445246]"><input type="checkbox" name="cat" value="application_security_testing" /> Application Security Testing</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-2">Supported Service Categories (Select at least one) *</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="flex items-center gap-2.5 text-[13px] text-[var(--text-2)] cursor-pointer"><input type="checkbox" name="cat" value="prompt_engineering" checked class="accent-[var(--accent)]" /> Prompt Engineering</label>
+              <label class="flex items-center gap-2.5 text-[13px] text-[var(--text-2)] cursor-pointer"><input type="checkbox" name="cat" value="loop_engineering" checked class="accent-[var(--accent)]" /> Prompt Loop Engineering</label>
+              <label class="flex items-center gap-2.5 text-[13px] text-[var(--text-2)] cursor-pointer"><input type="checkbox" name="cat" value="prompt_optimization" checked class="accent-[var(--accent)]" /> Prompt Optimization</label>
+              <label class="flex items-center gap-2.5 text-[13px] text-[var(--text-2)] cursor-pointer"><input type="checkbox" name="cat" value="prompt_security_analysis" class="accent-[var(--accent)]" /> Prompt Security Analysis</label>
+              <label class="flex items-center gap-2.5 text-[13px] text-[var(--text-2)] cursor-pointer"><input type="checkbox" name="cat" value="codebase_security" class="accent-[var(--accent)]" /> Codebase Security Audit</label>
+              <label class="flex items-center gap-2.5 text-[13px] text-[var(--text-2)] cursor-pointer"><input type="checkbox" name="cat" value="application_security_testing" class="accent-[var(--accent)]" /> Application Security Testing</label>
             </div>
           </div>
         </div>
 
         <!-- Section 3: Initial Service Listing -->
         <div class="space-y-4">
-          <h3 class="text-[13.5px] font-semibold text-[#176B45] border-b border-[#E2E9E3] pb-2">3. Initial Service Offering</h3>
+          <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] border-b border-[var(--border)] pb-2">3. Initial Service Offering</div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Service Title *</label>
-            <input type="text" name="service_title" required placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Service Title *</label>
+            <input type="text" name="service_title" required placeholder="" class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD) *</label>
-              <input type="number" step="0.01" min="0" name="service_price" value="50.00" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Price (USD) *</label>
+              <input type="number" step="0.01" min="0" name="service_price" value="50.00" required class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] font-mono text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
             </div>
 
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Delivery *</label>
-              <input type="text" name="service_delivery" required value="24 hours" placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Estimated Delivery *</label>
+              <input type="text" name="service_delivery" required value="24 hours" placeholder="" class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
             </div>
 
             <div>
-              <label class="block text-[13px] font-medium text-[#202820] mb-1">Portfolio or GitHub URL</label>
-              <input type="url" name="portfolio_url" placeholder="" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13.5px] focus:outline-none focus:border-[#176B45]" />
+              <label class="block text-[13px] font-medium text-[var(--text)] mb-1.5">Portfolio or GitHub URL</label>
+              <input type="url" name="portfolio_url" placeholder="" class="w-full px-3.5 py-2.5 bg-[var(--surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] text-[14px] text-[var(--text)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
             </div>
           </div>
         </div>
 
         <!-- Submit Button -->
-        <div class="pt-4 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="navigateTo('dashboard')" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] hover:bg-[#F7F9F7] text-[13.5px] font-medium rounded-md transition-smooth cursor-pointer">
+        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
+          <button type="button" onclick="navigateTo('dashboard')" class="btn-secondary !h-10 text-[13.5px]">
             Cancel
           </button>
-          <button type="submit" class="px-6 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
-            Register Provider Profile
+          <button type="submit" class="btn-primary !h-10 text-[13.5px]">
+            Register provider profile
           </button>
         </div>
       </form>
@@ -1527,18 +1614,18 @@ function renderProviderWorkspaceView() {
   if (!myProvider) {
     return `
       <div class="max-w-2xl mx-auto py-16 text-center space-y-4">
-        <div class="w-14 h-14 mx-auto rounded-2xl bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45]">
-          <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="w-12 h-12 mx-auto rounded-full bg-[var(--surface-sunk)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)]">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
         </div>
-        <h2 class="text-xl font-semibold text-[#202820]">Provider Registration Required</h2>
-        <p class="text-[14px] text-[#627566] max-w-md mx-auto leading-relaxed">
+        <h2 class="font-serif text-[24px] font-normal tracking-[-0.01em] text-[var(--text)]">Provider Registration Required</h2>
+        <p class="text-[14px] text-[var(--text-2)] max-w-md mx-auto leading-relaxed">
           You are not currently registered as a provider. Register your security profile to offer prompt audits, receive scan requests from clients, and review submissions.
         </p>
         <div class="pt-2">
-          <button onclick="navigateTo('become_provider')" class="px-5 py-2.5 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-2">
-            Register as Provider →
+          <button onclick="navigateTo('become_provider')" class="btn-primary">
+            Register as provider &rarr;
           </button>
         </div>
       </div>
@@ -1559,85 +1646,79 @@ function renderProviderWorkspaceView() {
   const completed = assignedOrders.filter(o => o.status === 'completed' || o.status === 'delivered');
 
   return `
-    <div class="space-y-6">
+    <div class="space-y-8">
       <!-- Provider Workspace Banner -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-6 shadow-xs flex items-center justify-between">
+      <div class="surface-card flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-xl font-semibold text-[#202820]">${provider.display_name}</h1>
-            <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">Provider Workspace</span>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h1 class="font-serif text-[26px] font-normal tracking-[-0.01em] text-[var(--text)]">${escapeHtml(provider.display_name)}</h1>
+            <span class="pill pill-neutral text-[11px]">Provider workspace</span>
           </div>
-          <p class="text-[13px] text-[#627566] mt-0.5">${provider.title}</p>
+          <p class="text-[14px] text-[var(--text-2)] mt-1">${escapeHtml(provider.title || '')}</p>
         </div>
 
-        <div class="flex items-center gap-3">
-          <button onclick="openModal('edit_provider', { providerId: '${provider.id}' })" class="px-3.5 py-2 bg-white border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
-            Edit Profile
+        <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button onclick="openModal('edit_provider', { providerId: '${provider.id}' })" class="btn-secondary !h-9 text-[13px]">
+            Edit profile
           </button>
-          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="px-3.5 py-2 bg-white border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
-            + Publish New Service
+          <button onclick="navigateTo('provider_detail', '${provider.id}')" class="btn-secondary !h-9 text-[13px]">
+            Public profile
           </button>
-          <button onclick="navigateTo('provider_detail', '${provider.id}')" class="px-3.5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
-            View Public Profile
+          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="btn-primary !h-9 text-[13px]">
+            + Publish service
           </button>
         </div>
       </div>
 
-      <!-- Quick Metrics -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white p-4 rounded-lg border border-[#E2E9E3]">
-          <span class="text-[12px] text-[#627566] font-medium">Incoming Requests</span>
-          <div class="text-2xl font-bold text-[#202820] mt-1">${incoming.length}</div>
+      <!-- Quick Metrics Strip (1 Card, 4 Columns divided by hairlines) -->
+      <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] overflow-hidden">
+        <div class="p-6 flex flex-col justify-center">
+          <span class="font-serif text-[32px] font-normal leading-none ${incoming.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${incoming.length}</span>
+          <span class="text-[13px] text-[var(--text-2)] mt-2">Incoming requests</span>
         </div>
-        <div class="bg-white p-4 rounded-lg border border-[#E2E9E3]">
-          <span class="text-[12px] text-[#627566] font-medium">In Progress</span>
-          <div class="text-2xl font-bold text-[#1E40AF] mt-1">${inProgress.length}</div>
+        <div class="p-6 flex flex-col justify-center">
+          <span class="font-serif text-[32px] font-normal leading-none ${inProgress.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${inProgress.length}</span>
+          <span class="text-[13px] text-[var(--text-2)] mt-2">In progress</span>
         </div>
-        <div class="bg-white p-4 rounded-lg border border-[#E2E9E3]">
-          <span class="text-[12px] text-[#627566] font-medium">Delivered / Completed</span>
-          <div class="text-2xl font-bold text-[#176B45] mt-1">${completed.length}</div>
+        <div class="p-6 flex flex-col justify-center">
+          <span class="font-serif text-[32px] font-normal leading-none ${completed.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${completed.length}</span>
+          <span class="text-[13px] text-[var(--text-2)] mt-2">Delivered / completed</span>
         </div>
-        <div class="bg-white p-4 rounded-lg border border-[#E2E9E3]">
-          <span class="text-[12px] text-[#627566] font-medium">Completed Value</span>
-          <div class="text-2xl font-bold text-[#202820] mt-1 font-mono">$${(completed.reduce((acc, o) => acc + (o.price || 0), 0)).toFixed(2)}</div>
+        <div class="p-6 flex flex-col justify-center">
+          <span class="font-serif text-[32px] font-normal leading-none text-[var(--text)] font-mono">$${(completed.reduce((acc, o) => acc + (o.price || 0), 0)).toFixed(2)}</span>
+          <span class="text-[13px] text-[var(--text-2)] mt-2">Completed value</span>
         </div>
       </div>
 
       <!-- My Published Services Section -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-          <div class="flex items-center gap-2">
-            <h2 class="text-[14.5px] font-semibold text-[#202820]">My Published Services</h2>
-            <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">${myServices.length} offerings</span>
-          </div>
-          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth flex items-center gap-1.5 cursor-pointer">
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Add New Service
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Published Services (${myServices.length})</span>
+          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer bg-transparent border-none p-0">
+            + Add service
           </button>
         </div>
 
         ${myServices.length > 0 ? `
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             ${myServices.map(s => `
-              <div class="p-4 rounded-lg border border-[#E2E9E3] bg-[#FAFBF9] flex flex-col justify-between space-y-3">
-                <div class="space-y-1.5">
-                  <div class="flex items-start justify-between gap-2">
-                    <h3 class="text-[14px] font-semibold text-[#202820]">${escapeHtml(s.title)}</h3>
-                    <span class="font-mono font-bold text-[14px] text-[#176B45]">$${s.price.toFixed(2)}</span>
+              <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-6 flex flex-col justify-between hover:border-[var(--border-strong)] transition-all">
+                <div>
+                  <div class="flex items-start justify-between gap-3">
+                    <h3 class="font-serif text-[18px] font-normal text-[var(--text)] leading-snug">${escapeHtml(s.title)}</h3>
+                    <span class="font-mono text-[16px] font-semibold text-[var(--text)] shrink-0">$${s.price.toFixed(2)}</span>
                   </div>
-                  <div class="text-[12px] text-[#627566]">
-                    Category: <strong class="text-[#202820]">${formatCategoryName(s.category)}</strong> • Delivery: ${escapeHtml(s.estimated_delivery)}
+                  <div class="text-[12px] text-[var(--text-3)] mt-1">
+                    Category: <strong class="text-[var(--text-2)] font-medium">${formatCategoryName(s.category)}</strong> &middot; Delivery: ${escapeHtml(s.estimated_delivery)}
                   </div>
-                  <p class="text-[12.5px] text-[#445246] line-clamp-2 leading-relaxed">${escapeHtml(s.description)}</p>
+                  <p class="text-[13px] text-[var(--text-2)] line-clamp-2 leading-relaxed mt-2.5">${escapeHtml(s.description)}</p>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#E2E9E3]/70">
-                  <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="px-3 py-1 text-[12px] font-medium bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#176B45] rounded transition-smooth cursor-pointer">
+                <div class="flex items-center justify-end gap-2 pt-4 mt-4 border-t border-[var(--border)]">
+                  <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="btn-secondary !h-8 text-[12px]">
                     Edit
                   </button>
-                  <button onclick="handleDeleteService('${s.id}')" class="px-3 py-1 text-[12px] font-medium bg-[#FEE2E2] border border-[#FECACA] hover:bg-[#FCA5A5] text-[#991B1B] rounded transition-smooth cursor-pointer">
+                  <button onclick="handleDeleteService('${s.id}')" class="btn-ghost !h-8 text-[12px] hover:text-[var(--danger)]">
                     Delete
                   </button>
                 </div>
@@ -1645,183 +1726,159 @@ function renderProviderWorkspaceView() {
             `).join('')}
           </div>
         ` : `
-          <div class="p-6 text-center text-[#627566] text-[13px]">
-            You have not published any service offerings yet. Click "Add New Service" above to list one.
+          <div class="surface-card p-8 text-center text-[13px] text-[var(--text-3)]">
+            You have not published any service offerings yet.
           </div>
         `}
-      </div>
+      </section>
 
       <!-- Incoming Requests Section -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-          <div class="flex items-center gap-2">
-            <h2 class="text-[14.5px] font-semibold text-[#202820]">Incoming Service Requests</h2>
-            <span class="text-[11px] bg-[#FEF3C7] text-[#92400E] font-medium px-2 py-0.5 rounded">${incoming.length} pending</span>
-          </div>
-          <span class="text-[12px] text-[#627566]">Review incoming customer requests to accept or decline</span>
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Incoming Requests (${incoming.length})</span>
+          <span class="text-[13px] text-[var(--text-3)]">Review customer submissions</span>
         </div>
 
-        ${incoming.length > 0 ? `
-          <div class="space-y-4">
-            ${incoming.map(o => `
-              <div class="p-4 rounded-lg border border-[#E2E9E3] bg-[#FAFBF9] space-y-3">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="space-y-1 flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                      <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
-                      <strong class="text-[13.5px] text-[#202820]">${escapeHtml(o.service_title)}</strong>
-                      <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-mono font-medium">$${o.price.toFixed(2)}</span>
-                    </div>
-                    <div class="text-[12.5px] text-[#445246]">
-                      Submitted by: <strong>${escapeHtml(o.customer_name)}</strong> • ${new Date(o.created_at).toLocaleDateString()}
-                    </div>
+        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
+          ${incoming.length > 0 ? incoming.map(o => `
+            <div class="p-6 space-y-4 hover:bg-[var(--surface-sunk)] transition-colors">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="space-y-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-mono text-[12px] text-[var(--text-3)]">${o.id}</span>
+                    <strong class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(o.service_title)}</strong>
+                    <span class="font-mono text-[13px] font-semibold text-[var(--text)]">$${o.price.toFixed(2)}</span>
                   </div>
-
-                  <div class="flex items-center gap-2 shrink-0">
-                    <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth cursor-pointer">
-                      Accept Request
-                    </button>
-                    <button onclick="handleOrderReject('${o.id}')" class="px-3 py-1.5 border border-[#FECACA] bg-[#FEE2E2] text-[#991B1B] hover:bg-[#FCA5A5] text-[12px] font-medium rounded transition-smooth cursor-pointer">
-                      Reject
-                    </button>
+                  <div class="text-[13px] text-[var(--text-2)]">
+                    Submitted by: <strong class="text-[var(--text)]">${escapeHtml(o.customer_name)}</strong> &middot; <span class="text-[var(--text-3)] font-sans">${formatQuietDate(o.created_at)}</span>
                   </div>
                 </div>
 
-                ${renderOrderSubmittedSpec(o, provider.wallet_address)}
+                <div class="flex items-center gap-2.5 shrink-0">
+                  <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="btn-primary !h-8 text-[12.5px]">
+                    Accept request
+                  </button>
+                  <button onclick="handleOrderReject('${o.id}')" class="btn-secondary !h-8 text-[12.5px]">
+                    Reject
+                  </button>
+                </div>
               </div>
-            `).join('')}
-          </div>
-        ` : `
-          <div class="p-6 text-center text-[#627566] text-[13px]">
-            No incoming pending requests at this time.
-          </div>
-        `}
-      </div>
 
-      <!-- Work In Progress Section -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-          <div class="flex items-center gap-2">
-            <h2 class="text-[14.5px] font-semibold text-[#202820]">Active Work In Progress</h2>
-            <span class="text-[11px] bg-[#DBEAFE] text-[#1E40AF] font-medium px-2 py-0.5 rounded">${inProgress.length} active</span>
-          </div>
-          <span class="text-[12px] text-[#627566]">Audit scopes, product links, and repositories</span>
+              ${renderOrderSubmittedSpec(o, provider.wallet_address)}
+            </div>
+          `).join('') : `
+            <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No incoming pending requests at this time.</div>
+          `}
+        </div>
+      </section>
+
+      <!-- Active Work In Progress Section -->
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Active Work In Progress (${inProgress.length})</span>
+          <span class="text-[13px] text-[var(--text-3)]">Submissions under active audit</span>
         </div>
 
-        ${inProgress.length > 0 ? `
-          <div class="space-y-4">
-            ${inProgress.map(o => `
-              <div class="p-5 rounded-lg border border-[#E2E9E3] bg-[#FFFFFF] space-y-3 shadow-2xs">
-                <div class="flex items-start justify-between">
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
-                      <strong class="text-[13.5px] text-[#202820]">${escapeHtml(o.service_title)}</strong>
-                      ${renderStatusBadge(o.status)}
-                    </div>
-                    <div class="text-[12px] text-[#627566] mt-0.5">
-                      Client: <strong>${escapeHtml(o.customer_name)}</strong> • Escrow Value: <strong class="text-[#176B45] font-mono">$${o.price.toFixed(2)}</strong>
-                    </div>
+        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
+          ${inProgress.length > 0 ? inProgress.map(o => `
+            <div class="p-6 space-y-4 hover:bg-[var(--surface-sunk)] transition-colors">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2.5 flex-wrap">
+                    <span class="font-mono text-[12px] text-[var(--text-3)]">${o.id}</span>
+                    <strong class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(o.service_title)}</strong>
+                    ${renderStatusBadge(o.status)}
                   </div>
-
-                  <div class="flex items-center gap-2">
-                    ${o.status === 'accepted' ? `
-                      <button onclick="handleOrderStatusUpdate('${o.id}', 'in_progress')" class="px-3 py-1.5 bg-[#1E40AF] text-white text-[12px] font-medium rounded hover:bg-[#1E3A8A] transition-smooth cursor-pointer">
-                        Mark In Progress
-                      </button>
-                    ` : ''}
-                    <button onclick="openModal('deliver_modal', { orderId: '${o.id}' })" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded shadow-xs transition-smooth cursor-pointer">
-                      Submit Deliverable & Report
-                    </button>
+                  <div class="text-[13px] text-[var(--text-2)] mt-1">
+                    Client: <strong class="text-[var(--text)]">${escapeHtml(o.customer_name)}</strong> &middot; Escrow: <strong class="font-mono text-[var(--text)]">$${o.price.toFixed(2)}</strong>
                   </div>
                 </div>
 
-                ${renderOrderSubmittedSpec(o, provider.wallet_address)}
+                <div class="flex items-center gap-2 shrink-0">
+                  ${o.status === 'accepted' ? `
+                    <button onclick="handleOrderStatusUpdate('${o.id}', 'in_progress')" class="btn-secondary !h-8 text-[12.5px]">
+                      Mark in progress
+                    </button>
+                  ` : ''}
+                  <button onclick="openModal('deliver_modal', { orderId: '${o.id}' })" class="btn-primary !h-8 text-[12.5px]">
+                    Submit report & deliverable
+                  </button>
+                </div>
               </div>
-            `).join('')}
-          </div>
-        ` : `
-          <div class="p-6 text-center text-[#627566] text-[13px]">
-            No orders currently in progress.
-          </div>
-        `}
-      </div>
+
+              ${renderOrderSubmittedSpec(o, provider.wallet_address)}
+            </div>
+          `).join('') : `
+            <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No orders currently in progress.</div>
+          `}
+        </div>
+      </section>
 
       <!-- Delivered & Completed Audits Section -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-          <div class="flex items-center gap-2">
-            <h2 class="text-[14.5px] font-semibold text-[#202820]">Delivered & Completed Audits</h2>
-            <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-medium px-2 py-0.5 rounded">${completed.length} completed</span>
-          </div>
-          <span class="text-[12px] text-[#627566]">Track delivered work, payouts, and on-chain escrow disbursals</span>
+      <section>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Delivered & Completed Audits (${completed.length})</span>
+          <span class="text-[13px] text-[var(--text-3)]">Escrow releases and reports</span>
         </div>
 
-        ${completed.length > 0 ? `
-          <div class="space-y-4">
-            ${completed.map(o => `
-              <div class="p-5 rounded-lg border border-[#E2E9E3] bg-[#FAFBF9] space-y-3">
-                <div class="flex items-start justify-between gap-4">
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <span class="font-mono text-[12px] text-[#627566]">${o.id}</span>
-                      <strong class="text-[13.5px] text-[#202820]">${escapeHtml(o.service_title)}</strong>
-                      ${renderStatusBadge(o.status)}
-                    </div>
-                    <div class="text-[12px] text-[#627566] mt-0.5">
-                      Client: <strong>${escapeHtml(o.customer_name)}</strong> • Fee: <strong class="text-[#176B45] font-mono">$${o.price.toFixed(2)}</strong> • Delivered: ${new Date(o.updated_at || o.created_at).toLocaleDateString()}
-                    </div>
+        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
+          ${completed.length > 0 ? completed.map(o => `
+            <div class="p-6 space-y-3.5 hover:bg-[var(--surface-sunk)] transition-colors">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div class="flex items-center gap-2.5 flex-wrap">
+                    <span class="font-mono text-[12px] text-[var(--text-3)]">${o.id}</span>
+                    <strong class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(o.service_title)}</strong>
+                    ${renderStatusBadge(o.status)}
                   </div>
-
-                  <div class="flex items-center gap-2">
-                    <button onclick="openModal('order_detail', '${o.id}')" class="px-3 py-1.5 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] text-[12px] font-medium rounded transition-smooth cursor-pointer">
-                      View Escrow & Details
-                    </button>
-                    ${o.report_id ? `
-                      <button onclick="viewReport('${o.report_id}')" class="px-3 py-1.5 bg-[#EAF5EE] text-[#176B45] hover:bg-[#C4E4CE] text-[12px] font-medium rounded transition-smooth cursor-pointer">
-                        Report
-                      </button>
-                    ` : ''}
+                  <div class="text-[13px] text-[var(--text-2)] mt-1">
+                    Client: <strong class="text-[var(--text)]">${escapeHtml(o.customer_name)}</strong> &middot; Fee: <strong class="font-mono text-[var(--text)]">$${o.price.toFixed(2)}</strong> &middot; <span class="text-[var(--text-3)] font-sans">${formatQuietDate(o.updated_at || o.created_at)}</span>
                   </div>
                 </div>
 
-                <!-- On-Chain Payout Status -->
-                <div class="p-3 bg-white rounded-lg border border-[#E2E9E3] flex flex-wrap items-center justify-between gap-3 text-[12px]">
-                  <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                      o.escrow_state === 'released' ? 'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]' : 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]'
-                    }">
-                      <span class="w-1.5 h-1.5 rounded-full ${o.escrow_state === 'released' ? 'bg-[#2FA36B]' : 'bg-[#D97706]'}"></span>
-                      ${o.escrow_state === 'released' ? 'Disbursed to Your Wallet' : 'Deliverable Delivered (Awaiting Release)'}
-                    </span>
-                    <span class="text-[#627566]">Destination:</span>
-                    <span class="font-mono text-[#202820] text-[11px] truncate max-w-[200px]">${provider.wallet_address || 'Connected Wallet'}</span>
-                  </div>
-
-                  <div class="flex items-center gap-3 font-mono text-[11px]">
-                    ${o.escrow_release_tx_hash ? `
-                      <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline font-semibold flex items-center gap-1" title="View release transaction on Rabdi Explorer">
-                        <span>Release Tx: ${o.escrow_release_tx_hash.slice(0, 10)}...</span>
-                        <span>↗</span>
-                      </a>
-                    ` : ''}
-                    ${o.escrow_tx_hash ? `
-                      <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#627566] hover:underline flex items-center gap-1" title="View deposit transaction on Rabdi Explorer">
-                        <span>Deposit: ${o.escrow_tx_hash.slice(0, 8)}...</span>
-                        <span>↗</span>
-                      </a>
-                    ` : ''}
-                  </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <button onclick="openModal('order_detail', '${o.id}')" class="btn-secondary !h-8 text-[12px]">
+                    View details
+                  </button>
+                  ${o.report_id ? `
+                    <button onclick="viewReport('${o.report_id}')" class="btn-secondary !h-8 text-[12px]">
+                      Report
+                    </button>
+                  ` : ''}
                 </div>
               </div>
-            `).join('')}
-          </div>
-        ` : `
-          <div class="p-6 text-center text-[#627566] text-[13px]">
-            No delivered or completed audits recorded yet.
-          </div>
-        `}
-      </div>
+
+              <!-- Payout status line -->
+              <div class="flex flex-wrap items-center justify-between gap-3 text-[12.5px] pt-1">
+                <div class="flex items-center gap-2">
+                  <span class="pill ${o.escrow_state === 'released' ? 'pill-success' : 'pill-warning'} text-[11px]">
+                    ${o.escrow_state === 'released' ? 'Disbursed' : 'Awaiting release'}
+                  </span>
+                  <span class="text-[var(--text-3)]">Destination:</span>
+                  <span class="font-mono text-[var(--text-2)] text-[12px]">${provider.wallet_address || 'Connected Wallet'}</span>
+                </div>
+
+                <div class="flex items-center gap-3 font-mono text-[12px]">
+                  ${o.escrow_release_tx_hash ? `
+                    <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--accent)] hover:underline flex items-center gap-1" title="View release transaction on Rabdi Explorer">
+                      <span>Release tx: ${o.escrow_release_tx_hash.slice(0, 10)}...</span>
+                      <span>&nearr;</span>
+                    </a>
+                  ` : ''}
+                  ${o.escrow_tx_hash ? `
+                    <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-3)] hover:text-[var(--text)] flex items-center gap-1" title="View deposit transaction on Rabdi Explorer">
+                      <span>Deposit: ${o.escrow_tx_hash.slice(0, 8)}...</span>
+                      <span>&nearr;</span>
+                    </a>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `).join('') : `
+            <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No delivered or completed audits recorded yet.</div>
+          `}
+        </div>
+      </section>
     </div>
   `;
 }
@@ -1839,55 +1896,62 @@ function renderMyPromptsView() {
   });
 
   return `
-    <div class="space-y-5">
-      <div class="flex items-center justify-between">
+    <div class="space-y-8">
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">My Prompts</h1>
+          <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Saved Prompts</h1>
+          <p class="text-[14px] text-[var(--text-2)] mt-1.5">Prompt repository: store hardened prompt directives, defense instructions, and audit test suites.</p>
         </div>
-        <button onclick="openModal('create_prompt')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13.5px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-1.5">
-          + Add New Prompt
+        <button onclick="openModal('create_prompt')" class="btn-primary shrink-0">
+          + New prompt
         </button>
       </div>
 
-      <div class="grid grid-cols-1 gap-4">
-        ${prompts.map(p => `
-          <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-3 card-hover transition-smooth">
-            <div class="flex items-start justify-between">
-              <div>
-                <h3 class="text-[14.5px] font-semibold text-[#202820]">${escapeHtml(p.title)}</h3>
-                <span class="text-[11.5px] text-[#627566] font-mono">${p.id} • Saved ${new Date(p.created_at).toLocaleDateString()}</span>
+      <div class="space-y-4">
+        ${prompts.length > 0 ? prompts.map(p => `
+          <div class="surface-card space-y-3.5">
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0">
+                <h3 class="font-serif text-[18px] font-normal text-[var(--text)] leading-snug">${escapeHtml(p.title)}</h3>
+                <span class="text-[12px] text-[var(--text-3)] font-mono">${p.id} &middot; Saved ${formatQuietDate(p.created_at)}</span>
               </div>
 
-              <div class="flex items-center gap-2">
-                <button onclick="openModal('request_review', { promptText: '${escapeForAttr(p.content)}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth">
-                  Submit to Provider
+              <div class="flex items-center gap-2 shrink-0">
+                <button onclick="openModal('request_review', { promptText: '${escapeForAttr(p.content)}' })" class="btn-secondary !h-8 text-[12.5px]">
+                  Submit for review
                 </button>
-                <button onclick="handleDeletePrompt('${p.id}')" class="p-1.5 text-[#8B9C8E] hover:text-[#991B1B] rounded transition-smooth">
+                <button onclick="handleDeletePrompt('${p.id}')" class="btn-ghost !h-8 text-[12px] hover:text-[var(--danger)]" title="Delete prompt">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
               </div>
             </div>
 
             <!-- Content Preview -->
-            <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded p-3 font-mono text-[12px] text-[#333E35] whitespace-pre-wrap">
+            <div class="bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-sm)] p-4 font-mono text-[12.5px] text-[var(--text)] whitespace-pre-wrap leading-relaxed">
               ${escapeHtml(p.content)}
             </div>
 
             <!-- Security Finding Tags if Analyzed -->
             ${p.analysis_result ? `
-              <div class="flex items-center gap-3 pt-1 text-[11.5px]">
-                <span class="text-[#627566]">Previous Scan:</span>
-                <span class="font-medium ${p.analysis_result.injection_score > 0.5 ? 'text-[#991B1B]' : 'text-[#176B45]'}">
-                  Injection: ${(p.analysis_result.injection_score * 100).toFixed(0)}%
+              <div class="flex items-center gap-2.5 pt-1 text-[12px]">
+                <span class="text-[var(--text-3)]">Previous scan:</span>
+                <span class="pill ${p.analysis_result.injection_score > 0.5 ? 'pill-danger' : 'pill-success'} text-[11px]">
+                  Injection ${(p.analysis_result.injection_score * 100).toFixed(0)}%
                 </span>
-                <span class="text-[#627566]">•</span>
-                <span class="text-[#445246]">Detected Risks: ${(p.analysis_result.risk_labels || []).join(', ') || 'None'}</span>
+                ${(p.analysis_result.risk_labels || []).length > 0 ? `
+                  <span class="text-[var(--text-3)]">&middot;</span>
+                  <span class="text-[var(--text-2)]">Risks: ${(p.analysis_result.risk_labels || []).join(', ')}</span>
+                ` : ''}
               </div>
             ` : ''}
           </div>
-        `).join('')}
+        `).join('') : `
+          <div class="surface-card p-12 text-center text-[13px] text-[var(--text-3)]">
+            No saved prompts in your repository yet. Click "+ New prompt" to store one.
+          </div>
+        `}
       </div>
     </div>
   `;
@@ -1928,34 +1992,29 @@ function renderArkivTaskCard(t, currentWallet) {
   const shortOwner = t.customer_wallet ? (t.customer_wallet.substring(0, 6) + '...' + t.customer_wallet.substring(t.customer_wallet.length - 4)) : 'Anonymous';
   const hasOnChainRecord = !!(t.entity_key || t.tx_hash);
 
-  const statusColors = {
-    open: 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]',
-    awarded: 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]',
-    completed: 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]'
-  };
-  const statusBadge = statusColors[t.status] || 'bg-gray-100 text-gray-800 border-gray-200';
+  const statusBadge = t.status === 'open' ? 'pill-success' : t.status === 'awarded' ? 'pill-warning' : 'pill-info';
   const skills = (t.required_skills || '').split(',').map(s => s.trim()).filter(Boolean);
 
   return `
-    <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs hover:shadow-md transition-smooth flex flex-col justify-between space-y-4">
+    <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-6 flex flex-col justify-between hover:border-[var(--border-strong)] transition-all space-y-4">
       <div class="space-y-3">
         <!-- Top Metadata Row -->
         <div class="flex items-center justify-between text-xs">
-          <span class="px-2.5 py-0.5 rounded-full font-medium capitalize text-[11px] border ${statusBadge}">
+          <span class="pill ${statusBadge} text-[11px] capitalize">
             ${escapeHtml(t.status)}
           </span>
-          <span class="font-mono text-[#627566] text-[11px]">
-            Budget: <strong class="text-[#202820] font-semibold">${escapeHtml(t.budget_range || 'Negotiable')}</strong>
+          <span class="font-mono text-[var(--text-3)] text-[12px]">
+            Budget: <strong class="text-[var(--text)] font-semibold">${escapeHtml(t.budget_range || 'Negotiable')}</strong>
           </span>
         </div>
 
         <!-- Title -->
-        <h3 class="text-[16px] font-semibold text-[#202820] leading-snug">
+        <h3 class="font-serif text-[18px] font-normal text-[var(--text)] leading-snug">
           ${escapeHtml(t.title)}
         </h3>
 
         <!-- Description -->
-        <p class="text-[13px] text-[#445246] line-clamp-3 leading-relaxed">
+        <p class="text-[13px] text-[var(--text-2)] line-clamp-3 leading-relaxed">
           ${escapeHtml(t.public_description)}
         </p>
 
@@ -1963,7 +2022,7 @@ function renderArkivTaskCard(t, currentWallet) {
         ${skills.length > 0 ? `
           <div class="flex flex-wrap gap-1.5 pt-1">
             ${skills.map(s => `
-              <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-[#F0F5F1] text-[#445246] border border-[#E2E9E3]">
+              <span class="px-2.5 py-1 rounded-[var(--radius-sm)] bg-[var(--surface-sunk)] text-[var(--text-2)] text-[12px]">
                 ${escapeHtml(s)}
               </span>
             `).join('')}
@@ -1972,26 +2031,23 @@ function renderArkivTaskCard(t, currentWallet) {
       </div>
 
       <!-- Footer Info & Actions -->
-      <div class="pt-3 border-t border-[#E2E9E3] flex flex-col space-y-3">
-        <div class="flex items-center justify-between text-[11.5px] text-[#627566]">
+      <div class="pt-4 border-t border-[var(--border)] flex flex-col space-y-3">
+        <div class="flex items-center justify-between text-[12px] text-[var(--text-3)]">
           <div class="flex items-center gap-1.5">
             <span>Posted by:</span>
-            <span class="font-mono text-[#202820]">${shortOwner}</span>
-            ${isOwner ? '<span class="text-[9.5px] px-1 rounded bg-[#EAF5EE] text-[#176B45] font-semibold font-mono">YOU</span>' : ''}
+            <span class="font-mono text-[var(--text-2)]">${shortOwner}</span>
+            ${isOwner ? '<span class="pill pill-neutral text-[10px]">You</span>' : ''}
           </div>
 
           <div class="flex items-center gap-2">
             ${hasOnChainRecord ? `
-              <span class="inline-flex items-center gap-1 text-[11px] text-[#176B45] font-medium">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
-                <span>Published on Arkiv</span>
-              </span>
               <a
                 href="https://rabdi.explorer.arkiv.network/tx/${t.tx_hash || t.entity_key}"
                 target="_blank"
-                class="text-[11px] text-[#176B45] hover:underline flex items-center gap-0.5"
+                class="text-[11.5px] text-[var(--accent)] hover:underline flex items-center gap-1 font-mono"
               >
-                View on Arkiv ↗
+                <span>Arkiv explorer</span>
+                <span>&nearr;</span>
               </a>
             ` : ''}
           </div>
@@ -2001,26 +2057,26 @@ function renderArkivTaskCard(t, currentWallet) {
         <div class="flex items-center justify-end gap-2 pt-1">
           <button
             onclick="openTaskBidsModal('${t.task_id}')"
-            class="px-3 py-1.5 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] text-[12.5px] font-medium rounded-md transition-smooth cursor-pointer"
+            class="btn-secondary !h-8 text-[12.5px]"
           >
-            Inspect Bids
+            Inspect bids
           </button>
 
           ${(t.status === 'open' && !isOwner) ? `
             <button
               onclick="openSubmitBidModal('${t.task_id}')"
-              class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+              class="btn-primary !h-8 text-[12.5px]"
             >
-              Submit Proposal
+              Submit proposal
             </button>
           ` : ''}
 
           ${(t.status === 'open' && isOwner) ? `
             <button
               onclick="openTaskBidsModal('${t.task_id}')"
-              class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+              class="btn-primary !h-8 text-[12.5px]"
             >
-              Review Bids & Award
+              Review bids & award
             </button>
           ` : ''}
         </div>
@@ -2053,52 +2109,49 @@ function renderArkivTasksView() {
   });
 
   return `
-    <div class="space-y-6">
+    <div class="space-y-8">
       <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
         <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Arkiv Security Task Board</h1>
-            <span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Rabdi 7794095</span>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Arkiv Security Task Board</h1>
+            <span class="pill pill-neutral text-[11px] font-mono">Rabdi 7794095</span>
           </div>
-          <p class="text-[13px] text-[#627566] mt-0.5">
+          <p class="text-[14px] text-[var(--text-2)] mt-1.5">
             Public, verifiable security audit requests published directly to Arkiv. Customer-owned, specialist-bid, rewarded in tGLM.
           </p>
         </div>
 
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2.5 shrink-0">
           <button
             onclick="loadArkivTasks(true)"
             title="Refresh live from Rabdi testnet"
-            class="px-3 py-2 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] text-[13px] font-medium rounded-md shadow-2xs transition-smooth flex items-center gap-1.5 cursor-pointer"
+            class="btn-secondary !h-9 text-[13px] flex items-center gap-1.5"
           >
-            <svg class="w-4 h-4 text-[#627566] ${STATE.arkiv.loading ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <svg class="w-4 h-4 ${STATE.arkiv.loading ? 'animate-spin' : ''}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             <span>Refresh</span>
           </button>
 
           <button
             onclick="openPostTaskModal()"
-            class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
+            class="btn-primary !h-9 text-[13px]"
           >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Post Security Task</span>
+            + Post task
           </button>
         </div>
       </div>
 
       <!-- Category Filters -->
-      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#E2E9E3]">
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--border)]">
         ${categories.map(c => `
           <button
             onclick="setArkivCategoryFilter('${c.id}')"
-            class="px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-smooth ${
+            class="px-3.5 py-1.5 rounded-full text-[12.5px] font-medium whitespace-nowrap transition-colors ${
               STATE.arkiv.categoryFilter === c.id
-                ? 'bg-[#176B45] text-white shadow-xs'
-                : 'bg-white border border-[#E2E9E3] text-[#445246] hover:bg-[#F0F5F1]'
+                ? 'bg-[var(--text)] text-[var(--bg)]'
+                : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)]'
             }"
           >
             ${c.label}
@@ -2107,17 +2160,17 @@ function renderArkivTasksView() {
       </div>
 
       <!-- Status Sub-filter -->
-      <div class="flex items-center justify-between gap-4 bg-white p-3.5 border border-[#E2E9E3] rounded-lg shadow-xs">
+      <div class="flex items-center justify-between gap-4 bg-[var(--surface)] p-3.5 border border-[var(--border)] rounded-[var(--radius-md)]">
         <div class="flex items-center gap-2">
-          <span class="text-[13px] font-medium text-[#445246]">Status:</span>
+          <span class="text-[13px] text-[var(--text-2)]">Status:</span>
           <div class="flex items-center gap-1">
             ${['all', 'open', 'awarded', 'completed'].map(st => `
               <button
                 onclick="setArkivStatusFilter('${st}')"
-                class="px-2.5 py-1 text-[12px] rounded-md font-medium capitalize transition-smooth ${
+                class="px-2.5 py-1 text-[12px] rounded-md font-medium capitalize transition-colors ${
                   STATE.arkiv.statusFilter === st
-                    ? 'bg-[#EAF5EE] text-[#176B45] font-semibold border border-[#CDE5D5]'
-                    : 'text-[#627566] hover:text-[#202820]'
+                    ? 'bg-[var(--surface-sunk)] text-[var(--text)] font-semibold'
+                    : 'text-[var(--text-3)] hover:text-[var(--text)]'
                 }"
               >
                 ${st}
@@ -2126,30 +2179,27 @@ function renderArkivTasksView() {
           </div>
         </div>
 
-        <div class="text-[13px] text-[#627566]">
-          Showing <strong class="text-[#202820]">${filtered.length}</strong> tasks on Rabdi Testnet
+        <div class="text-[13px] text-[var(--text-3)]">
+          Showing <strong class="text-[var(--text)] font-medium">${filtered.length}</strong> tasks on Rabdi Testnet
         </div>
       </div>
 
       <!-- Task Cards Grid -->
       ${filtered.length > 0 ? `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           ${filtered.map(t => renderArkivTaskCard(t, currentWallet)).join('')}
         </div>
       ` : `
-        <div class="bg-white border border-[#E2E9E3] rounded-lg p-12 text-center space-y-3">
-          <div class="w-12 h-12 rounded-full bg-[#EAF5EE] text-[#176B45] flex items-center justify-center mx-auto">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 class="text-[15px] font-semibold text-[#202820]">No security tasks found on Rabdi</h3>
-          <p class="text-[13px] text-[#627566] max-w-md mx-auto">
+        <div class="surface-card p-12 text-center space-y-3">
+          <h3 class="font-serif text-[18px] text-[var(--text)]">No security tasks found on Rabdi</h3>
+          <p class="text-[13px] text-[var(--text-2)] max-w-md mx-auto">
             Tasks published to Arkiv are stored permanently on the Rabdi blockchain with decentralized ownership and time-based expiration.
           </p>
-          <button onclick="openPostTaskModal()" class="px-4 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
-            + Post the First Security Task
-          </button>
+          <div class="pt-2">
+            <button onclick="openPostTaskModal()" class="btn-primary">
+              + Post the first security task
+            </button>
+          </div>
         </div>
       `}
     </div>
@@ -2183,155 +2233,142 @@ function renderMyRequestsView() {
   const orders = mySentOrders;
 
   return `
-    <div class="space-y-5">
-      <div class="flex items-center justify-between">
+    <div class="space-y-8">
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">My Requests</h1>
-          <p class="text-[13px] text-[#627566] mt-0.5">Track security service requests you submitted, on-chain escrow deposits, and releases.</p>
+          <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Security Requests</h1>
+          <p class="text-[14px] text-[var(--text-2)] mt-1.5">Track security service requests you submitted, on-chain escrow deposits, and releases.</p>
         </div>
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2.5 shrink-0">
           ${myProvider ? `
-            <button onclick="navigateTo('provider_workspace')" class="px-3.5 py-2 bg-white border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer flex items-center gap-1.5">
-              <span>Provider Workspace</span>
-              <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-mono px-1.5 py-0.2 rounded font-semibold">${assignedOrders.length} received</span>
+            <button onclick="navigateTo('provider_workspace')" class="btn-secondary !h-9 text-[13px]">
+              <span>Provider workspace</span>
+              <span class="text-[11px] text-[var(--text-3)] font-mono ml-1.5">(${assignedOrders.length})</span>
             </button>
           ` : ''}
-          <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs cursor-pointer">
-            + Explore OpiHub
+          <button onclick="navigateTo('opihub')" class="btn-primary !h-9 text-[13px]">
+            Explore OpiHub
           </button>
         </div>
       </div>
 
       <!-- Orders Table -->
-      <div class="bg-white border border-[#E2E9E3] rounded-lg shadow-xs overflow-hidden">
+      <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden">
         ${orders.length > 0 ? `
-          <table class="w-full text-left text-[13px]">
-            <thead class="bg-[#FAFBF9] border-b border-[#E2E9E3] text-[#627566] text-[11.5px] uppercase font-semibold tracking-wider">
-              <tr>
-                <th class="px-5 py-3">Order ID</th>
-                <th class="px-5 py-3">Service</th>
-                <th class="px-5 py-3">Provider</th>
-                <th class="px-5 py-3">Status</th>
-                <th class="px-5 py-3">Payment & Escrow</th>
-                <th class="px-5 py-3">Price</th>
-                <th class="px-5 py-3">Date</th>
-                <th class="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[#E2E9E3]">
-              ${orders.map(o => {
-                const isAutomated = (
-                  o.execution_type === 'automated' ||
-                  o.payment_type === '0g_direct' ||
-                  (o.provider_id && (o.provider_id.startsWith('prov_zero') || o.provider_id.startsWith('prov_prompt') || o.provider_id === 'prov_zerog')) ||
-                  Number(o.price) === 0
-                );
-                const isManualEscrow = !isAutomated && (o.execution_type === 'manual' || !!o.escrow_tx_hash || (o.escrow_state && o.escrow_state !== 'not_applicable' && o.escrow_state !== 'none'));
-                return `
-                  <tr class="hover:bg-[#FAFBF9]/80 transition-smooth">
-                    <td class="px-5 py-3.5 font-mono text-[12px] text-[#627566]">${o.id}</td>
-                    <td class="px-5 py-3.5 font-medium text-[#202820]">
-                      <div>${escapeHtml(o.service_title)}</div>
-                      <div class="text-[11px] text-[#627566] font-normal mt-0.5">
-                        ${isAutomated ? 'Autonomous AI Defense' : 'Specialist Security Review'}
-                      </div>
-                    </td>
-                    <td class="px-5 py-3.5 text-[#445246]">${escapeHtml(o.provider_name)}</td>
-                    <td class="px-5 py-3.5">${renderStatusBadge(o.status)}</td>
-                    <td class="px-5 py-3.5">
-                      ${isAutomated ? `
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
-                          <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
-                          <span>0G Direct AI (Free)</span>
-                        </span>
-                      ` : isManualEscrow ? `
-                        <div class="flex flex-col gap-1 items-start">
-                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                            o.escrow_state === 'released' ? 'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]' :
-                            o.escrow_state === 'funded' ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]' :
-                            'bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]'
-                          }">
-                            <span class="w-1.5 h-1.5 rounded-full ${o.escrow_state === 'released' ? 'bg-[#2FA36B]' : (o.escrow_state === 'funded' ? 'bg-[#D97706]' : 'bg-[#DC2626]')}"></span>
-                            <span>${o.escrow_state === 'released' ? 'Disbursed' : (o.escrow_state === 'funded' ? 'Escrow Locked' : 'Pending Escrow')}</span>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-[13px]">
+              <thead class="bg-[var(--surface-sunk)] border-b border-[var(--border)] text-[var(--text-3)] text-[11px] uppercase font-medium tracking-[0.06em]">
+                <tr>
+                  <th class="px-5 py-3.5">Order ID</th>
+                  <th class="px-5 py-3.5">Service</th>
+                  <th class="px-5 py-3.5">Provider</th>
+                  <th class="px-5 py-3.5">Status</th>
+                  <th class="px-5 py-3.5">Payment & Escrow</th>
+                  <th class="px-5 py-3.5">Price</th>
+                  <th class="px-5 py-3.5">Date</th>
+                  <th class="px-5 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-[var(--border)]">
+                ${orders.map(o => {
+                  const isAutomated = (
+                    o.execution_type === 'automated' ||
+                    o.payment_type === '0g_direct' ||
+                    (o.provider_id && (o.provider_id.startsWith('prov_zero') || o.provider_id.startsWith('prov_prompt') || o.provider_id === 'prov_zerog')) ||
+                    Number(o.price) === 0
+                  );
+                  const isManualEscrow = !isAutomated && (o.execution_type === 'manual' || !!o.escrow_tx_hash || (o.escrow_state && o.escrow_state !== 'not_applicable' && o.escrow_state !== 'none'));
+                  return `
+                    <tr class="hover:bg-[var(--surface-sunk)] transition-colors">
+                      <td class="px-5 py-4 font-mono text-[12px] text-[var(--text-3)]">${o.id}</td>
+                      <td class="px-5 py-4">
+                        <div class="font-medium text-[13.5px] text-[var(--text)]">${escapeHtml(o.service_title)}</div>
+                        <div class="text-[12px] text-[var(--text-3)] mt-0.5">
+                          ${isAutomated ? 'Autonomous 0G defense' : 'Specialist review'}
+                        </div>
+                      </td>
+                      <td class="px-5 py-4 text-[var(--text-2)]">${escapeHtml(o.provider_name)}</td>
+                      <td class="px-5 py-4">${renderStatusBadge(o.status)}</td>
+                      <td class="px-5 py-4">
+                        ${isAutomated ? `
+                          <span class="pill pill-neutral text-[11px]">
+                            0G Direct AI (Free)
                           </span>
-                          <div class="flex items-center gap-2 text-[10.5px] font-mono">
-                            ${o.escrow_release_tx_hash ? `
-                              <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline font-semibold" title="View Release Tx on Rabdi Explorer">
-                                release ↗
-                              </a>
-                            ` : ''}
-                            ${o.escrow_tx_hash ? `
-                              <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#627566] hover:underline" title="View Deposit Tx on Rabdi Explorer">
-                                deposit ↗
-                              </a>
-                            ` : ''}
+                        ` : isManualEscrow ? `
+                          <div class="flex flex-col gap-1 items-start">
+                            <span class="pill ${o.escrow_state === 'released' ? 'pill-success' : o.escrow_state === 'funded' ? 'pill-warning' : 'pill-danger'} text-[11px]">
+                              ${o.escrow_state === 'released' ? 'Disbursed' : (o.escrow_state === 'funded' ? 'Escrow locked' : 'Pending escrow')}
+                            </span>
+                            <div class="flex items-center gap-2 text-[11px] font-mono">
+                              ${o.escrow_release_tx_hash ? `
+                                <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--accent)] hover:underline" title="View release on Rabdi Explorer">
+                                  release &nearr;
+                                </a>
+                              ` : ''}
+                              ${o.escrow_tx_hash ? `
+                                <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-3)] hover:text-[var(--text)]" title="View deposit on Rabdi Explorer">
+                                  deposit &nearr;
+                                </a>
+                              ` : ''}
+                            </div>
                           </div>
-                        </div>
-                      ` : o.payment_status === 'verified' ? `
-                        <div class="inline-flex items-center gap-1.5">
-                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
-                            <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span>
-                            <span>Escrow Verified</span>
+                        ` : o.payment_status === 'verified' ? `
+                          <span class="pill pill-success text-[11px]">
+                            Escrow verified
                           </span>
+                        ` : o.payment_status === 'pending' ? `
+                          <span class="pill pill-warning text-[11px]">
+                            Pending deposit
+                          </span>
+                        ` : o.payment_status === 'failed' ? `
+                          <span class="pill pill-danger text-[11px]">
+                            Failed
+                          </span>
+                        ` : `
+                          <span class="text-[12px] text-[var(--text-3)] capitalize">${escapeHtml(o.payment_status || 'N/A')}</span>
+                        `}
+                      </td>
+                      <td class="px-5 py-4 font-mono font-medium text-[var(--text)]">${isAutomated ? '<span class="text-[var(--text-3)] font-normal">Free</span>' : '$' + o.price.toFixed(2)}</td>
+                      <td class="px-5 py-4 text-[var(--text-3)] font-sans text-[12px]">${formatQuietDate(o.created_at)}</td>
+                      <td class="px-5 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                          <button onclick="openModal('order_detail', '${o.id}')" class="btn-secondary !h-8 text-[12px]">
+                            Details
+                          </button>
+                          ${!isAutomated && (o.payment_status === 'pending' || o.payment_status === 'failed') && o.status !== 'rejected' && o.status !== 'cancelled' ? `
+                            <button
+                              onclick="handleInitiatePayment('${o.id}')"
+                              class="btn-primary !h-8 text-[12px]"
+                            >
+                              Deposit escrow ($${o.price.toFixed(2)})
+                            </button>
+                          ` : ''}
+                          ${o.report_id ? `
+                            <button onclick="viewReport('${o.report_id}')" class="btn-secondary !h-8 text-[12px]">
+                              Report
+                            </button>
+                          ` : ''}
+                          ${o.status === 'delivered' && o.escrow_state === 'funded' ? `
+                            <button onclick="executeEVMEscrowRelease('${o.id}')" class="btn-primary !h-8 text-[12px]" title="Release smart escrow payment to specialist">
+                              Release escrow
+                            </button>
+                          ` : ''}
                         </div>
-                      ` : o.payment_status === 'pending' ? `
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                          <span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
-                          <span>Pending Escrow Deposit</span>
-                        </span>
-                      ` : o.payment_status === 'failed' ? `
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
-                          <span>Failed</span>
-                        </span>
-                      ` : `
-                        <span class="text-[11px] text-[#627566] capitalize">${escapeHtml(o.payment_status || 'N/A')}</span>
-                      `}
-                    </td>
-                    <td class="px-5 py-3.5 font-mono font-medium text-[#202820]">${isAutomated ? '<span class="text-[#176B45] font-semibold">Free</span>' : '$' + o.price.toFixed(2)}</td>
-                    <td class="px-5 py-3.5 text-[#627566]">${new Date(o.created_at).toLocaleDateString()}</td>
-                    <td class="px-5 py-3.5 text-right">
-                      <div class="flex items-center justify-end gap-2">
-                        <button onclick="openModal('order_detail', '${o.id}')" class="px-2.5 py-1 bg-white border border-[#E2E9E3] hover:border-[#176B45] text-[#202820] font-medium text-[12px] rounded transition-smooth cursor-pointer">
-                          Details
-                        </button>
-                        ${!isAutomated && (o.payment_status === 'pending' || o.payment_status === 'failed') && o.status !== 'rejected' && o.status !== 'cancelled' ? `
-                          <button
-                            onclick="handleInitiatePayment('${o.id}')"
-                            class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white font-medium text-[12px] rounded shadow-xs transition-smooth cursor-pointer"
-                          >
-                            Deposit Escrow ($${o.price.toFixed(2)})
-                          </button>
-                        ` : ''}
-                        ${o.report_id ? `
-                          <button onclick="viewReport('${o.report_id}')" class="px-2.5 py-1 bg-[#EAF5EE] text-[#176B45] hover:bg-[#C4E4CE] font-medium text-[12px] rounded transition-smooth cursor-pointer">
-                            Report
-                          </button>
-                        ` : ''}
-                        ${o.status === 'delivered' && o.escrow_state === 'funded' ? `
-                          <button onclick="executeEVMEscrowRelease('${o.id}')" class="px-2.5 py-1 bg-[#176B45] text-white hover:bg-[#115638] font-medium text-[12px] rounded shadow-xs transition-smooth cursor-pointer" title="Release smart escrow payment to specialist">
-                            Release Escrow
-                          </button>
-                        ` : ''}
-                      </div>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
         ` : `
-          <div class="py-12 text-center space-y-3">
-            <div class="w-12 h-12 mx-auto rounded-full bg-[#EAF5EE] text-[#176B45] flex items-center justify-center">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <h3 class="text-[15px] font-semibold text-[#202820]">No service requests sent yet</h3>
-            <p class="text-[13px] text-[#627566] max-w-sm mx-auto">
+          <div class="py-16 text-center space-y-3">
+            <h3 class="font-serif text-[18px] text-[var(--text)]">No service requests sent yet</h3>
+            <p class="text-[13px] text-[var(--text-2)] max-w-sm mx-auto">
               You haven't requested any security reviews. Browse OpiHub to order from automated 0G AI agents or human specialists.
             </p>
-            <div class="pt-1">
-              <button onclick="navigateTo('opihub')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+            <div class="pt-2">
+              <button onclick="navigateTo('opihub')" class="btn-primary">
                 Explore OpiHub
               </button>
             </div>
@@ -2351,52 +2388,51 @@ function renderSecurityReportsView() {
   });
 
   return `
-    <div class="space-y-5">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-semibold tracking-tight text-[#202820]">Security Reports</h1>
-        </div>
+    <div class="space-y-8">
+      <div>
+        <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Security Reports</h1>
+        <p class="text-[14px] text-[var(--text-2)] mt-1.5">Delivered audit certificates, vulnerability assessments, and hardened prompt directives.</p>
       </div>
 
-      <div class="grid grid-cols-1 gap-4">
-        ${reports.map(r => `
-          <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs space-y-4">
-            <div class="flex items-start justify-between">
+      <div class="space-y-4">
+        ${reports.length > 0 ? reports.map(r => `
+          <div class="surface-card space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="font-mono text-[12px] text-[#627566]">${r.id}</span>
-                  <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded">Verified Audit</span>
+                  <span class="font-mono text-[12px] text-[var(--text-3)]">${r.id}</span>
+                  <span class="pill pill-success text-[10.5px]">Verified audit</span>
                 </div>
-                <h3 class="text-[15.5px] font-semibold text-[#202820] mt-1">${escapeHtml(r.service_title)}</h3>
-                <div class="text-[12px] text-[#627566]">
-                  Audited by: <strong>${escapeHtml(r.provider_name)}</strong> • Order: <span class="font-mono">${r.order_id}</span>
+                <h3 class="font-serif text-[18px] font-normal text-[var(--text)] mt-1.5 leading-snug">${escapeHtml(r.service_title)}</h3>
+                <div class="text-[12.5px] text-[var(--text-3)] mt-0.5">
+                  Audited by: <strong class="text-[var(--text-2)] font-medium">${escapeHtml(r.provider_name)}</strong> &middot; Order: <span class="font-mono">${r.order_id}</span>
                 </div>
               </div>
 
-              <div class="flex items-center gap-2">
-                <button onclick="viewReport('${r.id}')" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth">
-                  Inspect Findings & Hardened Prompt
+              <div class="shrink-0">
+                <button onclick="viewReport('${r.id}')" class="btn-secondary !h-8 text-[12.5px]">
+                  Inspect findings & prompt
                 </button>
               </div>
             </div>
 
-            <p class="text-[13px] text-[#445246]">${escapeHtml(r.summary)}</p>
+            <p class="text-[13.5px] text-[var(--text-2)] leading-relaxed">${escapeHtml(r.summary)}</p>
 
             <!-- Findings Summary Chips -->
-            <div class="flex flex-wrap gap-2 pt-1 border-t border-[#E2E9E3]">
+            <div class="flex flex-wrap gap-2 pt-3 border-t border-[var(--border)]">
               ${(r.findings || []).map(f => `
-                <div class="px-2.5 py-1 rounded text-[11.5px] font-medium border flex items-center gap-1.5 ${
-                  f.severity === 'critical' ? 'bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]' :
-                  f.severity === 'high' ? 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]' :
-                  'bg-[#EAF5EE] text-[#176B45] border-[#C4E4CE]'
-                }">
-                  <span class="uppercase text-[10px] font-bold">${f.severity}:</span>
+                <div class="pill ${f.severity === 'critical' ? 'pill-danger' : f.severity === 'high' ? 'pill-warning' : 'pill-neutral'} text-[11px]">
+                  <span class="font-semibold uppercase text-[10px]">${f.severity}:</span>
                   <span>${escapeHtml(f.title)}</span>
                 </div>
               `).join('')}
             </div>
           </div>
-        `).join('')}
+        `).join('') : `
+          <div class="surface-card p-12 text-center text-[13px] text-[var(--text-3)]">
+            No completed security reports recorded yet.
+          </div>
+        `}
       </div>
     </div>
   `;
@@ -2443,33 +2479,33 @@ function renderOrderSubmittedSpec(o, providerWallet) {
   const notesData = parseDeliverableNotes(o.deliverable_notes);
 
   return `
-    <div class="space-y-2 mt-2">
-      <!-- Client Specification / Prompt -->
-      <div class="bg-[#FAFBF9] border border-[#E2E9E3] p-3 rounded-md text-[12.5px] space-y-1">
-        <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Submitted Specification / Scope:</div>
-        <pre class="font-mono text-[12px] text-[#202820] whitespace-pre-wrap">${escapeHtml(o.prompt_content)}</pre>
+    <div class="space-y-3 mt-3">
+      <!-- Client Specification / Scope -->
+      <div class="bg-[var(--surface-sunk)] border border-[var(--border)] p-3.5 rounded-[var(--radius-md)] text-[12.5px] space-y-1.5">
+        <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Submitted Scope & Directive</div>
+        <pre class="font-mono text-[12px] text-[var(--text)] whitespace-pre-wrap leading-relaxed">${escapeHtml(o.prompt_content)}</pre>
         ${reqData.user_requirements ? `
-          <div class="pt-2 border-t border-[#E2E9E3] text-[12px] text-[#445246]">
-            <strong class="text-[#202820]">Client Constraints:</strong> ${escapeHtml(reqData.user_requirements)}
+          <div class="pt-2 border-t border-[var(--border)] text-[12.5px] text-[var(--text-2)]">
+            <strong class="font-medium text-[var(--text)]">Constraints:</strong> ${escapeHtml(reqData.user_requirements)}
           </div>
         ` : ''}
       </div>
 
       <!-- Extended Links (Product, Docs/Repo, Environment) -->
       ${(reqData.product_link || reqData.docs_link || reqData.test_env_notes) ? `
-        <div class="p-3 bg-white border border-[#E2E9E3] rounded-md space-y-2 text-[12px]">
-          <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">Audit Artifacts & Scopes</div>
+        <div class="p-3.5 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-2 text-[12.5px]">
+          <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Audit Artifacts & Scopes</div>
           <div class="flex flex-wrap items-center gap-2">
             ${reqData.product_link ? `
               <a
                 href="${escapeForAttr(reqData.product_link)}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#EAF5EE] text-[#176B45] hover:bg-[#D5EBDC] font-medium border border-[#CDE5D5] transition-smooth cursor-pointer"
+                class="btn-secondary text-[12px] !h-8 !py-0 inline-flex items-center gap-1.5"
               >
-                <span>🔗 Launch Product URL</span>
-                <span class="font-mono text-[11px] text-[#2FA36B] truncate max-w-[200px]">(${escapeHtml(reqData.product_link)})</span>
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                <span>Product Target</span>
+                <span class="font-mono text-[11px] text-[var(--text-3)] truncate max-w-[200px]">(${escapeHtml(reqData.product_link)})</span>
+                <span class="text-[12px]">↗</span>
               </a>
             ` : ''}
 
@@ -2478,40 +2514,40 @@ function renderOrderSubmittedSpec(o, providerWallet) {
                 href="${escapeForAttr(reqData.docs_link)}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#FAFBF9] text-[#202820] hover:bg-[#F0F5F1] font-medium border border-[#CBD7CE] transition-smooth cursor-pointer"
+                class="btn-secondary text-[12px] !h-8 !py-0 inline-flex items-center gap-1.5"
               >
-                <span>📄 View Docs / Codebase</span>
-                <span class="font-mono text-[11px] text-[#627566] truncate max-w-[200px]">(${escapeHtml(reqData.docs_link)})</span>
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                <span>Codebase / Docs</span>
+                <span class="font-mono text-[11px] text-[var(--text-3)] truncate max-w-[200px]">(${escapeHtml(reqData.docs_link)})</span>
+                <span class="text-[12px]">↗</span>
               </a>
             ` : ''}
           </div>
 
           ${reqData.test_env_notes ? `
-            <div class="pt-1.5 border-t border-[#E2E9E3] text-[#445246] leading-relaxed">
-              <strong class="text-[#202820]">Environment & Credentials Notes:</strong> ${escapeHtml(reqData.test_env_notes)}
+            <div class="pt-2 border-t border-[var(--border)] text-[12px] text-[var(--text-2)] leading-relaxed">
+              <strong class="font-medium text-[var(--text)]">Environment Notes:</strong> ${escapeHtml(reqData.test_env_notes)}
             </div>
           ` : ''}
         </div>
       ` : ''}
 
       <!-- Payment & Escrow Status -->
-      <div class="text-[11.5px] text-[#627566] bg-[#FAFBF9] px-3 py-1.5 rounded border border-[#E2E9E3] flex items-center justify-between">
-        <span>Payment: <strong class="text-[#176B45]">Autonomous Escrow</strong> ($${o.price.toFixed(2)} USD)</span>
-        <span class="font-mono text-[11px] text-[#202820]">Disburses to: ${providerWallet ? escapeHtml(providerWallet.substring(0, 8) + '...' + providerWallet.substring(providerWallet.length - 4)) : 'Provider Wallet'}</span>
+      <div class="text-[12px] text-[var(--text-2)] bg-[var(--surface-sunk)] px-3.5 py-2 rounded-[var(--radius-sm)] border border-[var(--border)] flex items-center justify-between">
+        <span>Payment: <strong class="font-medium text-[var(--text)]">Smart Escrow Protected</strong> ($${o.price.toFixed(2)} USD)</span>
+        <span class="font-mono text-[11px] text-[var(--text-3)]">Disbursal: ${providerWallet ? escapeHtml(providerWallet.substring(0, 8) + '...' + providerWallet.substring(providerWallet.length - 4)) : 'Specialist Destination'}</span>
       </div>
 
       <!-- Active Ticket Alert Banner if Raised -->
       ${notesData.ticket ? `
-        <div class="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-md space-y-1.5">
+        <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border-strong)] rounded-[var(--radius-md)] space-y-1.5">
           <div class="flex items-center justify-between">
-            <span class="text-[12.5px] font-semibold text-[#991B1B] flex items-center gap-1.5">
-              🚨 Quality Review Ticket Raised (${escapeHtml(notesData.ticket.ticket_id || 'TK-01')})
+            <span class="pill pill-danger">
+              Quality Review Ticket (${escapeHtml(notesData.ticket.ticket_id || 'TK-01')})
             </span>
-            <span class="text-[11px] font-mono text-[#B91C1C]">${new Date(notesData.ticket.created_at).toLocaleString()}</span>
+            <span class="text-[11px] font-mono text-[var(--text-3)]">${new Date(notesData.ticket.created_at).toLocaleString()}</span>
           </div>
-          <div class="text-[12px] text-[#7F1D1D]"><strong class="font-semibold text-[#991B1B]">Reason:</strong> ${escapeHtml(notesData.ticket.reason)}</div>
-          <div class="text-[12px] text-[#7F1D1D] bg-white/80 p-2 rounded border border-[#FCA5A5] italic">${escapeHtml(notesData.ticket.feedback)}</div>
+          <div class="text-[12.5px] text-[var(--text)]"><strong class="font-medium">Reason:</strong> ${escapeHtml(notesData.ticket.reason)}</div>
+          <div class="text-[12px] text-[var(--text-2)] bg-[var(--surface)] p-2.5 rounded border border-[var(--border)]">${escapeHtml(notesData.ticket.feedback)}</div>
         </div>
       ` : ''}
     </div>
@@ -2520,61 +2556,60 @@ function renderOrderSubmittedSpec(o, providerWallet) {
 
 function renderCleanProviderCard(p) {
   const isAutomated = p.provider_type === 'automated';
-  const shortDesc = p.description.length > 130 ? p.description.slice(0, 130) + '...' : p.description;
+  const isMe = (STATE.auth.walletAddress || '').toLowerCase() === (p.wallet_address || '').toLowerCase() && !p.is_platform_managed;
 
   return `
-    <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-3">
-      <div class="space-y-2.5">
+    <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-6 flex flex-col justify-between hover:border-[var(--border-strong)] transition-all">
+      <div>
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
-            <div class="flex items-center gap-1.5">
-              <h3 class="text-[14px] font-semibold text-[#202820] truncate">${escapeHtml(p.display_name)}</h3>
-              ${p.verified ? `
-                <svg class="w-3.5 h-3.5 text-[#176B45] shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-              ` : ''}
-            </div>
-            <p class="text-[11.5px] text-[#627566] line-clamp-1">${escapeHtml(p.title)}</p>
+            <h3 class="font-serif text-[18px] font-normal text-[var(--text)] tracking-[-0.01em] truncate">
+              ${escapeHtml(p.display_name)}
+            </h3>
+            <p class="text-[13px] text-[var(--text-3)] mt-0.5 truncate">
+              ${escapeHtml(p.title || (isAutomated ? 'Autonomous Guardrail Enforcer' : 'Security Specialist'))}
+            </p>
           </div>
-          <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono shrink-0 ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#EAF5EE] text-[#176B45]'}">
+          <span class="pill pill-neutral shrink-0 text-[11px]">
             ${isAutomated ? '0G AI Agent' : 'Specialist'}
           </span>
         </div>
 
-        <p class="text-[12.5px] text-[#445246] line-clamp-2 leading-relaxed">
-          ${escapeHtml(shortDesc)}
+        <p class="text-[13px] text-[var(--text-2)] mt-3 line-clamp-2 leading-relaxed">
+          ${escapeHtml(p.description || '')}
         </p>
 
-        <!-- Concise Skills chips -->
-        <div class="flex flex-wrap gap-1">
+        <!-- Up to 3 skill tags: subtle --surface-sunk pills, NO borders, 12-13px -->
+        <div class="flex flex-wrap gap-1.5 mt-4">
           ${(p.skills || []).slice(0, 3).map(s => `
-            <span class="text-[10.5px] bg-[#FAFBF9] border border-[#E2E9E3] text-[#445246] px-2 py-0.5 rounded">
+            <span class="px-2.5 py-1 rounded-[var(--radius-sm)] bg-[var(--surface-sunk)] text-[var(--text-2)] text-[12px]">
               ${escapeHtml(s)}
             </span>
           `).join('')}
-          ${(p.skills || []).length > 3 ? `<span class="text-[10px] text-[#8B9C8E] self-center">+${p.skills.length - 3}</span>` : ''}
+          ${(p.skills || []).length > 3 ? `
+            <span class="text-[11px] text-[var(--text-3)] self-center ml-0.5">+${p.skills.length - 3}</span>
+          ` : ''}
         </div>
       </div>
 
-      <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
-        <div>
-          <span class="text-[11px] text-[#627566] block">Availability</span>
-          <span class="text-[12px] font-semibold text-[#176B45] capitalize">${p.availability}</span>
+      <div class="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-between">
+        <div class="flex items-center gap-1.5 text-[12px] text-[var(--success)] font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+          Available
         </div>
-        ${((STATE.auth.walletAddress || '').toLowerCase() === (p.wallet_address || '').toLowerCase() && !p.is_platform_managed) ? `
+        ${isMe ? `
           <button
             onclick="navigateTo('provider_workspace')"
-            class="px-3 py-1.5 bg-[#EAF5EE] hover:bg-[#D7EFE0] border border-[#CDE5D5] text-[#176B45] text-[12px] font-medium rounded transition-smooth cursor-pointer"
+            class="btn-secondary !h-8 text-[12.5px]"
           >
-            My Workspace →
+            My workspace &rarr;
           </button>
         ` : `
           <button
             onclick="navigateTo('provider_detail', '${p.id}')"
-            class="px-3 py-1.5 bg-[#FAFBF9] hover:bg-[#EAF5EE] border border-[#E2E9E3] text-[#176B45] text-[12px] font-medium rounded transition-smooth cursor-pointer"
+            class="btn-secondary !h-8 text-[12.5px]"
           >
-            View Profile
+            View profile
           </button>
         `}
       </div>
@@ -2592,83 +2627,80 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
   );
 
   return `
-    <div class="bg-white border border-[#E2E9E3] rounded-lg p-5 shadow-xs flex flex-col justify-between card-hover transition-smooth space-y-3">
-      <div class="space-y-2">
-        <div class="flex items-start justify-between gap-2">
-          <h3 class="text-[14px] font-semibold text-[#202820] tracking-tight leading-snug">${escapeHtml(s.title)}</h3>
+    <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-6 flex flex-col justify-between hover:border-[var(--border-strong)] transition-all">
+      <div>
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h3 class="font-serif text-[18px] font-normal text-[var(--text)] tracking-[-0.01em] leading-snug">
+              ${escapeHtml(s.title)}
+            </h3>
+            ${showProvider ? `
+              <div class="text-[12.5px] text-[var(--text-3)] flex items-center gap-1.5 mt-1">
+                <span>By</span>
+                <strong class="text-[var(--text-2)] hover:text-[var(--text)] cursor-pointer font-medium" onclick="navigateTo('provider_detail', '${s.provider_id}')">${escapeHtml(s.provider_name)}</strong>
+                <span class="pill pill-neutral shrink-0 text-[10.5px]">
+                  ${isAutomated ? '0G AI Agent' : 'Specialist'}
+                </span>
+              </div>
+            ` : ''}
+          </div>
           <div class="text-right shrink-0">
             ${isAutomated ? `
-              <span class="font-mono font-bold text-[13px] text-[#176B45]">Free</span>
-              <div class="text-[10px] font-mono text-[#627566]">0G Direct</div>
+              <span class="font-mono text-[15px] font-semibold text-[var(--text)]">Free</span>
+              <div class="text-[11px] font-mono text-[var(--text-3)]">0G Direct</div>
             ` : `
-              <span class="font-mono font-bold text-[13.5px] text-[#176B45]">$${s.price.toFixed(2)}</span>
+              <span class="font-mono text-[15px] font-semibold text-[var(--text)]">$${s.price.toFixed(2)}</span>
+              <div class="text-[11px] font-mono text-[var(--text-3)]">Smart Escrow</div>
             `}
           </div>
         </div>
 
-        ${showProvider ? `
-          <div class="text-[12px] text-[#627566] flex items-center gap-1.5">
-            By <strong class="text-[#202820] cursor-pointer hover:underline" onclick="navigateTo('provider_detail', '${s.provider_id}')">${escapeHtml(s.provider_name)}</strong>
-            <span class="text-[10px] px-1.5 py-0.2 rounded font-mono font-medium ${isAutomated ? 'bg-[#E0E7FF] text-[#3730A3]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-              ${isAutomated ? '0G Autonomous AI' : 'Specialist Review'}
-            </span>
-          </div>
-        ` : ''}
-
-        <p class="text-[12.5px] text-[#445246] line-clamp-2 leading-relaxed">
-          ${escapeHtml(s.description)}
+        <p class="text-[13px] text-[var(--text-2)] mt-3 line-clamp-2 leading-relaxed">
+          ${escapeHtml(s.description || '')}
         </p>
 
-        <div class="flex items-center gap-4 text-[11.5px] text-[#627566] pt-1">
-          <span>Turnaround: <strong class="text-[#202820]">${s.estimated_delivery}</strong></span>
-          <span>Category: <strong class="text-[#202820]">${formatCategoryName(s.category)}</strong></span>
+        <div class="flex items-center gap-3 text-[12px] text-[var(--text-3)] mt-4">
+          <span>Turnaround: <strong class="text-[var(--text-2)] font-medium">${escapeHtml(s.estimated_delivery)}</strong></span>
+          <span>&middot;</span>
+          <span>Category: <strong class="text-[var(--text-2)] font-medium">${formatCategoryName(s.category)}</strong></span>
         </div>
       </div>
 
-      <div class="pt-3 border-t border-[#E2E9E3] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-[11px] text-[#627566]">
-            ${isAutomated ? '⚡ Instant 0G Inference' : '🔒 Smart Escrow Protected'}
-          </span>
+      <div class="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-between gap-2">
+        <div>
           ${s.arkiv_entity_key ? `
             <button
               type="button"
               onclick="event.stopPropagation(); openArkivVerificationModal('${s.id}')"
-              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10.5px] font-mono font-medium bg-[#EAF5EE] text-[#176B45] hover:bg-[#D7EFE0] border border-[#CDE5D5] transition-smooth cursor-pointer shadow-2xs"
-              title="Click to verify live on Rabdi Testnet via Arkiv SDK client.getEntity()"
+              class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--radius-full)] text-[11px] font-mono font-medium bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90 transition-opacity cursor-pointer border-none"
+              title="Click to verify live on Rabdi Testnet"
             >
-              <span class="w-1.5 h-1.5 rounded-full bg-[#176B45] animate-pulse"></span>
-              <span>Arkiv Verified</span>
-              <span class="text-[#627566] text-[9.5px]">(${s.arkiv_entity_key.slice(0, 6)}...${s.arkiv_entity_key.slice(-4)})</span>
-              <span>↗</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+              <span>Arkiv verified</span>
             </button>
           ` : `
-            <button
-              type="button"
-              onclick="event.stopPropagation(); openArkivVerificationModal('${s.id}')"
-              class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-mono text-[#8B9C8E] hover:text-[#202820] hover:bg-[#F0F5F1] transition-smooth cursor-pointer"
-              title="Inspect Arkiv Storage Status"
-            >
-              <span class="w-1.5 h-1.5 rounded-full bg-[#CBD5E1]"></span>
-              <span>Off-Chain</span>
-              <span>🔍</span>
-            </button>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--radius-full)] text-[11px] font-mono text-[var(--text-3)] bg-[var(--surface-sunk)]">
+              <span>${isAutomated ? 'Instant 0G inference' : 'Smart escrow'}</span>
+            </span>
           `}
         </div>
-        <div class="flex items-center gap-2 self-end sm:self-auto">
+
+        <div>
           ${ownsService ? `
-            <button onclick="navigateTo('provider_workspace')" class="px-3 py-1.5 text-[12px] font-medium bg-[#EAF5EE] border border-[#CDE5D5] text-[#176B45] rounded transition-smooth cursor-pointer">
-              My Service →
-            </button>
-            <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="px-2.5 py-1 text-[12px] font-medium bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#176B45] rounded transition-smooth cursor-pointer">
-              Edit
-            </button>
+            <div class="flex items-center gap-2">
+              <button onclick="navigateTo('provider_workspace')" class="btn-secondary !h-8 text-[12.5px]">
+                My service &rarr;
+              </button>
+              <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="btn-ghost !h-8 text-[12.5px] border border-transparent hover:border-[var(--border)]">
+                Edit
+              </button>
+            </div>
           ` : `
             <button
               onclick="openModal('request_review', { serviceId: '${s.id}', providerId: '${s.provider_id}' })"
-              class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded transition-smooth cursor-pointer shadow-xs"
+              class="btn-secondary !h-8 text-[12.5px]"
             >
-              ${isAutomated ? 'Run 0G Defense' : 'Request Review'}
+              ${isAutomated ? 'Run 0G defense' : 'Request review'}
             </button>
           `}
         </div>
@@ -2678,36 +2710,50 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
 }
 
 function renderStatusBadge(status) {
-  const map = {
-    requested: 'badge-status-requested',
-    accepted: 'badge-status-accepted',
-    in_progress: 'badge-status-in_progress',
-    delivered: 'badge-status-delivered',
-    completed: 'badge-status-completed',
-    rejected: 'badge-status-rejected',
-    cancelled: 'badge-status-cancelled'
-  };
-  const cls = map[status] || 'bg-gray-100 text-gray-800';
-  return `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize font-mono ${cls}">${status.replace('_', ' ')}</span>`;
+  const norm = (status || '').toLowerCase().replace('-', '_');
+  let pillClass = 'pill-neutral';
+  let label = status || '';
+
+  if (['requested', 'pending', 'pending_escrow'].includes(norm)) {
+    pillClass = 'pill-warning';
+    label = norm === 'requested' ? 'Requested' : 'Pending';
+  } else if (['accepted', 'in_progress'].includes(norm)) {
+    pillClass = 'pill-info';
+    label = norm === 'in_progress' ? 'In progress' : 'Accepted';
+  } else if (['completed', 'disbursed', 'released', 'funded'].includes(norm)) {
+    pillClass = 'pill-success';
+    label = norm === 'completed' ? 'Completed' : norm === 'funded' ? 'Funded' : 'Disbursed';
+  } else if (['delivered'].includes(norm)) {
+    pillClass = 'pill-info';
+    label = 'Delivered';
+  } else if (['rejected', 'cancelled', 'failed'].includes(norm)) {
+    pillClass = 'pill-danger';
+    label = norm === 'rejected' ? 'Rejected' : norm === 'cancelled' ? 'Cancelled' : 'Failed';
+  } else {
+    label = norm.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  return `<span class="pill ${pillClass}">${escapeHtml(label)}</span>`;
 }
 
 function renderActivityFeed(activities) {
   if (!activities || activities.length === 0) {
-    return `<div class="py-4 text-center text-[#627566] text-[13px]">No recent orders or reports recorded yet.</div>`;
+    return `<div class="p-8 text-center text-[13px] text-[var(--text-3)]">No recent activity recorded yet.</div>`;
   }
 
-  return activities.slice(0, 4).map(act => `
-    <div class="py-3 flex items-center justify-between text-[13px]">
-      <div class="flex items-center gap-2.5 min-w-0 pr-3">
-        <div class="w-2 h-2 rounded-full bg-[#176B45] shrink-0"></div>
-        <div class="truncate">
-          <strong class="text-[#202820]">${escapeHtml(act.title)}</strong>
-          <span class="text-[#627566]">with ${escapeHtml(act.provider)}</span>
-        </div>
+  return activities.slice(0, 5).map(act => `
+    <div onclick="openOrderDetail('${act.id}')" class="min-h-[64px] px-5 py-3 flex items-center justify-between gap-4 hover:bg-[var(--surface-sunk)] transition-colors cursor-pointer">
+      <div class="min-w-0 pr-2">
+        <div class="text-[14px] font-medium text-[var(--text)] truncate leading-snug">${escapeHtml(act.title || 'Security Request')}</div>
+        <div class="text-[13px] text-[var(--text-2)] truncate leading-snug mt-0.5">with ${escapeHtml(act.provider || 'Specialist')}</div>
       </div>
-
-      <div class="flex items-center gap-2.5 shrink-0">
+      <div class="flex items-center gap-3 shrink-0">
         ${renderStatusBadge(act.status)}
+        ${act.timestamp ? `
+          <span class="text-[12px] text-[var(--text-3)] font-sans">
+            ${formatQuietDate(act.timestamp)}
+          </span>
+        ` : ''}
       </div>
     </div>
   `).join('');
@@ -2726,7 +2772,7 @@ function renderModalContainer() {
   }
   return `
     <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div class="bg-white rounded-xl shadow-xl border border-[#E2E9E3] ${maxWidthClass} w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-[var(--surface)] text-[var(--text)] rounded-[var(--radius-md)] border border-[var(--border)] shadow-xl ${maxWidthClass} w-full max-h-[90vh] overflow-y-auto font-sans">
         ${renderModalContent()}
       </div>
     </div>
@@ -2803,38 +2849,34 @@ function renderRequestReviewModal() {
   const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
 
   return `
-    <div class="p-6 space-y-5">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+    <div class="p-6 sm:p-7 space-y-5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
         <div>
-          <h3 class="text-[16px] font-semibold text-[#202820]">
-            ${isPromptEngineering ? 'Autonomous 0G Prompt Engineering & Loop Defense' : isPromptSecurity ? 'Autonomous 0G Deep Security Vulnerability Scan' : 'Request Specialist Security Review'}
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">
+            ${isPromptEngineering ? 'Autonomous Prompt Engineering & Loop Defense' : isPromptSecurity ? 'Autonomous Prompt Security Vulnerability Scan' : 'Request Specialist Security Review'}
           </h3>
-          <p class="text-[12px] text-[#627566] mt-0.5">
+          <p class="text-[13px] text-[var(--text-3)] mt-0.5">
             ${isPromptEngineering ? 'Fast Prompt Delivery • Loop Bounds Hardening • 0G Defence Agent' : isPromptSecurity ? 'Vulnerability Analysis & Architecture Audit • Prompt Guard Agent' : `${formatCategoryName(category)} • ${escapeHtml(currentService?.provider_name || '')}`}
           </p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <form onsubmit="handleOrderSubmit(event)" class="space-y-4">
         <!-- Selected Service Offering Summary -->
         <input type="hidden" name="service_id" value="${currentService?.id || ''}" />
-        <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg flex items-center justify-between">
+        <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] flex items-center justify-between">
           <div class="space-y-0.5">
-            <div class="text-[14px] font-semibold text-[#202820]">${escapeHtml(currentService?.title || 'Security Service')}</div>
-            <div class="text-[12px] text-[#627566]">${escapeHtml(currentService?.provider_name || '')} • ${formatCategoryName(category)} • Est. ${escapeHtml(currentService?.estimated_delivery || '24-48h')}</div>
+            <div class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(currentService?.title || 'Security Service')}</div>
+            <div class="text-[12.5px] text-[var(--text-2)]">${escapeHtml(currentService?.provider_name || '')} • ${formatCategoryName(category)} • Est. ${escapeHtml(currentService?.estimated_delivery || '24-48h')}</div>
           </div>
           <div class="text-right">
             ${isAutomated ? `
-              <div class="text-[14px] font-bold font-mono text-[#176B45]">Instant AI Reasoning</div>
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono bg-[#E0E7FF] text-[#3730A3]">
-                0G Private Computer
-              </span>
+              <div class="text-[13.5px] font-mono text-[var(--text)]">0G Private Computer</div>
+              <span class="pill pill-info mt-1">Autonomous AI</span>
             ` : `
-              <div class="text-[15px] font-bold font-mono text-[#176B45]">$${(currentService?.price || 0).toFixed(2)} USD</div>
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono bg-[#EAF5EE] text-[#176B45]">
-                Specialist Review
-              </span>
+              <div class="text-[14px] font-mono font-medium text-[var(--text)]">$${(currentService?.price || 0).toFixed(2)} USD</div>
+              <span class="pill pill-neutral mt-1">Specialist Review</span>
             `}
           </div>
         </div>
@@ -2842,110 +2884,110 @@ function renderRequestReviewModal() {
         <!-- Dynamic Category-Specific Form Fields -->
         ${isApplicationTesting ? `
           <!-- Application Testing Specific Inputs -->
-          <div class="space-y-3.5 p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl">
-            <div class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Application Target Details</div>
+          <div class="space-y-3.5 p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)]">
+            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Application Target Details</div>
             
             <div>
-              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Product Link / Staging URL *</label>
+              <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Product Link / Staging URL *</label>
               <input
                 type="url"
                 name="product_link"
                 required
-                placeholder=""
-                class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+                placeholder="https://staging.example.com"
+                class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
               />
-              <p class="text-[11px] text-[#627566] mt-1">Specialist will test this target environment directly for injection, authentication, and SSRF flaws.</p>
+              <p class="text-[11.5px] text-[var(--text-3)] mt-1">Specialist will test this target environment directly for injection, authentication, and SSRF flaws.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Documentation / API Spec Link</label>
+                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Documentation / API Spec Link</label>
                 <input
                   type="url"
                   name="docs_link"
-                  placeholder=""
-                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
+                  placeholder="https://docs.example.com"
+                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] font-mono focus:outline-none transition-colors"
                 />
               </div>
               <div>
-                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Staging Credentials & Scope Notes</label>
+                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Staging Credentials & Scope Notes</label>
                 <input
                   type="text"
                   name="test_env_notes"
-                  placeholder=""
-                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] focus:outline-none focus:border-[#176B45]"
+                  placeholder="Test account credentials or branch notes"
+                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] focus:outline-none transition-colors"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Testing Scope & Attack Vectors to Probe *</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Testing Scope & Attack Vectors to Probe *</label>
             <textarea
               name="prompt_content"
               rows="4"
               required
-              placeholder=""
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
+              placeholder="Describe attack surfaces, user permissions, and boundaries..."
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"
             >${payload.promptText || ''}</textarea>
           </div>
         ` : (isCodebaseSecurity ? `
           <!-- Codebase Security Specific Inputs -->
-          <div class="space-y-3.5 p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl">
-            <div class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Repository & Architecture Scope</div>
+          <div class="space-y-3.5 p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)]">
+            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Repository & Architecture Scope</div>
 
             <div>
-              <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Codebase / Repository URL *</label>
+              <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Codebase / Repository URL *</label>
               <input
                 type="url"
                 name="docs_link"
                 required
-                placeholder=""
-                class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+                placeholder="https://github.com/org/repo"
+                class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
               />
-              <p class="text-[11px] text-[#627566] mt-1">Specialist will evaluate repository structure, credential leakage risks, and security boundaries.</p>
+              <p class="text-[11.5px] text-[var(--text-3)] mt-1">Specialist will evaluate repository structure, credential leakage risks, and security boundaries.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Live Application / Staging Link (Optional)</label>
+                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Live Application / Staging Link (Optional)</label>
                 <input
                   type="url"
                   name="product_link"
-                  placeholder=""
-                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
+                  placeholder="https://example.com"
+                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] font-mono focus:outline-none transition-colors"
                 />
               </div>
               <div>
-                <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Branch / Sensitive Modules Notes</label>
+                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Branch / Sensitive Modules Notes</label>
                 <input
                   type="text"
                   name="test_env_notes"
-                  placeholder=""
-                  class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[12.5px] focus:outline-none focus:border-[#176B45]"
+                  placeholder="Branch name or specific folders"
+                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] focus:outline-none transition-colors"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Codebase Security Audit Scope & Focus *</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Codebase Security Audit Scope & Focus *</label>
             <textarea
               name="prompt_content"
               rows="4"
               required
-              placeholder=""
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
+              placeholder="Specify areas requiring in-depth code review..."
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"
             >${payload.promptText || ''}</textarea>
           </div>
         ` : (isPromptSecurity ? `
           <!-- Prompt Security Analysis Inputs -->
           <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[13px] font-medium text-[#202820]">System Prompt or Security Context Under Review *</label>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[13px] font-medium text-[var(--text)]">System Prompt or Security Context Under Review *</label>
               ${prompts.length > 0 ? `
-                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] text-[#176B45] border border-[#CBD7CE] rounded px-2 py-0.5">
-                  <option value="">Insert from Saved Prompts...</option>
+                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] bg-[var(--surface)] text-[var(--text-2)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-1 focus:border-[var(--accent)] focus:outline-none">
+                  <option value="">Insert from saved prompts...</option>
                   ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
                 </select>
               ` : ''}
@@ -2956,28 +2998,28 @@ function renderRequestReviewModal() {
               rows="5"
               required
               placeholder="Enter system prompt, untrusted input template, or security boundary instructions to audit for injection, jailbreaks, and sensitive data..."
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
             >${payload.promptText || ''}</textarea>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Relevant Files, Architecture Designs, or Schemas (Optional)</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Relevant Files, Architecture Designs, or Schemas (Optional)</label>
             <textarea
               name="requirements"
               rows="3"
               placeholder="Paste backend route code, OpenAPI/Swagger schemas, database access designs, or architecture notes to audit for cross-boundary vulnerabilities."
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] font-mono focus:outline-none transition-colors"
             ></textarea>
-            <p class="text-[11.5px] text-[#627566] mt-1">💡 Share relevant files, architecture designs, or endpoint code for a comprehensive security and file audit.</p>
+            <p class="text-[11.5px] text-[var(--text-3)] mt-1">Share relevant files, architecture designs, or endpoint code for a comprehensive security and file audit.</p>
           </div>
         ` : `
           <!-- Prompt / Loop Engineering Inputs -->
           <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[13px] font-medium text-[#202820]">Prompt or Agent Instructions Under Review *</label>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-[13px] font-medium text-[var(--text)]">Prompt or Agent Instructions Under Review *</label>
               ${prompts.length > 0 ? `
-                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] text-[#176B45] border border-[#CBD7CE] rounded px-2 py-0.5">
-                  <option value="">Insert from Saved Prompts...</option>
+                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] bg-[var(--surface)] text-[var(--text-2)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-1 focus:border-[var(--accent)] focus:outline-none">
+                  <option value="">Insert from saved prompts...</option>
                   ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
                 </select>
               ` : ''}
@@ -2989,98 +3031,58 @@ function renderRequestReviewModal() {
               required
               oninput="updateDynamicPromptPricing()"
               placeholder="Enter system prompt, agent task instructions, or multi-turn workflow you want hardened with bounded loop architecture..."
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
             >${payload.promptText || ''}</textarea>
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Agent Loop Parameters & Constraints (Optional)</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Agent Loop Parameters & Constraints (Optional)</label>
             <textarea
               name="requirements"
               rows="2"
               placeholder="e.g. Target LLM (Claude 3.5, GPT-4o, Llama 3), Max Loop Iterations (default: 5), Tool Calling schemas, or downstream workflow goals."
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"
             ></textarea>
-            <p class="text-[11px] text-[#176B45] mt-1 font-medium">⚡ 0G AI will enforce MAX_ITERATIONS (5), recursion controls, and generate 3 chained next-prompt recommendations.</p>
+            <p class="text-[11.5px] text-[var(--text-3)] mt-1">0G AI will enforce MAX_ITERATIONS (5), recursion controls, and generate 3 chained next-prompt recommendations.</p>
           </div>
         `))}
 
         <!-- Payment & Authority Architecture Section -->
-        ${isAutomated ? `
-          <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
-            <div class="flex items-center justify-between">
-              <span class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">AI Execution Engine</span>
-              <span class="text-[11px] bg-[#E0E7FF] text-[#3730A3] font-semibold px-2 py-0.5 rounded font-mono">0G Private Computer</span>
-            </div>
-
-            <div class="p-3.5 bg-white border border-[#CBD7CE] rounded-xl space-y-2">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="w-5 h-5 rounded bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-xs">⚡</span>
-                  <span class="text-[12.5px] font-semibold text-[#202820]">Instant Autonomous 0G AI Reasoning</span>
-                </div>
-                <span class="text-[11px] font-semibold font-mono text-[#176B45] bg-[#EAF5EE] px-2 py-0.5 rounded border border-[#CDE5D5]">0G Direct • Free</span>
-              </div>
-
-              <p class="text-[11.5px] text-[#627566] leading-relaxed">
-                Direct execution on 0G Private Computer. Neural prompt optimization, adversarial injection analysis, and boundary hardening run with zero gas, zero wallet signing, and instant verified security reports.
-              </p>
-            </div>
+        <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text-2)] space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">${isAutomated ? 'Execution Engine' : 'Payment & Escrow Protection'}</span>
+            <span class="pill ${isAutomated ? 'pill-info' : 'pill-success'}">${isAutomated ? '0G Direct • Free' : 'Smart Escrow Protection'}</span>
           </div>
-        ` : `
-          <!-- Human Specialist Smart Escrow Section -->
-          <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-[11.5px] font-semibold text-[#176B45] uppercase tracking-wider">Payment & Escrow Protection</span>
-              <span class="text-[11px] bg-[#EAF5EE] text-[#176B45] font-semibold px-2 py-0.5 rounded font-mono">Smart Escrow Protection</span>
-            </div>
-            <div class="p-3 rounded-lg border border-[#E2E9E3] bg-white text-[12.5px] space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="text-[#445246] font-medium">Specialist Audit Fee:</span>
-                <span class="font-mono font-bold text-[#202820] text-[14px]">$${(currentService?.price || 0).toFixed(2)} USD</span>
-              </div>
-              <p class="text-[11.5px] text-[#627566] leading-relaxed">
-                Payment is locked in autonomous smart escrow and automatically disburses directly to the specialist's wallet upon verified delivery of your audit deliverable.
-              </p>
-            </div>
-          </div>
-        `}
+          <p class="pt-0.5 leading-relaxed text-[var(--text-2)]">
+            ${isAutomated
+              ? 'Direct execution on 0G Private Computer. Neural prompt optimization, adversarial injection analysis, and boundary hardening run with zero gas, zero wallet signing, and instant verified security reports.'
+              : `Audit fee of $${(currentService?.price || 0).toFixed(2)} USD is held safely in smart escrow and disbursed directly to the specialist upon verified delivery of your audit report.`}
+          </p>
+        </div>
 
         <!-- Live AI Execution Progress Status Container (Initially Hidden) -->
-        <div id="order-progress-container" class="hidden p-4 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-2.5 transition-smooth">
-          <div class="flex items-center justify-between text-[12px] font-semibold text-[#166534]">
+        <div id="order-progress-container" class="hidden p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-2.5 transition-colors">
+          <div class="flex items-center justify-between text-[12.5px] font-medium text-[var(--text)]">
             <span class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-[#16A34A] animate-ping"></span>
-              <span>0G Private Computer Reasoning in Progress</span>
+              <span class="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping"></span>
+              <span>0G Private Computer reasoning in progress</span>
             </span>
-            <span class="font-mono text-[11px] text-[#15803D]">Verified Trust Mode</span>
+            <span class="font-mono text-[11px] text-[var(--text-3)]">Verified Trust Mode</span>
           </div>
-          <div class="space-y-1.5 text-[11.5px] text-[#166534]">
-            <div class="flex items-center gap-2">
-              <span class="text-[#16A34A] font-bold">✓</span>
-              <span>Input boundary delimiter & vulnerability scan</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="animate-pulse text-[#15803D] font-bold">●</span>
-              <span>Executing confidential reasoning on 0G Private Computer</span>
-            </div>
-            <div class="flex items-center gap-2 text-[#4ADE80]">
-              <span>○</span>
-              <span>${isPromptEngineering ? 'Synthesizing loop bounds (MAX_ITERATIONS: 5) & next prompts' : 'Auditing architecture designs, files & threat surfaces'}</span>
-            </div>
-            <div class="flex items-center gap-2 text-[#4ADE80]">
-              <span>○</span>
-              <span>Publishing verified security report deliverable</span>
-            </div>
+          <div class="space-y-1 text-[12px] text-[var(--text-2)]">
+            <div class="flex items-center gap-2"><span class="text-[var(--text-3)] font-mono">1.</span><span>Input boundary delimiter & vulnerability scan</span></div>
+            <div class="flex items-center gap-2"><span class="text-[var(--accent)] font-mono">●</span><span>Executing confidential reasoning on 0G Private Computer</span></div>
+            <div class="flex items-center gap-2"><span class="text-[var(--text-3)] font-mono">3.</span><span>${isPromptEngineering ? 'Synthesizing loop bounds (MAX_ITERATIONS: 5) & next prompts' : 'Auditing architecture designs, files & threat surfaces'}</span></div>
+            <div class="flex items-center gap-2"><span class="text-[var(--text-3)] font-mono">4.</span><span>Publishing verified security report deliverable</span></div>
           </div>
         </div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">
             Cancel
           </button>
-          <button type="submit" id="order-submit-btn" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer flex items-center gap-1.5">
-            ${isPromptEngineering ? 'Execute Prompt Engineering & Loop Defense ⚡' : isPromptSecurity ? 'Run Deep Security Vulnerability Audit 🛡️' : 'Deposit Escrow & Submit Request 🛡️'}
+          <button type="submit" id="order-submit-btn" class="btn-primary text-[13px]">
+            ${isPromptEngineering ? 'Run Prompt Engineering' : isPromptSecurity ? 'Run Security Vulnerability Audit' : 'Submit Security Request'}
           </button>
         </div>
       </form>
@@ -3094,24 +3096,24 @@ function renderDeliverModal() {
   const order = (STATE.data.orders || []).find(o => o.id === orderId);
 
   return `
-    <div class="p-6 space-y-5">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+    <div class="p-6 sm:p-7 space-y-5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
         <div>
-          <h3 class="text-[16px] font-semibold text-[#202820]">Submit Audit Deliverable & Report</h3>
-          <p class="text-[12px] text-[#627566] mt-0.5">Order ID: <code class="font-mono text-[#202820]">${orderId}</code></p>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Submit Audit Deliverable & Report</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Order ID: <code class="font-mono text-[var(--text)]">${orderId}</code></p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <!-- Order Summary Card -->
-      <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg flex items-center justify-between">
+      <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] flex items-center justify-between">
         <div class="space-y-0.5">
-          <div class="text-[14px] font-semibold text-[#202820]">${escapeHtml(order?.service_title || 'Security Audit')}</div>
-          <div class="text-[12px] text-[#627566]">Client: <strong>${escapeHtml(order?.customer_name || 'Customer')}</strong> • Service Category: ${formatCategoryName(order?.service_category || 'codebase_security')}</div>
+          <div class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(order?.service_title || 'Security Audit')}</div>
+          <div class="text-[12.5px] text-[var(--text-2)]">Client: <strong class="text-[var(--text)]">${escapeHtml(order?.customer_name || 'Customer')}</strong> • Category: ${formatCategoryName(order?.service_category || 'codebase_security')}</div>
         </div>
         <div class="text-right">
-          <div class="text-[15px] font-bold font-mono text-[#176B45]">$${(order?.price || 0).toFixed(2)} USD</div>
-          <span class="text-[10px] font-semibold px-2 py-0.5 rounded font-mono bg-[#EAF5EE] text-[#176B45]">
+          <div class="text-[14px] font-mono font-medium text-[var(--text)]">$${(order?.price || 0).toFixed(2)} USD</div>
+          <span class="pill pill-success mt-1">
             Escrow Funded
           </span>
         </div>
@@ -3119,15 +3121,15 @@ function renderDeliverModal() {
 
       <form onsubmit="handleDeliverSubmit(event, '${orderId}')" class="space-y-4">
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Executive Summary *</label>
-          <textarea name="summary" rows="3" required placeholder="Summarize vulnerabilities identified, testing scope verified, and remediation..." class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Executive Summary *</label>
+          <textarea name="summary" rows="3" required placeholder="Summarize vulnerabilities identified, testing scope verified, and remediation..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"></textarea>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Primary Finding (Title & Severity)</label>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Primary Finding (Title & Severity)</label>
           <div class="grid grid-cols-3 gap-2">
-            <input type="text" name="finding_title" placeholder="e.g. Indirect Injection Surface / Auth Flaw" class="col-span-2 px-2.5 py-1.5 border border-[#CBD7CE] rounded text-[12.5px] focus:outline-none focus:border-[#176B45]" />
-            <select name="finding_severity" class="px-2 py-1.5 border border-[#CBD7CE] rounded text-[12.5px] focus:outline-none focus:border-[#176B45]">
+            <input type="text" name="finding_title" placeholder="e.g. Indirect Injection Surface / Auth Flaw" class="col-span-2 px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] focus:outline-none transition-colors" />
+            <select name="finding_severity" class="px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] focus:outline-none transition-colors">
               <option value="critical">Critical</option>
               <option value="high">High</option>
               <option value="medium" selected>Medium</option>
@@ -3137,31 +3139,26 @@ function renderDeliverModal() {
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Actionable Recommendations</label>
-          <textarea name="recommendations_raw" rows="3" placeholder="1. Enforce strict instruction sandboxing&#10;2. Apply input sanitization and token budget checks" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Actionable Recommendations</label>
+          <textarea name="recommendations_raw" rows="3" placeholder="1. Enforce strict instruction sandboxing&#10;2. Apply input sanitization and token budget checks" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"></textarea>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Delivered Hardened Prompt / Code Patch / Test Deliverable</label>
-          <textarea name="hardened_prompt" rows="3" placeholder="Paste hardened defense prompt, security patch, or detailed PoC findings..." class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[12.5px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Delivered Hardened Prompt / Code Patch / Test Deliverable</label>
+          <textarea name="hardened_prompt" rows="3" placeholder="Paste hardened defense prompt, security patch, or detailed PoC findings..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] font-mono focus:outline-none transition-colors"></textarea>
         </div>
 
         <!-- Disbursal notice box matching request modal -->
-        <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-[12px] text-[#445246] flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-[#176B45] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Upon deliverable submission, <strong>$${(order?.price || 0).toFixed(2)} USD</strong> smart escrow disburses to your connected specialist wallet.</span>
-          </div>
-          <span class="text-[11px] font-mono font-medium text-[#176B45]">MetaMask Smart Escrow (Rabdi Testnet)</span>
+        <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12px] text-[var(--text-2)] flex items-center justify-between">
+          <span>Upon deliverable submission, <strong>$${(order?.price || 0).toFixed(2)} USD</strong> smart escrow disburses to your connected specialist wallet.</span>
+          <span class="pill pill-neutral font-mono">Rabdi Testnet</span>
         </div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">
             Cancel
           </button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+          <button type="submit" class="btn-primary text-[13px]">
             Submit Deliverable & Report
           </button>
         </div>
@@ -3176,40 +3173,40 @@ function renderRejectOrderModal() {
   const order = (STATE.data.orders || []).find(o => o.id === orderId);
 
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
         <div>
-          <h3 class="text-[16px] font-semibold text-[#991B1B]">Decline Security Review Request</h3>
-          <p class="text-[12px] text-[#627566] mt-0.5">Order ID: <code class="font-mono text-[#202820]">${orderId}</code></p>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Decline Security Review Request</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Order ID: <code class="font-mono text-[var(--text)]">${orderId}</code></p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
-      <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-[13px] text-[#445246] space-y-1">
-        <div class="font-medium text-[#202820]">${escapeHtml(order?.service_title || 'Security Service Request')}</div>
-        <div class="text-[12px] text-[#627566]">Submitted by ${escapeHtml(order?.customer_name || 'Customer')} • $${(order?.price || 0).toFixed(2)} USD</div>
-        <p class="text-[11.5px] text-[#8B9C8E] pt-1">
+      <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[13px] text-[var(--text-2)] space-y-1">
+        <div class="font-medium text-[var(--text)]">${escapeHtml(order?.service_title || 'Security Service Request')}</div>
+        <div class="text-[12px] text-[var(--text-3)]">Submitted by ${escapeHtml(order?.customer_name || 'Customer')} • $${(order?.price || 0).toFixed(2)} USD</div>
+        <p class="text-[11.5px] text-[var(--text-3)] pt-1">
           Declining this request will cancel the order and automatically release/refund escrow back to the customer.
         </p>
       </div>
 
       <form onsubmit="handleRejectSubmit(event, '${orderId}')" class="space-y-4">
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Reason for Rejection *</label>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Reason for Rejection *</label>
           <textarea
             name="rejection_reason"
             rows="3"
             required
             placeholder="e.g. Scope outside current technical focus; or unable to fulfill within required turnaround time."
-            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#DC2626]"
+            class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"
           ></textarea>
         </div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">
             Cancel
           </button>
-          <button type="submit" class="px-5 py-2 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+          <button type="submit" class="btn-secondary text-[#B04A3F] border-[#B04A3F]/40 hover:bg-[#F6E3E0] text-[13px]">
             Confirm Rejection
           </button>
         </div>
@@ -3220,30 +3217,29 @@ function renderRejectOrderModal() {
 
 function renderQuickAnalyzeModal() {
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Analyze Prompt Security</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Analyze Prompt Security</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Evaluate system prompt against injection models and OWASP boundaries</p>
+        </div>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <div class="space-y-3">
-        <label class="block text-[13px] font-medium text-[#202820]">Prompt Text</label>
-        <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against Guardvane's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
+        <label class="block text-[13px] font-medium text-[var(--text)]">Prompt Text</label>
+        <textarea id="quick-prompt-input" rows="4" placeholder="Enter prompt to evaluate against Guardvane's injection model and 15 OWASP application risk classifiers..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"></textarea>
 
-        <div class="flex justify-end gap-2">
-          <button id="quick-scan-btn" onclick="executeQuickAnalyze()" class="px-3.5 py-2 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[13px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
-            <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+        <div class="flex justify-end gap-2 pt-1">
+          <button id="quick-scan-btn" onclick="executeQuickAnalyze()" class="btn-secondary text-[13px]">
             Local ML Scan
           </button>
-          <button id="quick-opt-btn" onclick="executeQuickOptimize()" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
-            <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+          <button id="quick-opt-btn" onclick="executeQuickOptimize()" class="btn-primary text-[13px]">
             0G AI Reasoning & Hardening
           </button>
         </div>
 
-        <div id="quick-analyze-results" class="hidden mt-4 p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md space-y-3"></div>
+        <div id="quick-analyze-results" class="hidden mt-4 p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-3"></div>
       </div>
     </div>
   `;
@@ -3254,11 +3250,11 @@ function copyTextToClipboard(text, btnElement) {
     navigator.clipboard.writeText(text).then(() => {
       if (btnElement) {
         const orig = btnElement.innerText;
-        btnElement.innerText = 'Copied!';
-        btnElement.classList.add('bg-[#176B45]', 'text-white');
+        btnElement.innerText = 'Copied';
+        btnElement.classList.add('bg-[var(--surface-sunk)]');
         setTimeout(() => {
           btnElement.innerText = orig;
-          btnElement.classList.remove('bg-[#176B45]', 'text-white');
+          btnElement.classList.remove('bg-[var(--surface-sunk)]');
         }, 2000);
       }
     });
@@ -3371,168 +3367,141 @@ function renderReportViewerModal() {
   const data = parseAuditReportData(report, order);
 
   return `
-    <div class="p-5 sm:p-6 space-y-4 select-text" id="report-printable-area">
+    <div class="p-6 sm:p-7 space-y-5 select-text" id="report-printable-area">
       <!-- Header with Print & Close -->
-      <div class="flex items-start justify-between border-b border-[#E2E9E3] pb-3">
-        <div class="space-y-0.5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div class="space-y-1">
           <div class="flex items-center gap-2">
-            <span class="text-[10.5px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5] px-2 py-0.5 rounded">${report.id}</span>
-            <span class="text-[10.5px] font-medium bg-[#F0F5F1] text-[#445246] px-2 py-0.5 rounded">Verified Deliverable</span>
+            <span class="font-mono text-[11px] text-[var(--text-3)]">${report.id}</span>
+            <span class="pill pill-success">Verified deliverable</span>
           </div>
-          <h2 class="text-lg font-bold text-[#202820] tracking-tight">${escapeHtml(report.service_title)}</h2>
-          <div class="text-[12px] text-[#627566]">
-            Audited by <strong>${escapeHtml(report.provider_name)}</strong> • Order <span class="font-mono text-[#202820]">${report.order_id}</span>
+          <h2 class="font-serif text-[22px] font-normal text-[var(--text)] tracking-tight">${escapeHtml(report.service_title)}</h2>
+          <div class="text-[13px] text-[var(--text-2)]">
+            Audited by <strong class="font-medium text-[var(--text)]">${escapeHtml(report.provider_name)}</strong> • Order <span class="font-mono text-[12px] text-[var(--text-3)]">${report.order_id}</span>
           </div>
         </div>
 
         <div class="flex items-center gap-2">
-          <button onclick="window.print()" class="px-3 py-1.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[11.5px] font-medium rounded-md shadow-2xs transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
-            <svg class="w-3.5 h-3.5 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            <span>Print</span>
+          <button onclick="window.print()" class="btn-secondary text-[12px] !h-8 !py-0">
+            Print
           </button>
-          <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] p-1 cursor-pointer">✕</button>
+          <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
         </div>
       </div>
 
       <!-- Separate Active Ticket Banner if Raised -->
       ${hasTicket ? `
-        <div class="p-3 rounded-lg bg-[#FEF2F2] border border-[#FECACA] flex items-center justify-between">
-          <div class="flex items-center gap-2 text-[12.5px] text-[#991B1B]">
-            <svg class="w-4 h-4 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>Active Quality Review Ticket Raised <strong>(${escapeHtml(parsedNotes.ticket.ticket_id || 'TK-01')})</strong></span>
+        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border-strong)] flex items-center justify-between">
+          <div class="flex items-center gap-2 text-[12.5px] text-[var(--danger)]">
+            <span class="pill pill-danger">Ticket Active</span>
+            <span>Quality Review Ticket Raised <strong>(${escapeHtml(parsedNotes.ticket.ticket_id || 'TK-01')})</strong></span>
           </div>
-          <button onclick="openModal('view_ticket_modal', { ticket: ${escapeForAttr(JSON.stringify(parsedNotes.ticket))}, orderId: '${report.order_id}' })" class="px-2.5 py-1 bg-white border border-[#FECACA] text-[#991B1B] hover:bg-[#FEE2E2] text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
+          <button onclick="openModal('view_ticket_modal', { ticket: ${escapeForAttr(JSON.stringify(parsedNotes.ticket))}, orderId: '${report.order_id}' })" class="btn-secondary text-[11.5px] !h-7 !py-0">
             View Issue Details →
           </button>
         </div>
       ` : ''}
 
       <!-- Request Timing & Summary Card -->
-      <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg p-3.5 space-y-2">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pb-2 border-b border-[#E2E9E3] text-[12px]">
+      <div class="bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] p-4 space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pb-3 border-b border-[var(--border)] text-[12.5px]">
           <div>
-            <span class="text-[#627566] text-[10.5px] uppercase tracking-wider block">Submitted</span>
-            <strong class="text-[#202820] block mt-0.5">${data.requestTime}</strong>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Submitted</span>
+            <strong class="text-[var(--text)] font-medium block mt-0.5">${data.requestTime}</strong>
           </div>
           <div>
-            <span class="text-[#627566] text-[10.5px] uppercase tracking-wider block">Completed</span>
-            <strong class="text-[#202820] block mt-0.5">${data.deliveredTime}</strong>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Completed</span>
+            <strong class="text-[var(--text)] font-medium block mt-0.5">${data.deliveredTime}</strong>
           </div>
           <div>
-            <span class="text-[#627566] text-[10.5px] uppercase tracking-wider block">Security Authority</span>
-            <strong class="text-[#176B45] block mt-0.5">0G Private Computer AI</strong>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Authority</span>
+            <strong class="text-[var(--text)] font-medium block mt-0.5">0G Private Computer</strong>
           </div>
         </div>
-        <p class="text-[12.5px] text-[#333E35] leading-relaxed">
+        <p class="text-[13px] text-[var(--text-2)] leading-relaxed">
           ${escapeHtml(data.cleanSummary)}
         </p>
       </div>
 
-      <!-- Token Usage Analysis (Marked and Shown Separately) -->
+      <!-- Token Usage Analysis -->
       <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <h3 class="text-[13px] font-semibold text-[#202820] flex items-center gap-1.5">
-            <svg class="w-3.5 h-3.5 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <span>Token Usage Analysis</span>
-          </h3>
-          <span class="text-[11px] text-[#627566]">Measured token allocation before & after hardening</span>
-        </div>
-
+        <div class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">Token Allocation Analysis</div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <!-- Old Token Usage -->
-          <div class="p-3.5 rounded-lg bg-white border border-[#CBD7CE] space-y-1.5 shadow-2xs">
+          <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-1.5">
             <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[#4B5563] bg-[#F3F4F6] px-2 py-0.5 rounded">
-                Original Input Prompt
-              </span>
-              <span class="font-mono text-[10.5px] text-[#6B7280]">${data.originalPrompt.length.toLocaleString()} chars</span>
+              <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Original Input</span>
+              <span class="font-mono text-[11px] text-[var(--text-3)]">${data.originalPrompt.length.toLocaleString()} chars</span>
             </div>
             <div class="flex items-baseline gap-2">
-              <span class="text-xl font-bold font-mono text-[#1E3A8A]">${data.oldTokens.toLocaleString()}</span>
-              <span class="text-[11.5px] text-[#6B7280] font-medium">tokens allocated</span>
+              <span class="text-2xl font-serif text-[var(--text)] font-normal">${data.oldTokens.toLocaleString()}</span>
+              <span class="text-[12px] text-[var(--text-3)]">tokens allocated</span>
             </div>
-            <div class="p-2 bg-[#FAFBF9] rounded border border-[#E5E7EB] font-mono text-[11px] text-[#4B5563] truncate">
+            <div class="p-2 bg-[var(--surface)] rounded border border-[var(--border)] font-mono text-[11px] text-[var(--text-2)] truncate">
               ${escapeHtml(data.originalPrompt)}
             </div>
           </div>
 
           <!-- New Token Usage -->
-          <div class="p-3.5 rounded-lg bg-[#F0FDF4] border border-[#BBF7D0] space-y-1.5 shadow-2xs">
+          <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-1.5">
             <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold uppercase tracking-wider text-[#166534] bg-[#DCFCE7] px-2 py-0.5 rounded">
-                Optimized & Hardened Prompt
-              </span>
-              <span class="font-mono text-[10.5px] text-[#15803D] font-semibold">+${data.tokenDelta.toLocaleString()} defense tokens</span>
+              <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Hardened Output</span>
+              <span class="pill pill-info">+${data.tokenDelta.toLocaleString()} defense tokens</span>
             </div>
             <div class="flex items-baseline gap-2">
-              <span class="text-xl font-bold font-mono text-[#15803D]">${data.newTokens.toLocaleString()}</span>
-              <span class="text-[11.5px] text-[#166534] font-medium">hardened tokens (+${Math.round((data.tokenDelta / data.oldTokens) * 100)}% density)</span>
+              <span class="text-2xl font-serif text-[var(--text)] font-normal">${data.newTokens.toLocaleString()}</span>
+              <span class="text-[12px] text-[var(--text-3)]">hardened tokens (+${Math.round((data.tokenDelta / data.oldTokens) * 100)}% density)</span>
             </div>
-            <div class="text-[11px] text-[#166534] truncate">
-              Includes XML delimiter encapsulation, role boundaries, and anti-jailbreak assertions.
+            <div class="text-[11.5px] text-[var(--text-3)] truncate">
+              Includes delimiter encapsulation, role boundaries, and anti-jailbreak assertions.
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Optimized & Hardened Prompt (Positioned Prominently Above Vulnerabilities) -->
+      <!-- Hardened System Prompt -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <h3 class="text-[13px] font-bold text-[#176B45] uppercase tracking-wide">
-              ✨ Verified Hardened System Prompt
-            </h3>
-            <span class="px-2 py-0.5 text-[9.5px] font-mono font-bold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5] rounded">Production Ready</span>
+            <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">Verified Hardened System Prompt</span>
+            <span class="pill pill-success">Production Ready</span>
           </div>
           <button
             onclick="copyTextToClipboard(${escapeForAttr(JSON.stringify(data.cleanHardenedPrompt))}, this)"
-            class="px-2.5 py-1 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[11px] font-semibold rounded shadow-2xs transition-smooth inline-flex items-center gap-1 cursor-pointer"
+            class="btn-secondary text-[11px] !h-7 !py-0"
           >
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            <span>Copy Prompt</span>
+            Copy Prompt
           </button>
         </div>
 
-        <div class="rounded-lg border-2 border-[#2FA36B]/60 bg-[#FAFBF9] p-3 shadow-2xs">
-          <pre class="font-mono text-[11.5px] text-[#1F2937] whitespace-pre-wrap leading-relaxed max-h-56 sm:max-h-64 overflow-y-auto select-all">${escapeHtml(data.cleanHardenedPrompt)}</pre>
+        <div class="rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-sunk)] p-4">
+          <pre class="font-mono text-[12px] text-[var(--text)] whitespace-pre-wrap leading-relaxed max-h-56 sm:max-h-64 overflow-y-auto select-all">${escapeHtml(data.cleanHardenedPrompt)}</pre>
         </div>
       </div>
 
       <!-- Vulnerabilities Identified in Prompt -->
       <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <h3 class="text-[13px] font-semibold text-[#202820] flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-[#DC2626]"></span>
-            <span>Prompt Vulnerabilities & Attack Vectors (${data.findings.length})</span>
-          </h3>
-          <span class="text-[11px] text-[#627566]">Potential vulnerabilities that could be triggered</span>
+        <div class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">
+          Vulnerabilities & Attack Vectors (${data.findings.length})
         </div>
 
-        <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
+        <div class="border border-[var(--border)] rounded-[var(--radius-md)] bg-[var(--surface)] overflow-hidden divide-y divide-[var(--border)] max-h-48 overflow-y-auto">
           ${data.findings.map(f => `
-            <div class="p-3 rounded-lg border border-[#E2E9E3] bg-[#FAFBF9] space-y-1">
+            <div class="p-3.5 space-y-1">
               <div class="flex items-center justify-between">
-                <strong class="text-[12.5px] text-[#202820]">${escapeHtml(f.title)}</strong>
-                <span class="uppercase text-[9.5px] font-bold px-2 py-0.5 rounded ${
-                  f.severity === 'critical' ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' :
-                  f.severity === 'high' ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]' :
-                  'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]'
+                <strong class="text-[13px] font-medium text-[var(--text)]">${escapeHtml(f.title)}</strong>
+                <span class="pill ${
+                  f.severity === 'critical' ? 'pill-danger' :
+                  f.severity === 'high' ? 'pill-warning' :
+                  'pill-neutral'
                 }">
                   ${f.severity}
                 </span>
               </div>
-              <div class="text-[12px] text-[#445246] leading-relaxed">${escapeHtml(f.description)}</div>
+              <div class="text-[12.5px] text-[var(--text-2)] leading-relaxed">${escapeHtml(f.description)}</div>
               ${f.remediation ? `
-                <div class="text-[11.5px] text-[#176B45] pt-0.5 flex items-center gap-1">
-                  <strong class="font-medium">Remediation:</strong>
+                <div class="text-[12px] text-[var(--text-3)] pt-1 flex items-center gap-1.5">
+                  <span class="font-medium text-[var(--text-2)]">Remediation:</span>
                   <span>${escapeHtml(f.remediation)}</span>
                 </div>
               ` : ''}
@@ -3541,48 +3510,43 @@ function renderReportViewerModal() {
         </div>
       </div>
 
-      <!-- Security Fixes Made (Passes Security Checks) -->
+      <!-- Security Fixes Applied -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <h3 class="text-[13px] font-semibold text-[#202820] flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-[#176B45]"></span>
-            <span>Security Fixes Applied (${data.fixes.length})</span>
-          </h3>
-          <span class="text-[11px] text-[#176B45] font-medium">✓ Passes Guardvane OWASP standards</span>
+          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)]">Security Controls Applied (${data.fixes.length})</span>
+          <span class="pill pill-success">Guardvane OWASP standards verified</span>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12px]">
+        <div class="border border-[var(--border)] rounded-[var(--radius-md)] bg-[var(--surface-sunk)] p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12.5px]">
           ${data.fixes.map(fix => `
-            <div class="p-2 rounded-md border border-[#CDE5D5] bg-[#EAF5EE]/60 flex items-start gap-1.5 text-[#202820]">
-              <svg class="w-3.5 h-3.5 text-[#176B45] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-              </svg>
-              <span class="leading-snug">${escapeHtml(fix)}</span>
+            <div class="flex items-start gap-2 text-[var(--text)]">
+              <span class="text-[var(--accent)] font-medium text-[13px] leading-none shrink-0 mt-0.5">•</span>
+              <span class="leading-snug text-[var(--text-2)]">${escapeHtml(fix)}</span>
             </div>
           `).join('')}
         </div>
       </div>
 
       <!-- Modal Footer Actions & Separate Ticket Option -->
-      <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
+      <div class="pt-4 border-t border-[var(--border)] flex items-center justify-between">
         <div>
           ${!hasTicket ? `
             <button
               onclick="openModal('raise_ticket_modal', { orderId: '${report.order_id}', reportId: '${report.id}' })"
-              class="text-[12px] text-[#991B1B] hover:text-[#7F1D1D] font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
+              class="text-[12.5px] text-[var(--accent)] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
             >
               <span>Dissatisfied with audit coverage?</span>
-              <span class="font-semibold underline">Raise a Review Ticket →</span>
+              <span class="underline">Raise a Review Ticket →</span>
             </button>
           ` : `
-            <span class="text-[11.5px] text-[#627566]">Ticket is currently under specialist revision</span>
+            <span class="text-[12px] text-[var(--text-3)]">Ticket is currently under specialist revision</span>
           `}
         </div>
 
         <button
           type="button"
           onclick="closeModal()"
-          class="px-4 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer"
+          class="btn-primary text-[12.5px] !h-8 !py-0"
         >
           Close Report
         </button>
@@ -3597,23 +3561,26 @@ function renderRaiseTicketModal() {
   const reportId = payload.reportId;
 
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <div class="flex items-center gap-2">
-          <h3 class="text-[16px] font-semibold text-[#991B1B]">Raise Quality Review Ticket</h3>
-          <span class="font-mono text-[11px] bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] px-2 py-0.5 rounded">${orderId || ''}</span>
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Raise Quality Review Ticket</h3>
+            <span class="font-mono text-[11px] text-[var(--text-3)]">${orderId || ''}</span>
+          </div>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Submit a quality dispute directly to the specialist</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
-      <p class="text-[12.5px] text-[#627566]">
+      <p class="text-[13px] text-[var(--text-2)] leading-relaxed">
         If you are dissatisfied with audit coverage, missed attack surfaces, or deliverable formatting, submit a quality dispute directly to the specialist.
       </p>
 
       <form onsubmit="handleRaiseTicketSubmit(event, '${orderId}', '${reportId}')" class="space-y-4">
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Primary Concern *</label>
-          <select name="reason" required class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#991B1B]">
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Primary Concern *</label>
+          <select name="reason" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
             <option value="Incomplete Vulnerability Analysis">Incomplete Vulnerability Analysis</option>
             <option value="Missed Scope Requirements">Missed Scope Requirements (Product / Repo links unverified)</option>
             <option value="Unclear Remediation Guidance">Unclear Remediation Guidance</option>
@@ -3623,13 +3590,13 @@ function renderRaiseTicketModal() {
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Detailed Feedback & Requested Corrections *</label>
-          <textarea name="feedback" rows="4" required placeholder="Specify what the specialist missed, which endpoints or prompts require further testing, and what corrections are required..." class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#991B1B]"></textarea>
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Detailed Feedback & Requested Corrections *</label>
+          <textarea name="feedback" rows="4" required placeholder="Specify what the specialist missed, which endpoints or prompts require further testing, and what corrections are required..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"></textarea>
         </div>
 
-        <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E9E3]">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md text-[#445246] hover:bg-[#FAFBF9] cursor-pointer">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#991B1B] hover:bg-[#7F1D1D] text-white text-[13px] font-semibold rounded-md shadow-xs transition-smooth cursor-pointer">
+        <div class="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">Cancel</button>
+          <button type="submit" class="btn-primary text-[13px]">
             Submit Dispute Ticket
           </button>
         </div>
@@ -3644,38 +3611,41 @@ function renderViewTicketModal() {
   const orderId = payload.orderId || '';
 
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <div class="flex items-center gap-2">
-          <h3 class="text-[16px] font-semibold text-[#991B1B]">Review Ticket #${escapeHtml(ticket.ticket_id || 'TK-01')}</h3>
-          <span class="text-[11px] bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA] font-medium px-2 py-0.5 rounded">Active Issue</span>
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Review Ticket #${escapeHtml(ticket.ticket_id || 'TK-01')}</h3>
+            <span class="pill pill-danger">Active Issue</span>
+          </div>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Order ${orderId}</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
-      <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-3 text-[13px]">
+      <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-3 text-[13px]">
         <div class="flex items-center justify-between">
-          <span class="text-[#627566] text-[12px]">Associated Order:</span>
-          <span class="font-mono text-[12px] text-[#202820]">${orderId}</span>
+          <span class="text-[var(--text-3)] text-[12px]">Associated Order:</span>
+          <span class="font-mono text-[12px] text-[var(--text)]">${orderId}</span>
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-[#627566] text-[12px]">Submitted At:</span>
-          <span class="font-mono text-[12px] text-[#202820]">${ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'N/A'}</span>
+          <span class="text-[var(--text-3)] text-[12px]">Submitted At:</span>
+          <span class="font-mono text-[12px] text-[var(--text)]">${ticket.created_at ? new Date(ticket.created_at).toLocaleString() : 'N/A'}</span>
         </div>
         <div>
-          <span class="text-[#627566] text-[12px] block">Primary Concern:</span>
-          <strong class="text-[#991B1B] text-[13.5px] mt-0.5 block">${escapeHtml(ticket.reason || 'General Quality Concern')}</strong>
+          <span class="text-[var(--text-3)] text-[12px] block">Primary Concern:</span>
+          <strong class="text-[var(--text)] text-[13.5px] mt-0.5 block font-medium">${escapeHtml(ticket.reason || 'General Quality Concern')}</strong>
         </div>
         <div>
-          <span class="text-[#627566] text-[12px] block mb-1">Feedback Provided to Specialist:</span>
-          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg text-[12.5px] text-[#334155] whitespace-pre-wrap leading-relaxed">
+          <span class="text-[var(--text-3)] text-[12px] block mb-1">Feedback Provided to Specialist:</span>
+          <div class="p-3 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[12.5px] text-[var(--text-2)] whitespace-pre-wrap leading-relaxed">
             ${escapeHtml(ticket.feedback || 'No feedback recorded.')}
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end pt-2 border-t border-[#E2E9E3]">
-        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md text-[#445246] hover:bg-[#FAFBF9] cursor-pointer">
+      <div class="flex justify-end pt-3 border-t border-[var(--border)]">
+        <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">
           Close
         </button>
       </div>
@@ -3686,73 +3656,73 @@ function renderViewTicketModal() {
 function renderWalletModal() {
   const isConnected = !!STATE.auth.walletAddress;
   const address = STATE.auth.walletAddress || 'Not Connected';
-  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
   const myProvider = getMyProvider();
   const isRabdi = STATE.network && STATE.network.isRabdi;
   const currentBlock = STATE.arkiv?.status?.current_block;
 
   return `
-    <div class="p-6 space-y-4 select-none">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Connected Wallet & Network</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+    <div class="p-6 sm:p-7 space-y-5 select-none">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Connected Wallet & Network</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">MetaMask integration & Arkiv Rabdi Testnet</p>
+        </div>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
-      <div class="space-y-3 text-[13px]">
+      <div class="space-y-3.5 text-[13px]">
         <!-- Account Card -->
-        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-3">
-          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Account Information</div>
+        <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-3">
+          <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Account Information</div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Status:</span>
-            <span class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold ${isConnected ? 'bg-[#EAF5EE] text-[#176B45]' : 'bg-[#FEF3C7] text-[#92400E]'}">
-              <span class="w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-[#176B45]' : 'bg-[#D97706]'}"></span>
+            <span class="text-[var(--text-2)]">Status:</span>
+            <span class="pill ${isConnected ? 'pill-success' : 'pill-warning'}">
               ${isConnected ? 'Connected via MetaMask' : 'Disconnected'}
             </span>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Address:</span>
-            <code class="font-mono text-xs text-[#202820] bg-white px-2 py-1 rounded border border-[#E2E9E3] truncate max-w-[240px]" title="${escapeForAttr(address)}">
+            <span class="text-[var(--text-2)]">Address:</span>
+            <code class="font-mono text-xs text-[var(--text)] bg-[var(--surface)] px-2.5 py-1 rounded border border-[var(--border)] truncate max-w-[240px]" title="${escapeForAttr(address)}">
               ${escapeHtml(address)}
             </code>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Provider Profile:</span>
-            <span class="font-medium text-[#202820] text-xs">
+            <span class="text-[var(--text-2)]">Provider Profile:</span>
+            <span class="font-medium text-[var(--text)] text-xs">
               ${myProvider ? `${escapeHtml(myProvider.display_name)} (Registered)` : 'Not registered'}
             </span>
           </div>
         </div>
 
         <!-- Decentralized Network Card -->
-        <div class="p-4 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl space-y-2.5">
-          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Decentralized Data Layer</div>
+        <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-2.5">
+          <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Decentralized Data Layer</div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Target Network:</span>
-            <span class="font-medium text-[#202820] text-xs">Rabdi Testnet (Arkiv)</span>
+            <span class="text-[var(--text-2)]">Target Network:</span>
+            <span class="font-medium text-[var(--text)] text-xs">Rabdi Testnet (Arkiv)</span>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Chain ID:</span>
-            <code class="font-mono text-xs text-[#202820] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">7794095</code>
+            <span class="text-[var(--text-2)]">Chain ID:</span>
+            <code class="font-mono text-xs text-[var(--text)] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">7794095</code>
           </div>
 
           <div class="flex items-center justify-between">
-            <span class="text-[#627566]">Network Status:</span>
+            <span class="text-[var(--text-2)]">Network Status:</span>
             ${isRabdi ? `
-              <span class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#EAF5EE] text-[#176B45]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#176B45]"></span>
+              <span class="pill pill-success">
                 Connected to Rabdi
               </span>
             ` : `
               <div class="flex items-center gap-2">
-                <span class="text-[11px] font-medium text-[#92400E]">Wrong Network</span>
+                <span class="pill pill-warning">Wrong Network</span>
                 <button
                   onclick="handleSwitchToRabdi()"
-                  class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer transition-smooth"
+                  class="btn-secondary text-[11px] !h-7 !py-0"
                 >
                   Switch to Rabdi
                 </button>
@@ -3762,24 +3732,24 @@ function renderWalletModal() {
 
           ${currentBlock ? `
             <div class="flex items-center justify-between">
-              <span class="text-[#627566]">Block Height:</span>
-              <span class="font-mono text-xs text-[#627566]">#${currentBlock}</span>
+              <span class="text-[var(--text-2)]">Block Height:</span>
+              <span class="font-mono text-xs text-[var(--text-3)]">#${currentBlock}</span>
             </div>
           ` : ''}
         </div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex justify-between items-center">
+        <div class="pt-4 border-t border-[var(--border)] flex justify-between items-center">
           ${isConnected ? `
-            <button onclick="closeModal(); handleLogout();" class="px-3 py-1.5 text-xs text-[#991B1B] hover:bg-[#FEE2E2] rounded-md font-medium transition-smooth cursor-pointer">
+            <button onclick="closeModal(); handleLogout();" class="text-xs text-[var(--danger)] hover:underline font-medium cursor-pointer">
               Disconnect Wallet
             </button>
           ` : `
-            <button onclick="closeModal(); connectAndSignWithMetaMask();" class="px-3 py-1.5 bg-[#176B45] text-white text-xs rounded-md font-medium cursor-pointer">
+            <button onclick="closeModal(); connectAndSignWithMetaMask();" class="btn-primary text-xs !h-8 !py-0">
               Connect MetaMask
             </button>
           `}
 
-          <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth cursor-pointer">
+          <button onclick="closeModal()" class="btn-secondary text-[12.5px]">
             Close
           </button>
         </div>
@@ -3793,26 +3763,29 @@ function renderSettingsModal() {
   const myProvider = getMyProvider();
 
   return `
-    <div class="p-6 space-y-5">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Account & Settings</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+    <div class="p-6 sm:p-7 space-y-5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Account & Settings</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Profile preferences and session details</p>
+        </div>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <div class="space-y-4 text-[13px]">
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Display Name</label>
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Display Name</label>
           <div class="flex items-center gap-2">
             <input
               type="text"
               id="settings-name-input"
               value="${escapeForAttr(STATE.user.name || '')}"
               placeholder="Enter your name or handle..."
-              class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
             />
             <button
               onclick="saveDisplayName()"
-              class="px-3.5 py-2 bg-[#176B45] text-white hover:bg-[#115638] text-xs font-medium rounded-md whitespace-nowrap transition-smooth shadow-xs cursor-pointer"
+              class="btn-primary text-xs !h-9 !py-0 whitespace-nowrap"
             >
               Save
             </button>
@@ -3820,17 +3793,17 @@ function renderSettingsModal() {
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Connected Wallet Address</label>
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Connected Wallet Address</label>
           <div class="flex items-center gap-2">
             <input
               type="text"
               readonly
               value="${escapeForAttr(userWallet || 'Not Connected')}"
-              class="w-full px-3 py-2 bg-[#F7F9F7] border border-[#E2E9E3] rounded-md font-mono text-xs text-[#202820] select-all"
+              class="w-full px-3 py-2 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-sm)] font-mono text-xs text-[var(--text)] select-all"
             />
             <button
               onclick="navigator.clipboard.writeText('${escapeForAttr(userWallet)}'); showNotification('Wallet address copied to clipboard!', 'success');"
-              class="px-3 py-2 bg-[#FFFFFF] border border-[#E2E9E3] hover:border-[#CBD7CE] text-[#202820] text-xs font-medium rounded-md whitespace-nowrap transition-smooth shadow-xs cursor-pointer"
+              class="btn-secondary text-xs !h-9 !py-0 whitespace-nowrap"
             >
               Copy
             </button>
@@ -3838,22 +3811,22 @@ function renderSettingsModal() {
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Provider Status</label>
-          <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md flex items-center justify-between">
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Provider Status</label>
+          <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] flex items-center justify-between">
             <div class="space-y-0.5">
-              <div class="font-medium text-[#202820] text-[13px]">
+              <div class="font-medium text-[var(--text)] text-[13px]">
                 ${myProvider ? escapeHtml(myProvider.display_name) : 'Standard Account'}
               </div>
-              <div class="text-[11.5px] text-[#627566]">
+              <div class="text-[11.5px] text-[var(--text-3)]">
                 ${myProvider ? `${escapeHtml(myProvider.title)} • ${myProvider.provider_type === 'automated' ? 'Automated AI Provider' : 'Human Security Provider'}` : 'Not registered as a security provider'}
               </div>
             </div>
             ${myProvider ? `
-              <button onclick="closeModal(); navigateTo('provider_workspace');" class="px-3 py-1.5 bg-[#EAF5EE] text-[#176B45] hover:bg-[#D7EFE0] rounded text-xs font-semibold transition-smooth cursor-pointer">
+              <button onclick="closeModal(); navigateTo('provider_workspace');" class="btn-secondary text-xs !h-8 !py-0">
                 Workspace →
               </button>
             ` : `
-              <button onclick="closeModal(); navigateTo('become_provider');" class="px-3 py-1.5 bg-[#176B45] text-white hover:bg-[#115638] rounded text-xs font-medium transition-smooth cursor-pointer">
+              <button onclick="closeModal(); navigateTo('become_provider');" class="btn-primary text-xs !h-8 !py-0">
                 Register →
               </button>
             `}
@@ -3861,24 +3834,24 @@ function renderSettingsModal() {
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Session Security</label>
-          <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md space-y-1 text-[12px] text-[#627566]">
-            <div class="flex items-center justify-between text-[#202820]">
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Session Security</label>
+          <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-1.5 text-[12px] text-[var(--text-2)]">
+            <div class="flex items-center justify-between text-[var(--text)]">
               <span>Authentication Standard</span>
-              <span class="font-mono text-[11px] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">EIP-4361 (SIWE)</span>
+              <span class="font-mono text-[11px] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">EIP-4361 (SIWE)</span>
             </div>
-            <div class="flex items-center justify-between text-[#202820] pt-1">
+            <div class="flex items-center justify-between text-[var(--text)] pt-1">
               <span>Session Storage</span>
-              <span class="font-mono text-[11px] bg-white px-2 py-0.5 rounded border border-[#E2E9E3]">Secure HttpOnly Cookie</span>
+              <span class="font-mono text-[11px] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">Secure HttpOnly Cookie</span>
             </div>
           </div>
         </div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex justify-between items-center">
-          <button onclick="closeModal(); handleLogout();" class="text-xs text-[#991B1B] hover:underline font-medium">
+        <div class="pt-4 border-t border-[var(--border)] flex justify-between items-center">
+          <button onclick="closeModal(); handleLogout();" class="text-xs text-[var(--danger)] hover:underline font-medium cursor-pointer">
             Sign Out
           </button>
-          <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth">
+          <button onclick="closeModal()" class="btn-secondary text-[12.5px]">
             Close
           </button>
         </div>
@@ -3911,26 +3884,29 @@ async function saveDisplayName() {
 
 function renderCreatePromptModal() {
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Save Prompt to Library</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Save Prompt to Library</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Store reusable directives and boundaries</p>
+        </div>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <form onsubmit="handleCreatePromptSubmit(event)" class="space-y-4">
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Prompt Title *</label>
-          <input type="text" name="title" required placeholder="e.g. Finance Agent System Instructions" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Prompt Title *</label>
+          <input type="text" name="title" required placeholder="e.g. Finance Agent System Instructions" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Prompt Content *</label>
-          <textarea name="content" rows="5" required placeholder="Enter prompt instructions..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] font-mono focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Prompt Content *</label>
+          <textarea name="content" rows="5" required placeholder="Enter prompt instructions..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] font-mono text-[var(--text)] focus:outline-none transition-colors"></textarea>
         </div>
 
-        <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E9E3]">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] text-white text-[13px] font-medium rounded-md">Save Prompt</button>
+        <div class="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">Cancel</button>
+          <button type="submit" class="btn-primary text-[13px]">Save Prompt</button>
         </div>
       </form>
     </div>
@@ -3940,21 +3916,24 @@ function renderCreatePromptModal() {
 function renderAddServiceModal() {
   const payload = STATE.modalPayload || {};
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Publish New Security Service</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Publish New Security Service</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">List a specialized security service on OpiHub</p>
+        </div>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <form onsubmit="handleAddServiceSubmit(event, '${payload.providerId}')" class="space-y-4">
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Service Title *</label>
-          <input type="text" name="title" required placeholder="e.g. Prompt Injection Vulnerability Audit" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Service Title *</label>
+          <input type="text" name="title" required placeholder="e.g. Prompt Injection Vulnerability Audit" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Category *</label>
-          <select name="category" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Category *</label>
+          <select name="category" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
             <option value="prompt_engineering">Prompt Engineering</option>
             <option value="loop_engineering">Prompt Loop Engineering</option>
             <option value="prompt_optimization">Prompt Optimization</option>
@@ -3966,23 +3945,23 @@ function renderAddServiceModal() {
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD) *</label>
-            <input type="number" step="0.01" min="0" name="price" value="50.00" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Price (USD) *</label>
+            <input type="number" step="0.01" min="0" name="price" value="50.00" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Delivery *</label>
-            <input type="text" name="estimated_delivery" value="24 hours" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Estimated Delivery *</label>
+            <input type="text" name="estimated_delivery" value="24 hours" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Description *</label>
-          <textarea name="description" rows="3" required placeholder="Describe deliverables, methodology, and audit scope..." class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]"></textarea>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Description *</label>
+          <textarea name="description" rows="3" required placeholder="Describe deliverables, methodology, and audit scope..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"></textarea>
         </div>
 
-        <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E9E3]">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md hover:bg-[#FAFBF9] cursor-pointer">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md transition-smooth cursor-pointer">Publish Service</button>
+        <div class="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">Cancel</button>
+          <button type="submit" class="btn-primary text-[13px]">Publish Service</button>
         </div>
       </form>
     </div>
@@ -3995,21 +3974,24 @@ function renderEditServiceModal() {
   if (!service) return '<div class="p-6">Service not found</div>';
 
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Edit Service Offering</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Edit Service Offering</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">${escapeHtml(service.title)}</p>
+        </div>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <form onsubmit="handleEditServiceSubmit(event, '${service.id}')" class="space-y-4">
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Service Title *</label>
-          <input type="text" name="title" required value="${escapeForAttr(service.title)}" class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Service Title *</label>
+          <input type="text" name="title" required value="${escapeForAttr(service.title)}" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Category *</label>
-          <select name="category" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Category *</label>
+          <select name="category" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
             <option value="prompt_engineering" ${service.category === 'prompt_engineering' ? 'selected' : ''}>Prompt Engineering</option>
             <option value="loop_engineering" ${service.category === 'loop_engineering' ? 'selected' : ''}>Prompt Loop Engineering</option>
             <option value="prompt_optimization" ${service.category === 'prompt_optimization' ? 'selected' : ''}>Prompt Optimization</option>
@@ -4021,23 +4003,23 @@ function renderEditServiceModal() {
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Price (USD) *</label>
-            <input type="number" step="0.01" min="0" name="price" value="${service.price.toFixed(2)}" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Price (USD) *</label>
+            <input type="number" step="0.01" min="0" name="price" value="${service.price.toFixed(2)}" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Delivery *</label>
-            <input type="text" name="estimated_delivery" value="${escapeForAttr(service.estimated_delivery)}" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px]" />
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Estimated Delivery *</label>
+            <input type="text" name="estimated_delivery" value="${escapeForAttr(service.estimated_delivery)}" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Description *</label>
-          <textarea name="description" rows="3" required class="w-full px-3 py-2 border border-[#E2E9E3] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">${escapeHtml(service.description)}</textarea>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Description *</label>
+          <textarea name="description" rows="3" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">${escapeHtml(service.description)}</textarea>
         </div>
 
-        <div class="flex justify-end gap-2 pt-3 border-t border-[#E2E9E3]">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[13px] rounded-md hover:bg-[#FAFBF9] cursor-pointer">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md transition-smooth cursor-pointer">Save Changes</button>
+        <div class="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">Cancel</button>
+          <button type="submit" class="btn-primary text-[13px]">Save Changes</button>
         </div>
       </form>
     </div>
@@ -4053,42 +4035,45 @@ function renderEditProviderModal() {
   const skillsStr = (provider.skills || []).join(', ');
 
   return `
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <h3 class="text-[16px] font-semibold text-[#202820]">Edit Specialist Profile</h3>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+    <div class="p-6 sm:p-7 space-y-4">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div>
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Edit Specialist Profile</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">${escapeHtml(provider.display_name)}</p>
+        </div>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <form onsubmit="handleEditProviderSubmit(event, '${provider.id}')" class="space-y-4 text-[13px]">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Display Name *</label>
-            <input type="text" name="display_name" required value="${escapeForAttr(provider.display_name)}" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+            <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Display Name *</label>
+            <input type="text" name="display_name" required value="${escapeForAttr(provider.display_name)}" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
 
           <div>
-            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Professional Title *</label>
-            <input type="text" name="title" required value="${escapeForAttr(provider.title)}" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+            <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Professional Title *</label>
+            <input type="text" name="title" required value="${escapeForAttr(provider.title)}" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Wallet Address (Read-only)</label>
-          <input type="text" readonly value="${escapeForAttr(provider.wallet_address || '')}" class="w-full px-3 py-2 bg-[#F0F5F1] border border-[#E2E9E3] rounded-md font-mono text-[12.5px] text-[#627566] cursor-not-allowed" />
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Wallet Address (Read-only)</label>
+          <input type="text" readonly value="${escapeForAttr(provider.wallet_address || '')}" class="w-full px-3 py-2 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-sm)] font-mono text-[12.5px] text-[var(--text-3)] cursor-not-allowed" />
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Bio / Description *</label>
-          <textarea name="description" rows="3" required class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">${escapeHtml(provider.description)}</textarea>
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Bio / Description *</label>
+          <textarea name="description" rows="3" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">${escapeHtml(provider.description)}</textarea>
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Skills (Comma-separated)</label>
-          <input type="text" name="skills_raw" value="${escapeForAttr(skillsStr)}" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Skills (Comma-separated)</label>
+          <input type="text" name="skills_raw" value="${escapeForAttr(skillsStr)}" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
         </div>
 
         <div>
-          <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Supported Categories</label>
+          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Supported Categories</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12.5px]">
             <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="prompt_engineering" ${cats.includes('prompt_engineering') ? 'checked' : ''} /> Prompt Engineering</label>
             <label class="flex items-center gap-2"><input type="checkbox" name="cat" value="loop_engineering" ${cats.includes('loop_engineering') ? 'checked' : ''} /> Prompt Loop Engineering</label>
@@ -4101,22 +4086,22 @@ function renderEditProviderModal() {
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Availability</label>
-            <select name="availability" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]">
+            <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Availability</label>
+            <select name="availability" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
               <option value="available" ${provider.availability === 'available' ? 'selected' : ''}>Available</option>
               <option value="busy" ${provider.availability === 'busy' ? 'selected' : ''}>Busy</option>
               <option value="offline" ${provider.availability === 'offline' ? 'selected' : ''}>Offline</option>
             </select>
           </div>
           <div>
-            <label class="block text-[12.5px] font-medium text-[#202820] mb-1">Portfolio or GitHub URL</label>
-            <input type="url" name="portfolio_url" value="${escapeForAttr(provider.portfolio_url || '')}" placeholder="" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] focus:outline-none focus:border-[#176B45]" />
+            <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Portfolio or GitHub URL</label>
+            <input type="url" name="portfolio_url" value="${escapeForAttr(provider.portfolio_url || '')}" placeholder="https://github.com/..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
         </div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex justify-end gap-2">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] rounded-md cursor-pointer">Cancel</button>
-          <button type="submit" class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white font-medium rounded-md shadow-xs transition-smooth cursor-pointer">Save Changes</button>
+        <div class="pt-4 border-t border-[var(--border)] flex justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">Cancel</button>
+          <button type="submit" class="btn-primary text-[13px]">Save Changes</button>
         </div>
       </form>
     </div>
@@ -4131,11 +4116,11 @@ function renderOrderDetailModal() {
   if (!order) {
     return `
       <div class="p-6 space-y-4">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-          <h3 class="text-[16px] font-semibold text-[#202820]">Order Details</h3>
-          <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+        <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Order Details</h3>
+          <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
         </div>
-        <div class="p-4 bg-[#F8FAF9] rounded-lg text-center text-[#627566] text-[13px]">
+        <div class="p-6 bg-[var(--surface-sunk)] rounded-[var(--radius-md)] text-center text-[var(--text-3)] text-[13px]">
           Order "${escapeHtml(orderId || '')}" was not found or could not be loaded.
         </div>
       </div>
@@ -4168,34 +4153,32 @@ function renderOrderDetailModal() {
   const isManualEscrow = !isAutomated && (order.execution_type === 'manual' || !!order.escrow_tx_hash || (order.escrow_state && order.escrow_state !== 'not_applicable' && order.escrow_state !== 'none'));
 
   return `
-    <div class="p-5 sm:p-5.5 space-y-3.5">
+    <div class="p-6 sm:p-7 space-y-5">
       <!-- Modal Header -->
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <div class="space-y-0.5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
+        <div class="space-y-1">
           <div class="flex items-center gap-2">
-            <h3 class="text-[16px] font-semibold text-[#202820]">Security Request Details</h3>
-            <span class="font-mono text-[11px] bg-[#EAF5EE] text-[#176B45] px-2 py-0.5 rounded font-medium border border-[#CDE5D5]">${order.id}</span>
+            <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Security Request Details</h3>
+            <span class="pill pill-neutral font-mono text-[11px]">${order.id}</span>
           </div>
-          <p class="text-[12px] text-[#627566]">Service Order & Escrow Lifecycle Tracking</p>
+          <p class="text-[12.5px] text-[var(--text-3)]">Service order & on-chain escrow lifecycle tracking</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <!-- Critical Status Alerts (Payment Failed / Rejected / Cancelled) -->
       ${order.payment_status === 'failed' ? `
-        <div class="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-2">
-          <div class="flex items-center gap-2 text-[#991B1B] font-semibold text-[13px]">
-            <svg class="w-4 h-4 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>Payment Verification Notice</span>
+        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border-strong)] space-y-2">
+          <div class="flex items-center gap-2 text-[var(--danger)] font-medium text-[13px]">
+            <span class="pill pill-danger">Payment Alert</span>
+            <span>Escrow Payment Verification Failed</span>
           </div>
-          <p class="text-[12.5px] text-[#B91C1C] leading-relaxed">
-            The payment could not be verified on the <strong>Autonomous Smart Escrow</strong> gateway. Escrow funds were not deducted or proof verification did not succeed.
+          <p class="text-[12.5px] text-[var(--text-2)] leading-relaxed">
+            The payment could not be verified on the autonomous escrow gateway. Escrow funds were not deducted or proof verification did not succeed.
           </p>
           ${isCustomer ? `
             <div class="pt-1">
-              <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="px-3.5 py-1.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-[12px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+              <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="btn-primary text-[12px] !h-8 !py-0">
                 Retry Escrow Payment ($${order.price.toFixed(2)})
               </button>
             </div>
@@ -4204,116 +4187,110 @@ function renderOrderDetailModal() {
       ` : ''}
 
       ${order.status === 'rejected' ? `
-        <div class="p-4 rounded-xl bg-[#FEF2F2] border border-[#FECACA] space-y-1.5">
-          <div class="flex items-center gap-2 text-[#991B1B] font-semibold text-[13px]">
-            <svg class="w-4 h-4 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border-strong)] space-y-1.5">
+          <div class="flex items-center gap-2 text-[var(--danger)] font-medium text-[13px]">
+            <span class="pill pill-danger">Declined</span>
             <span>Specialist Declined This Request</span>
           </div>
-          <p class="text-[12.5px] text-[#7F1D1D] leading-relaxed">
-            <strong>Rejection Reason:</strong> ${escapeHtml(order.rejection_reason || 'Specialist is currently unavailable or scope is outside current capabilities.')}
+          <p class="text-[12.5px] text-[var(--text-2)] leading-relaxed">
+            <strong>Reason:</strong> ${escapeHtml(order.rejection_reason || 'Specialist is currently unavailable or scope is outside current capabilities.')}
           </p>
-          <p class="text-[11.5px] text-[#991B1B]">
-            Any locked escrow funds have been marked for immediate refund to customer wallet.
+          <p class="text-[12px] text-[var(--text-3)]">
+            Any locked escrow funds have been marked for immediate refund to your wallet.
           </p>
         </div>
       ` : ''}
 
       ${order.status === 'cancelled' ? `
-        <div class="p-3.5 rounded-xl bg-[#F3F4F6] border border-[#E5E7EB] text-[12.5px] text-[#4B5563]">
+        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] text-[12.5px] text-[var(--text-2)]">
           <strong>Order Cancelled:</strong> This request was cancelled before completion.
         </div>
       ` : ''}
 
       ${isManualEscrow ? `
         <!-- MetaMask Smart Escrow On-Chain Lifecycle Card (Rabdi Testnet) -->
-        <div class="p-4 rounded-xl border ${order.escrow_state === 'released' ? 'bg-[#EAF5EE] border-[#CDE5D5]' : (order.escrow_state === 'funded' ? 'bg-[#FFFBEB] border-[#FDE68A]' : 'bg-[#FAFBF9] border-[#E2E9E3]')} space-y-3">
-          <div class="flex items-center justify-between pb-2 border-b ${order.escrow_state === 'released' ? 'border-[#CDE5D5]' : (order.escrow_state === 'funded' ? 'border-[#FDE68A]' : 'border-[#E2E9E3]')}">
-            <div class="flex items-center gap-2">
-              <span class="w-6 h-6 rounded-md bg-white flex items-center justify-center text-sm shadow-2xs">🦊</span>
-              <div>
-                <h4 class="text-[13px] font-semibold text-[#202820]">MetaMask Smart Escrow Lifecycle</h4>
-                <p class="text-[11px] text-[#627566]">Arkiv Rabdi Testnet • Escrow Contract <span class="font-mono text-[#176B45]">0x176B...4501</span></p>
-              </div>
+        <div class="border border-[var(--border)] rounded-[var(--radius-md)] bg-[var(--surface)] overflow-hidden">
+          <div class="px-4 py-3 bg-[var(--surface-sunk)] border-b border-[var(--border)] flex items-center justify-between">
+            <div>
+              <div class="text-[13px] font-medium text-[var(--text)]">Smart Escrow Lifecycle</div>
+              <p class="text-[11.5px] text-[var(--text-3)] font-mono">Arkiv Rabdi Testnet • Escrow Contract 0x176B...4501</p>
             </div>
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-              order.escrow_state === 'released' ? 'bg-[#D1FAE5] text-[#065F46] border border-[#A7F3D0]' :
-              order.escrow_state === 'funded' ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]' :
-              'bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]'
+            <span class="pill ${
+              order.escrow_state === 'released' ? 'pill-success' :
+              order.escrow_state === 'funded' ? 'pill-warning' :
+              'pill-neutral'
             }">
-              <span class="w-1.5 h-1.5 rounded-full ${order.escrow_state === 'released' ? 'bg-[#10B981]' : (order.escrow_state === 'funded' ? 'bg-[#D97706]' : 'bg-[#9CA3AF]')}"></span>
-              <span>${order.escrow_state === 'released' ? 'Escrow Released & Disbursed 🤝' : (order.escrow_state === 'funded' ? 'Escrow Locked & Funded 🔒' : 'Pending Escrow Deposit')}</span>
+              ${order.escrow_state === 'released' ? 'Escrow Released & Disbursed' : (order.escrow_state === 'funded' ? 'Escrow Locked & Funded' : 'Pending Escrow Deposit')}
             </span>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+          <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] text-[12.5px]">
             <!-- Step 1: Deposit -->
-            <div class="bg-white p-3 rounded-lg border border-[#E2E9E3] space-y-1.5">
+            <div class="p-4 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-[11px] font-semibold text-[#627566] uppercase tracking-wider">Step 1: Escrow Deposit</span>
-                <span class="text-[10.5px] px-1.5 py-0.5 rounded font-mono font-medium ${order.escrow_tx_hash ? 'bg-[#EAF5EE] text-[#176B45]' : 'bg-[#FEF2F2] text-[#991B1B]'}">
+                <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Step 1: Escrow Deposit</span>
+                <span class="pill ${order.escrow_tx_hash ? 'pill-success' : 'pill-danger'}">
                   ${order.escrow_tx_hash ? 'Funded ($' + order.price.toFixed(2) + ')' : 'Pending'}
                 </span>
               </div>
               ${order.escrow_tx_hash ? `
-                <div class="space-y-1">
-                  <span class="text-[11px] text-[#627566] block">Deposit Tx Hash:</span>
+                <div class="space-y-1.5">
+                  <span class="text-[11px] text-[var(--text-3)] block">Deposit Tx Hash:</span>
                   <div class="flex items-center gap-1.5">
-                    <span class="font-mono text-[11px] text-[#202820] bg-[#FAFBF9] px-2 py-1 rounded border border-[#E2E9E3] flex-1 truncate select-all" title="${escapeForAttr(order.escrow_tx_hash)}">
+                    <span class="font-mono text-[11px] text-[var(--text)] bg-[var(--surface-sunk)] px-2.5 py-1 rounded border border-[var(--border)] flex-1 truncate select-all" title="${escapeForAttr(order.escrow_tx_hash)}">
                       ${order.escrow_tx_hash}
                     </span>
-                    <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.escrow_tx_hash)}'); showNotification('Deposit tx hash copied!', 'success');" class="px-2 py-1 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[10.5px] font-medium rounded cursor-pointer whitespace-nowrap">
+                    <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.escrow_tx_hash)}'); showNotification('Deposit tx hash copied!', 'success');" class="btn-secondary text-[11px] !h-7 !py-0 whitespace-nowrap">
                       Copy
                     </button>
                   </div>
-                  <div class="pt-1">
-                    <a href="${order.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:text-[#115638] text-[11.5px] font-mono font-semibold inline-flex items-center gap-1 hover:underline">
-                      View Deposit on Rabdi Explorer ↗
+                  <div class="pt-0.5">
+                    <a href="${order.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[12px] text-[var(--text-2)] hover:text-[var(--accent)] font-mono hover:underline inline-flex items-center gap-1">
+                      <span>View deposit on Rabdi Explorer</span>
+                      <span>↗</span>
                     </a>
                   </div>
                 </div>
               ` : `
-                <p class="text-[11.5px] text-[#627566]">Funds have not yet been locked in smart escrow by customer.</p>
+                <p class="text-[12px] text-[var(--text-3)] leading-relaxed">Funds have not yet been locked in smart escrow by customer.</p>
               `}
             </div>
 
             <!-- Step 2: Release / Disbursal -->
-            <div class="bg-white p-3 rounded-lg border border-[#E2E9E3] space-y-1.5">
+            <div class="p-4 space-y-2">
               <div class="flex items-center justify-between">
-                <span class="text-[11px] font-semibold text-[#627566] uppercase tracking-wider">Step 2: Escrow Release</span>
-                <span class="text-[10.5px] px-1.5 py-0.5 rounded font-mono font-medium ${order.escrow_state === 'released' ? 'bg-[#EAF5EE] text-[#176B45]' : (order.status === 'delivered' ? 'bg-[#DBEAFE] text-[#1E40AF]' : 'bg-[#F3F4F6] text-[#6B7280]')}">
+                <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Step 2: Escrow Release</span>
+                <span class="pill ${order.escrow_state === 'released' ? 'pill-success' : (order.status === 'delivered' ? 'pill-info' : 'pill-neutral')}">
                   ${order.escrow_state === 'released' ? 'Released to Specialist' : (order.status === 'delivered' ? 'Ready for Release' : 'Awaiting Deliverable')}
                 </span>
               </div>
               ${order.escrow_release_tx_hash ? `
-                <div class="space-y-1">
-                  <span class="text-[11px] text-[#627566] block">Release / Disbursal Tx Hash:</span>
+                <div class="space-y-1.5">
+                  <span class="text-[11px] text-[var(--text-3)] block">Release Tx Hash:</span>
                   <div class="flex items-center gap-1.5">
-                    <span class="font-mono text-[11px] text-[#202820] bg-[#FAFBF9] px-2 py-1 rounded border border-[#E2E9E3] flex-1 truncate select-all" title="${escapeForAttr(order.escrow_release_tx_hash)}">
+                    <span class="font-mono text-[11px] text-[var(--text)] bg-[var(--surface-sunk)] px-2.5 py-1 rounded border border-[var(--border)] flex-1 truncate select-all" title="${escapeForAttr(order.escrow_release_tx_hash)}">
                       ${order.escrow_release_tx_hash}
                     </span>
-                    <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.escrow_release_tx_hash)}'); showNotification('Release tx hash copied!', 'success');" class="px-2 py-1 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[10.5px] font-medium rounded cursor-pointer whitespace-nowrap">
+                    <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.escrow_release_tx_hash)}'); showNotification('Release tx hash copied!', 'success');" class="btn-secondary text-[11px] !h-7 !py-0 whitespace-nowrap">
                       Copy
                     </button>
                   </div>
-                  <div class="pt-1">
-                    <a href="${order.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:text-[#115638] text-[11.5px] font-mono font-semibold inline-flex items-center gap-1 hover:underline">
-                      View Disbursal on Rabdi Explorer ↗
+                  <div class="pt-0.5">
+                    <a href="${order.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[12px] text-[var(--text-2)] hover:text-[var(--accent)] font-mono hover:underline inline-flex items-center gap-1">
+                      <span>View disbursal on Rabdi Explorer</span>
+                      <span>↗</span>
                     </a>
                   </div>
                 </div>
               ` : `
-                <div class="space-y-1">
-                  <p class="text-[11.5px] text-[#627566]">
+                <div class="space-y-2">
+                  <p class="text-[12px] text-[var(--text-3)] leading-relaxed">
                     ${order.status === 'delivered' ? 'Specialist submitted deliverable. Customer release will disburse payment.' : 'Funds remain held in smart escrow until customer reviews the deliverable.'}
                   </p>
                   ${order.status === 'delivered' && isCustomer ? `
-                    <div class="pt-1">
-                      <button onclick="executeEVMEscrowRelease('${order.id}')" class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white text-[11.5px] font-medium rounded cursor-pointer inline-flex items-center gap-1">
-                        <span>Release Escrow to Specialist 🤝</span>
-                      </button>
-                    </div>
+                    <button onclick="executeEVMEscrowRelease('${order.id}')" class="btn-primary text-[12px] !h-8 !py-0">
+                      Release Escrow to Specialist
+                    </button>
                   ` : ''}
                 </div>
               `}
@@ -4321,141 +4298,110 @@ function renderOrderDetailModal() {
           </div>
 
           <!-- Payout Recipient -->
-          <div class="p-2.5 bg-white rounded-lg border border-[#E2E9E3] flex items-center justify-between text-[11.5px]">
+          <div class="px-4 py-2.5 bg-[var(--surface-sunk)] border-t border-[var(--border)] flex items-center justify-between text-[12px]">
             <div class="flex items-center gap-2 overflow-hidden">
-              <span class="text-[#627566] shrink-0">Specialist Payout Destination:</span>
-              <span class="font-mono text-[#202820] font-medium truncate">${order.provider_wallet || order.provider_id}</span>
+              <span class="text-[var(--text-3)] shrink-0">Specialist Destination:</span>
+              <span class="font-mono text-[var(--text)] truncate">${order.provider_wallet || order.provider_id}</span>
             </div>
             ${order.provider_wallet ? `
-              <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.provider_wallet)}'); showNotification('Specialist wallet address copied!', 'success');" class="text-[#176B45] hover:underline text-[11px] font-medium cursor-pointer shrink-0">
-                Copy Wallet
+              <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.provider_wallet)}'); showNotification('Specialist wallet address copied!', 'success');" class="text-[var(--accent)] hover:underline text-[11px] font-medium cursor-pointer shrink-0">
+                Copy
               </button>
             ` : ''}
           </div>
         </div>
       ` : order.execution_type === 'automated' || order.payment_status === 'verified' ? `
         <!-- 0G Private Computer AI Execution Card -->
-        <div class="p-4 rounded-xl bg-[#EAF5EE] border border-[#CDE5D5] space-y-2">
+        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-2">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-md bg-white flex items-center justify-center font-bold text-[#176B45] text-xs shadow-2xs">⚡</div>
-              <div>
-                <h4 class="text-[13px] font-semibold text-[#176B45]">0G Private Computer AI Reasoning</h4>
-                <p class="text-[11px] text-[#445246]">Confidential verified AI execution • Zero-knowledge inference</p>
-              </div>
+            <div>
+              <h4 class="text-[13px] font-medium text-[var(--text)]">0G Private Computer AI Reasoning</h4>
+              <p class="text-[11.5px] text-[var(--text-3)]">Confidential verified AI execution • Zero-knowledge inference</p>
             </div>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-white text-[#176B45] border border-[#CDE5D5]">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> Verified AI Inference
+            <span class="pill pill-info">
+              Verified AI Inference
             </span>
-          </div>
-
-          <div class="pt-1 grid grid-cols-3 gap-2 text-center text-[11.5px]">
-            <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
-              <span class="text-[#627566] block text-[10px] uppercase">Engine</span>
-              <span class="font-mono font-bold text-[#202820]">0G Compute</span>
-            </div>
-            <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
-              <span class="text-[#627566] block text-[10px] uppercase">Trust Mode</span>
-              <span class="font-mono font-bold text-[#176B45]">Verified</span>
-            </div>
-            <div class="bg-white/70 p-2 rounded border border-[#CDE5D5]/50">
-              <span class="text-[#627566] block text-[10px] uppercase">Execution</span>
-              <span class="font-mono font-bold text-[#202820]">Instant</span>
-            </div>
           </div>
         </div>
       ` : ''}
 
       <!-- Order Summary Card -->
-      <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-[12.5px]">
+      <div class="bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-[12.5px]">
         <div>
-          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Service</span>
-          <strong class="text-[#202820] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.service_title)}">${escapeHtml(order.service_title)}</strong>
+          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Service</span>
+          <strong class="text-[var(--text)] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.service_title)}">${escapeHtml(order.service_title)}</strong>
         </div>
         <div>
-          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Provider</span>
-          <strong class="text-[#202820] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.provider_name)}">${escapeHtml(order.provider_name)}</strong>
+          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Provider</span>
+          <strong class="text-[var(--text)] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.provider_name)}">${escapeHtml(order.provider_name)}</strong>
         </div>
         <div>
-          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Order Status</span>
+          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Order Status</span>
           <div class="mt-1">${renderStatusBadge(order.status)}</div>
         </div>
         <div>
-          <span class="text-[#627566] text-[11px] uppercase tracking-wider block">Payment & Escrow</span>
+          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Payment & Escrow</span>
           <div class="mt-1">
             ${isAutomated ? `
-              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> 0G Direct (Free)
-              </span>
+              <span class="pill pill-info">0G Direct (Free)</span>
             ` : isManualEscrow ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                order.escrow_state === 'released' ? 'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]' :
-                order.escrow_state === 'funded' ? 'bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]' :
-                'bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]'
+              <span class="pill ${
+                order.escrow_state === 'released' ? 'pill-success' :
+                order.escrow_state === 'funded' ? 'pill-warning' :
+                'pill-danger'
               }">
-                <span class="w-1.5 h-1.5 rounded-full ${order.escrow_state === 'released' ? 'bg-[#2FA36B]' : (order.escrow_state === 'funded' ? 'bg-[#D97706]' : 'bg-[#DC2626]')}"></span>
                 ${order.escrow_state === 'released' ? 'Disbursed / Released' : (order.escrow_state === 'funded' ? 'Escrow Locked' : 'Pending Escrow')}
               </span>
             ` : order.payment_status === 'verified' ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#2FA36B]"></span> Verified AI Execution
-              </span>
+              <span class="pill pill-success">Verified AI Execution</span>
             ` : order.payment_status === 'pending' ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span> Escrow Pending
-              </span>
+              <span class="pill pill-warning">Escrow Pending</span>
             ` : order.payment_status === 'failed' ? `
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FEF2F2] text-[#991B1B] border border-[#FECACA]">
-                Failed
-              </span>
+              <span class="pill pill-danger">Failed</span>
             ` : `
-              <span class="text-[11px] text-[#627566] capitalize">${escapeHtml(order.payment_status || 'N/A')}</span>
+              <span class="text-[11.5px] text-[var(--text-3)] capitalize">${escapeHtml(order.payment_status || 'N/A')}</span>
             `}
           </div>
         </div>
       </div>
 
       <!-- Scope & Specification -->
-      <div class="border border-[#E2E9E3] rounded-xl p-4 bg-white space-y-3">
-        <h4 class="text-[13px] font-semibold text-[#202820] flex items-center justify-between border-b border-[#F0F5F1] pb-2">
-          <span>Target Scope & Deliverable Focus</span>
-          <span class="font-mono text-[12px] text-[#176B45] font-bold">${isAutomated ? 'Free (0G Direct AI)' : '$' + order.price.toFixed(2) + ' USD'}</span>
-        </h4>
+      <div class="border border-[var(--border)] rounded-[var(--radius-md)] p-4 bg-[var(--surface)] space-y-3">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+          <span class="text-[13px] font-medium text-[var(--text)]">Target Scope & Deliverable Focus</span>
+          <span class="font-mono text-[12.5px] text-[var(--text)] font-medium">${isAutomated ? 'Free (0G Direct AI)' : '$' + order.price.toFixed(2) + ' USD'}</span>
+        </div>
 
         ${scopeInfo.repo_url ? `
           <div class="text-[12.5px]">
-            <span class="text-[#627566] block text-[11px]">Repository / Codebase:</span>
-            <a href="${escapeForAttr(scopeInfo.repo_url)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] font-mono hover:underline inline-flex items-center gap-1">
-              ${escapeHtml(scopeInfo.repo_url)}
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
+            <span class="text-[var(--text-3)] block text-[11px]">Repository / Codebase:</span>
+            <a href="${escapeForAttr(scopeInfo.repo_url)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--accent)] font-mono hover:underline inline-flex items-center gap-1">
+              <span>${escapeHtml(scopeInfo.repo_url)}</span>
+              <span>↗</span>
             </a>
           </div>
         ` : ''}
 
         ${scopeInfo.staging_link ? `
           <div class="text-[12.5px]">
-            <span class="text-[#627566] block text-[11px]">Live Application Link:</span>
-            <a href="${escapeForAttr(scopeInfo.staging_link)}" target="_blank" rel="noopener noreferrer" class="text-[#176B45] hover:underline inline-flex items-center gap-1">
-              ${escapeHtml(scopeInfo.staging_link)}
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
+            <span class="text-[var(--text-3)] block text-[11px]">Live Application Link:</span>
+            <a href="${escapeForAttr(scopeInfo.staging_link)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1">
+              <span>${escapeHtml(scopeInfo.staging_link)}</span>
+              <span>↗</span>
             </a>
           </div>
         ` : ''}
 
         ${scopeInfo.branch_notes ? `
           <div class="text-[12.5px]">
-            <span class="text-[#627566] block text-[11px]">Branch / Sensitive Modules:</span>
-            <span class="font-mono text-[#202820] bg-[#F0F5F1] px-2 py-0.5 rounded">${escapeHtml(scopeInfo.branch_notes)}</span>
+            <span class="text-[var(--text-3)] block text-[11px]">Branch / Sensitive Modules:</span>
+            <span class="font-mono text-[var(--text)] bg-[var(--surface-sunk)] px-2 py-0.5 rounded border border-[var(--border)]">${escapeHtml(scopeInfo.branch_notes)}</span>
           </div>
         ` : ''}
 
         <div class="text-[12.5px] pt-1">
-          <span class="text-[#627566] block text-[11px] mb-1">Scope & Instructions:</span>
-          <div class="p-3 bg-[#FAFBF9] rounded-lg border border-[#E2E9E3] font-mono text-[12px] text-[#334155] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+          <span class="text-[var(--text-3)] block text-[11px] mb-1">Scope & Instructions:</span>
+          <div class="p-3.5 bg-[var(--surface-sunk)] rounded-[var(--radius-sm)] border border-[var(--border)] font-mono text-[12px] text-[var(--text)] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
             ${escapeHtml(scopeInfo.notes || 'No custom instructions provided.')}
           </div>
         </div>
@@ -4463,46 +4409,41 @@ function renderOrderDetailModal() {
 
       <!-- Deliverable / Security Report (if present) -->
       ${order.report_id ? `
-        <div class="p-4 rounded-xl bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-between">
+        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] flex items-center justify-between">
           <div class="space-y-0.5">
-            <div class="text-[13px] font-semibold text-[#176B45] flex items-center gap-1.5">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Security Report & Audit Findings Delivered</span>
-            </div>
-            <p class="text-[11.5px] text-[#627566]">Audit findings and mitigation instructions have been delivered.</p>
+            <div class="text-[13px] font-medium text-[var(--text)]">Security Report & Findings Delivered</div>
+            <p class="text-[12px] text-[var(--text-3)]">Audit findings and mitigation instructions have been delivered.</p>
           </div>
-          <button onclick="closeModal(); viewReport('${order.report_id}');" class="px-4 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white font-medium text-[12px] rounded-md transition-smooth cursor-pointer">
+          <button onclick="closeModal(); viewReport('${order.report_id}');" class="btn-primary text-[12.5px] !h-8 !py-0">
             View Report
           </button>
         </div>
       ` : order.deliverable_notes ? `
-        <div class="p-4 rounded-xl bg-white border border-[#E2E9E3] space-y-1.5">
-          <span class="text-[#627566] block text-[11px] uppercase tracking-wider font-semibold">Specialist Deliverable Notes</span>
-          <div class="p-3 bg-[#FAFBF9] rounded-lg border border-[#E2E9E3] text-[12.5px] text-[#202820] whitespace-pre-wrap">
+        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-1.5">
+          <span class="text-[var(--text-3)] block text-[11px] uppercase tracking-wider font-medium">Specialist Deliverable Notes</span>
+          <div class="p-3 bg-[var(--surface)] rounded-[var(--radius-sm)] border border-[var(--border)] text-[12.5px] text-[var(--text)] whitespace-pre-wrap leading-relaxed">
             ${escapeHtml(order.deliverable_notes)}
           </div>
         </div>
       ` : ''}
 
       <!-- Modal Footer Actions -->
-      <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-between">
-        <div class="text-[11.5px] text-[#8B9C8E]">
+      <div class="pt-4 border-t border-[var(--border)] flex items-center justify-between">
+        <div class="text-[11.5px] text-[var(--text-3)]">
           Created on ${new Date(order.created_at).toLocaleString()}
         </div>
         <div class="flex items-center gap-2">
           ${order.status === 'delivered' && isCustomer ? `
-            <button onclick="executeEVMEscrowRelease('${order.id}')" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer inline-flex items-center gap-1.5">
-              <span>Accept & Release Escrow Payment 🤝</span>
+            <button onclick="executeEVMEscrowRelease('${order.id}')" class="btn-primary text-[12.5px] !h-8 !py-0">
+              Accept & Release Escrow
             </button>
           ` : ''}
           ${order.payment_status === 'pending' && order.status !== 'rejected' && order.status !== 'cancelled' && isCustomer ? `
-            <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs transition-smooth cursor-pointer">
+            <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="btn-primary text-[12.5px] !h-8 !py-0">
               Pay Escrow $${order.price.toFixed(2)}
             </button>
           ` : ''}
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] hover:bg-[#FAFBF9] text-[12.5px] rounded-md transition-smooth cursor-pointer">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[12.5px]">
             Close
           </button>
         </div>
@@ -4515,22 +4456,22 @@ function renderArkivPostTaskModal() {
   const isRabdi = STATE.network.isRabdi;
 
   return `
-    <div class="p-6 space-y-5">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+    <div class="p-6 sm:p-7 space-y-5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-[16px] font-semibold text-[#202820]">Post Security Review Request</h3>
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Decentralized Request</span>
+            <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Post Security Review Request</h3>
+            <span class="pill pill-info">Decentralized Request</span>
           </div>
-          <p class="text-[12px] text-[#627566] mt-0.5">Broadcast public audit scope to specialists on the decentralized network.</p>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Broadcast public audit scope to specialists on the decentralized network.</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       ${!isRabdi ? `
-        <div class="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md text-[12.5px] text-[#92400E] flex items-center justify-between">
+        <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text)] flex items-center justify-between">
           <span>MetaMask is not connected to <strong>Rabdi Testnet</strong>.</span>
-          <button onclick="handleSwitchToRabdi()" class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer">
+          <button onclick="handleSwitchToRabdi()" class="btn-secondary text-[11px] !h-7 !py-0">
             Switch to Rabdi
           </button>
         </div>
@@ -4538,22 +4479,22 @@ function renderArkivPostTaskModal() {
 
       <form onsubmit="handlePostTask(event)" class="space-y-4">
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Task Title *</label>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Task Title *</label>
           <input
             type="text"
             name="title"
             required
             placeholder="e.g. Audit DeFi Vault smart contract for reentrancy & rounding vulnerabilities"
-            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
           />
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Security Category *</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Security Category *</label>
             <select
               name="category"
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
             >
               <option value="smart_contract_audit">Smart Contract Audit</option>
               <option value="application_testing">Application Testing</option>
@@ -4564,81 +4505,73 @@ function renderArkivPostTaskModal() {
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Budget Range / Currency *</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Budget Range / Currency *</label>
             <input
               type="text"
               name="budget_range"
               required
               value="50-100 tGLM"
               placeholder="e.g. 50-100 tGLM or 25 tGLM"
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Required Skills / Scope Tags</label>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Required Skills / Scope Tags</label>
           <input
             type="text"
             name="required_skills"
             placeholder="e.g. Solidity, Reentrancy, EVM, Fuzzing, Slither"
-            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
           />
-          <p class="text-[11px] text-[#8B9C8E] mt-0.5">Comma-separated tags for indexed specialist matching.</p>
+          <p class="text-[11.5px] text-[var(--text-3)] mt-1">Comma-separated tags for indexed specialist matching.</p>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Public Scope & Specification *</label>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Public Scope & Specification *</label>
           <textarea
             name="public_description"
             rows="4"
             required
-            placeholder="Describe the target system, repository commit, objectives, and deliverables. Note: This high-level scope will be broadcasted to the specialist network."
-            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            placeholder="Describe the target system, repository commit, objectives, and deliverables..."
+            class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
           ></textarea>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Budget Type</label>
-            <select name="budget_type" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px]">
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Budget Type</label>
+            <select name="budget_type" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
               <option value="fixed">Fixed Price</option>
               <option value="milestone">Milestone Based</option>
               <option value="negotiable">Open for Bidding</option>
             </select>
           </div>
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Turnaround Deadline</label>
-            <input type="text" name="deadline" value="5 days" class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px]" />
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Turnaround Deadline</label>
+            <input type="text" name="deadline" value="5 days" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
           </div>
         </div>
 
-        <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] text-[#627566] space-y-1">
-          <div class="font-semibold text-[#202820] flex items-center gap-1.5">
-            <svg class="w-4 h-4 text-[#176B45]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Scope Publishing Details:
-          </div>
+        <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12px] text-[var(--text-2)] space-y-1">
+          <div class="font-medium text-[var(--text)]">Scope Publishing Details:</div>
           <div>• High-level scope is published to the decentralized network using your connected wallet.</div>
           <div>• Specialists can review requirements and submit competitive audit proposals.</div>
         </div>
 
         <div id="post-task-status" class="hidden"></div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">
             Cancel
           </button>
           <button
             type="submit"
             id="post-task-submit-btn"
-            class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
+            class="btn-primary text-[13px]"
           >
-            <span>Sign & Publish Scope</span>
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
+            Sign & Publish Scope
           </button>
         </div>
       </form>
@@ -4653,32 +4586,32 @@ function renderArkivSubmitBidModal() {
   const isRabdi = STATE.network.isRabdi;
 
   return `
-    <div class="p-6 space-y-5">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+    <div class="p-6 sm:p-7 space-y-5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-[16px] font-semibold text-[#202820]">Submit Specialist Proposal</h3>
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Specialist Proposal</span>
+            <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Submit Specialist Proposal</h3>
+            <span class="pill pill-neutral">Specialist Proposal</span>
           </div>
-          <p class="text-[12px] text-[#627566] mt-0.5">Submit your security review proposal and quote.</p>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Submit your security review proposal and quote</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <!-- Task Context Summary -->
-      <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-1.5">
-        <div class="flex items-center justify-between text-[11px] font-mono text-[#627566]">
+      <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-1.5">
+        <div class="flex items-center justify-between text-[11px] font-mono text-[var(--text-3)]">
           <span>Request: ${escapeHtml(task.title || 'Security Audit')}</span>
-          <span>Budget: <strong class="text-[#202820]">${escapeHtml(task.budget_range || 'Open')}</strong></span>
+          <span>Budget: <strong class="text-[var(--text)]">${escapeHtml(task.budget_range || 'Open')}</strong></span>
         </div>
-        <div class="text-[14px] font-semibold text-[#202820]">${escapeHtml(task.title || 'Security Audit Task')}</div>
-        <div class="text-[12px] text-[#445246] line-clamp-2">${escapeHtml(task.public_description || '')}</div>
+        <div class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(task.title || 'Security Audit Task')}</div>
+        <div class="text-[12.5px] text-[var(--text-2)] line-clamp-2">${escapeHtml(task.public_description || '')}</div>
       </div>
 
       ${!isRabdi ? `
-        <div class="p-3 bg-[#FFFBEB] border border-[#FDE68A] rounded-md text-[12.5px] text-[#92400E] flex items-center justify-between">
+        <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text)] flex items-center justify-between">
           <span>MetaMask is not connected to <strong>Rabdi Testnet</strong>.</span>
-          <button onclick="handleSwitchToRabdi()" class="px-2.5 py-1 bg-[#D97706] hover:bg-[#B45309] text-white text-[11px] font-semibold rounded cursor-pointer">
+          <button onclick="handleSwitchToRabdi()" class="btn-secondary text-[11px] !h-7 !py-0">
             Switch to Rabdi
           </button>
         </div>
@@ -4687,7 +4620,7 @@ function renderArkivSubmitBidModal() {
       <form onsubmit="handleSubmitBid(event, '${taskId}')" class="space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Proposed Price (tGLM) *</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Proposed Price (tGLM) *</label>
             <input
               type="number"
               step="0.01"
@@ -4695,49 +4628,46 @@ function renderArkivSubmitBidModal() {
               name="proposed_price"
               required
               value="25.00"
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
             />
           </div>
 
           <div>
-            <label class="block text-[13px] font-medium text-[#202820] mb-1">Estimated Turnaround *</label>
+            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Estimated Turnaround *</label>
             <input
               type="text"
               name="estimated_duration"
               required
               value="3 days"
               placeholder="e.g. 48 hours or 3 days"
-              class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
             />
           </div>
         </div>
 
         <div>
-          <label class="block text-[13px] font-medium text-[#202820] mb-1">Proposal Summary & Methodology *</label>
+          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Proposal Summary & Methodology *</label>
           <textarea
             name="proposal_summary"
             rows="4"
             required
             placeholder="Detail your auditing tools, automated coverage, manual review methodology, and deliverables..."
-            class="w-full px-3 py-2 border border-[#CBD7CE] rounded-md text-[13px] text-[#202820] focus:outline-none focus:border-[#176B45]"
+            class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"
           ></textarea>
         </div>
 
         <div id="submit-bid-status" class="hidden"></div>
 
-        <div class="pt-3 border-t border-[#E2E9E3] flex items-center justify-end gap-3">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 border border-[#E2E9E3] text-[#445246] text-[13px] font-medium rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">
             Cancel
           </button>
           <button
             type="submit"
             id="submit-bid-btn"
-            class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[13px] font-medium rounded-md shadow-xs transition-smooth flex items-center gap-2 cursor-pointer"
+            class="btn-primary text-[13px]"
           >
-            <span>Sign & Submit Proposal</span>
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
+            Sign & Submit Proposal
           </button>
         </div>
       </form>
@@ -4755,31 +4685,31 @@ function renderArkivViewBidsModal() {
   const isTaskOwner = currentWallet && task.customer_wallet && (task.customer_wallet.toLowerCase() === currentWallet);
 
   return `
-    <div class="p-6 space-y-5">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
+    <div class="p-6 sm:p-7 space-y-5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-[16px] font-semibold text-[#202820]">Specialist Proposals & Award</h3>
-            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]">Decentralized Proposals</span>
+            <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Specialist Proposals</h3>
+            <span class="pill pill-neutral">Decentralized Proposals</span>
           </div>
-          <p class="text-[12px] text-[#627566] mt-0.5">Review incoming specialist proposals and award audit contracts.</p>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Review incoming specialist proposals and award audit contracts</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820]">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
       </div>
 
       <!-- Task Context Header -->
-      <div class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg space-y-1">
+      <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-1.5">
         <div class="flex items-center justify-between text-xs">
-          <span class="font-medium text-[#176B45] uppercase tracking-wider text-[11px]">${formatCategoryName(task.category || '')}</span>
-          <span class="font-mono text-[11px] text-[#627566]">Budget: <strong class="text-[#202820]">${escapeHtml(task.budget_range || 'Negotiable')}</strong></span>
+          <span class="font-medium text-[var(--text)] uppercase tracking-wider text-[11px]">${formatCategoryName(task.category || '')}</span>
+          <span class="font-mono text-[11px] text-[var(--text-3)]">Budget: <strong class="text-[var(--text)]">${escapeHtml(task.budget_range || 'Negotiable')}</strong></span>
         </div>
-        <h4 class="text-[14px] font-semibold text-[#202820]">${escapeHtml(task.title || 'Security Audit')}</h4>
-        <div class="text-[11.5px] text-[#627566] flex items-center gap-2 pt-0.5">
+        <h4 class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(task.title || 'Security Audit')}</h4>
+        <div class="text-[12px] text-[var(--text-3)] flex items-center gap-2 pt-0.5">
           <span>Poster:</span>
-          <span class="font-mono text-[#202820]">${task.customer_wallet ? (task.customer_wallet.substring(0, 8) + '...' + task.customer_wallet.substring(task.customer_wallet.length - 4)) : 'Unknown'}</span>
-          ${isTaskOwner ? '<span class="px-1.5 py-0.2 rounded bg-[#EAF5EE] text-[#176B45] font-semibold text-[10px] font-mono">YOU</span>' : ''}
-          <span class="ml-auto font-mono text-[11px] capitalize px-2 py-0.5 rounded border ${task.status === 'open' ? 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]' : 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]'}">
-            ${escapeHtml(task.status || 'open')}
+          <span class="font-mono text-[var(--text)]">${task.customer_wallet ? (task.customer_wallet.substring(0, 8) + '...' + task.customer_wallet.substring(task.customer_wallet.length - 4)) : 'Unknown'}</span>
+          ${isTaskOwner ? '<span class="pill pill-neutral font-mono text-[10px]">YOU</span>' : ''}
+          <span class="ml-auto font-mono text-[11px] capitalize">
+            <span class="pill ${task.status === 'open' ? 'pill-success' : 'pill-warning'}">${escapeHtml(task.status || 'open')}</span>
           </span>
         </div>
       </div>
@@ -4788,18 +4718,18 @@ function renderArkivViewBidsModal() {
 
       <!-- Bids List -->
       <div class="space-y-3">
-        <div class="flex items-center justify-between text-[13px] font-medium text-[#202820]">
+        <div class="flex items-center justify-between text-[13px] font-medium text-[var(--text)]">
           <span>Proposals from Specialists (${bids.length})</span>
           ${(task.status === 'open' && !isTaskOwner) ? `
-            <button onclick="openSubmitBidModal('${taskId}')" class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
+            <button onclick="openSubmitBidModal('${taskId}')" class="btn-primary text-[12px] !h-7 !py-0">
               + Submit a Proposal
             </button>
           ` : ''}
         </div>
 
         ${isLoading ? `
-          <div class="p-8 text-center text-[#627566] text-xs flex items-center justify-center gap-2">
-            <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin"></div>
+          <div class="p-8 text-center text-[var(--text-3)] text-xs flex items-center justify-center gap-2">
+            <div class="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
             <span>Retrieving specialist proposals from Rabdi testnet...</span>
           </div>
         ` : bids.length > 0 ? `
@@ -4809,30 +4739,31 @@ function renderArkivViewBidsModal() {
               const isMyBid = currentWallet && b.specialist_wallet && (b.specialist_wallet.toLowerCase() === currentWallet);
 
               return `
-                <div class="p-4 bg-white border border-[#E2E9E3] rounded-lg shadow-2xs hover:border-[#176B45] transition-smooth space-y-2.5">
+                <div class="surface-card p-4 space-y-2.5">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <span class="font-mono text-[12px] font-semibold text-[#176B45]">
+                      <span class="font-mono text-[12.5px] font-medium text-[var(--text)]">
                         ${shortSpecialist}
                       </span>
-                      ${isMyBid ? '<span class="px-1.5 py-0.2 rounded bg-[#EFF6FF] text-[#1E40AF] text-[9.5px] font-semibold font-mono">YOUR PROPOSAL</span>' : ''}
+                      ${isMyBid ? '<span class="pill pill-neutral font-mono text-[10px]">YOUR PROPOSAL</span>' : ''}
                     </div>
 
                     <div class="flex items-center gap-2">
-                      <span class="px-2 py-0.5 rounded text-[11.5px] font-bold font-mono bg-[#EAF5EE] text-[#176B45]">
+                      <span class="font-mono text-[13px] font-medium text-[var(--text)]">
                         ${b.proposed_price} tGLM
                       </span>
-                      <span class="text-[11.5px] text-[#627566]">(${escapeHtml(b.estimated_duration)})</span>
+                      <span class="text-[12px] text-[var(--text-3)]">(${escapeHtml(b.estimated_duration)})</span>
                     </div>
                   </div>
 
-                  <p class="text-[12.5px] text-[#445246] leading-relaxed">${escapeHtml(b.proposal_summary)}</p>
+                  <p class="text-[12.5px] text-[var(--text-2)] leading-relaxed">${escapeHtml(b.proposal_summary)}</p>
 
-                  <div class="pt-2 border-t border-[#E2E9E3] flex items-center justify-between text-[11px] text-[#8B9C8E]">
+                  <div class="pt-2 border-t border-[var(--border)] flex items-center justify-between text-[11px] text-[var(--text-3)]">
                     <div class="flex items-center gap-1.5">
                       ${(b.tx_hash || b.entity_key) ? `
-                        <a href="https://rabdi.explorer.arkiv.network/tx/${b.tx_hash || b.entity_key}" target="_blank" class="text-[11px] text-[#176B45] hover:underline flex items-center gap-0.5">
-                          View on Arkiv ↗
+                        <a href="https://rabdi.explorer.arkiv.network/tx/${b.tx_hash || b.entity_key}" target="_blank" class="text-[12px] text-[var(--text-2)] hover:text-[var(--accent)] hover:underline flex items-center gap-0.5">
+                          <span>View on Arkiv</span>
+                          <span>↗</span>
                         </a>
                       ` : '<span>Proposal on Rabdi</span>'}
                     </div>
@@ -4840,9 +4771,9 @@ function renderArkivViewBidsModal() {
                     ${(isTaskOwner && task.status === 'open') ? `
                       <button
                         onclick="handleAcceptBid('${taskId}', '${b.entity_key}', '${b.specialist_wallet}')"
-                        class="px-3 py-1 bg-[#176B45] hover:bg-[#115638] text-white text-[11.5px] font-medium rounded shadow-2xs transition-smooth cursor-pointer"
+                        class="btn-primary text-[11.5px] !h-7 !py-0"
                       >
-                        Accept Proposal & Award 🎯
+                        Accept Proposal & Award
                       </button>
                     ` : ''}
                   </div>
@@ -4851,14 +4782,14 @@ function renderArkivViewBidsModal() {
             }).join('')}
           </div>
         ` : `
-          <div class="p-8 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-center space-y-2">
-            <div class="text-[13px] font-medium text-[#202820]">No proposals submitted yet for this request</div>
-            <p class="text-[12px] text-[#627566] max-w-sm mx-auto">
+          <div class="p-8 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-center space-y-2">
+            <div class="text-[13px] font-medium text-[var(--text)]">No proposals submitted yet for this request</div>
+            <p class="text-[12px] text-[var(--text-3)] max-w-sm mx-auto">
               Specialist proposals will appear here as soon as security researchers submit quotes on the decentralized network.
             </p>
             ${(!isTaskOwner && task.status === 'open') ? `
               <div class="pt-2">
-                <button onclick="openSubmitBidModal('${taskId}')" class="px-3.5 py-1.5 bg-[#176B45] text-white text-[12px] font-medium rounded cursor-pointer">
+                <button onclick="openSubmitBidModal('${taskId}')" class="btn-primary text-[12px] !h-8 !py-0">
                   Submit Proposal
                 </button>
               </div>
@@ -4867,8 +4798,8 @@ function renderArkivViewBidsModal() {
         `}
       </div>
 
-      <div class="pt-3 border-t border-[#E2E9E3] flex justify-end">
-        <button onclick="closeModal()" class="px-4 py-2 bg-[#202820] text-white text-[12.5px] font-medium rounded-md hover:bg-black transition-smooth cursor-pointer">
+      <div class="pt-4 border-t border-[var(--border)] flex justify-end">
+        <button onclick="closeModal()" class="btn-secondary text-[12.5px]">
           Close
         </button>
       </div>
@@ -5425,8 +5356,8 @@ async function handlePostTask(event) {
   if (statusEl) {
     statusEl.classList.remove('hidden');
     statusEl.innerHTML = `
-      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] flex items-center gap-2">
-        <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+      <div class="p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text)] flex items-center gap-2.5">
+        <div class="w-4 h-4 border-2 border-[var(--text)] border-t-transparent rounded-full animate-spin shrink-0"></div>
         <span>Confirming transaction in MetaMask on Rabdi Testnet (Chain ID 7794095)...</span>
       </div>
     `;
@@ -5451,9 +5382,9 @@ async function handlePostTask(event) {
 
     if (statusEl) {
       statusEl.innerHTML = `
-        <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] space-y-1">
-          <div class="font-semibold">✓ Confirmed on Rabdi! Reconciling with Guardvane...</div>
-          <div class="text-[11px] font-mono break-all">Tx: ${txHash}</div>
+        <div class="p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text)] space-y-1">
+          <div class="font-medium text-[var(--success)]">Confirmed on Rabdi. Reconciling with Guardvane...</div>
+          <div class="text-[11px] font-mono text-[var(--text-3)] break-all">Tx: ${txHash}</div>
         </div>
       `;
     }
@@ -5538,8 +5469,8 @@ async function handleSubmitBid(event, taskId) {
   if (statusEl) {
     statusEl.classList.remove('hidden');
     statusEl.innerHTML = `
-      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] flex items-center gap-2">
-        <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+      <div class="p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text)] flex items-center gap-2.5">
+        <div class="w-4 h-4 border-2 border-[var(--text)] border-t-transparent rounded-full animate-spin shrink-0"></div>
         <span>Confirming specialist bid on Rabdi testnet via MetaMask...</span>
       </div>
     `;
@@ -5621,8 +5552,8 @@ async function handleAcceptBid(taskId, bidKey, specialistWallet) {
   if (statusEl) {
     statusEl.classList.remove('hidden');
     statusEl.innerHTML = `
-      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12.5px] text-[#176B45] flex items-center gap-2">
-        <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+      <div class="p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text)] flex items-center gap-2.5">
+        <div class="w-4 h-4 border-2 border-[var(--text)] border-t-transparent rounded-full animate-spin shrink-0"></div>
         <span>Confirming award on Rabdi testnet via MetaMask...</span>
       </div>
     `;
@@ -5691,8 +5622,8 @@ async function executeQuickAnalyze(promptId = null) {
   // Prevent stale results and set explicit loading state
   resultsBox.classList.remove('hidden');
   resultsBox.innerHTML = `
-    <div class="flex items-center gap-2.5 p-3 text-[12.5px] text-[#176B45] font-medium bg-[#EAF5EE] rounded border border-[#CDE5D5]">
-      <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+    <div class="flex items-center gap-2.5 p-3 text-[12.5px] text-[var(--text)] bg-[var(--surface-sunk)] rounded-[var(--radius-md)] border border-[var(--border)]">
+      <div class="w-4 h-4 border-2 border-[var(--text)] border-t-transparent rounded-full animate-spin shrink-0"></div>
       <span>Running Guardvane ML security analysis (MPDD injection model, 15 application risks, credentials)...</span>
     </div>
   `;
@@ -5734,65 +5665,65 @@ async function executeQuickAnalyze(promptId = null) {
 
     resultsBox.innerHTML = `
       <div class="space-y-3.5 text-[12.5px]">
-        <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-2">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
           <div class="flex items-center gap-2">
-            <strong class="text-[#202820]">Analysis Findings</strong>
+            <span class="font-medium text-[var(--text)]">Analysis Findings</span>
             ${taskClass.category ? `
-              <span class="px-2 py-0.5 bg-[#FAFBF9] text-[#627566] border border-[#E2E9E3] text-[11px] font-mono rounded">
-                task: ${escapeHtml(taskClass.category)}
+              <span class="pill pill-neutral font-mono text-[11px]">
+                ${escapeHtml(taskClass.category)}
               </span>
             ` : ''}
           </div>
-          <span class="text-[11px] px-2.5 py-0.5 rounded font-bold uppercase tracking-wider ${isMalicious ? 'bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]' : 'bg-[#EAF5EE] text-[#176B45] border border-[#CDE5D5]'}">
+          <span class="pill ${isMalicious ? 'pill-danger' : 'pill-success'}">
             ${escapeHtml(riskCat)}
           </span>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-          <div class="bg-white p-3 rounded-lg border border-[#E2E9E3]">
-            <div class="text-[11px] font-medium text-[#627566]">Injection Probability</div>
-            <div class="text-xl font-bold font-mono ${probNum >= 0.5 ? 'text-[#991B1B]' : 'text-[#202820]'} mt-0.5">
+          <div class="surface-card p-3 space-y-0.5">
+            <div class="text-[11px] text-[var(--text-3)] font-medium">Injection Probability</div>
+            <div class="text-xl font-medium font-mono ${probNum >= 0.5 ? 'text-[var(--danger)]' : 'text-[var(--text)]'}">
               ${probPct}%
             </div>
-            <div class="text-[10.5px] text-[#8B9C8E] mt-0.5">
+            <div class="text-[11px] text-[var(--text-3)]">
               ${isMalicious ? 'Adversarial pattern detected' : 'Within benign distribution'}
             </div>
           </div>
 
-          <div class="bg-white p-3 rounded-lg border border-[#E2E9E3]">
-            <div class="text-[11px] font-medium text-[#627566]">Sensitive Credentials</div>
-            <div class="text-xl font-bold font-mono ${hasSecrets ? 'text-[#991B1B]' : 'text-[#176B45]'} mt-0.5">
+          <div class="surface-card p-3 space-y-0.5">
+            <div class="text-[11px] text-[var(--text-3)] font-medium">Sensitive Credentials</div>
+            <div class="text-xl font-medium font-mono ${hasSecrets ? 'text-[var(--danger)]' : 'text-[var(--text)]'}">
               ${sCount} detected
             </div>
-            <div class="text-[10.5px] text-[#8B9C8E] mt-0.5">
-              ${hasSecrets ? 'API keys / secrets found' : 'No credentials detected'}
+            <div class="text-[11px] text-[var(--text-3)]">
+              ${hasSecrets ? 'Credentials / tokens found' : 'No credentials detected'}
             </div>
           </div>
         </div>
 
         ${hasSecrets && Array.isArray(sData.findings) && sData.findings.length > 0 ? `
-          <div class="p-2.5 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[11.5px] space-y-1">
-            <div class="font-semibold text-[#991B1B]">Detected Secrets:</div>
+          <div class="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-[var(--radius-md)] text-[12px] space-y-1">
+            <div class="font-medium text-[var(--danger)]">Detected Secrets:</div>
             ${sData.findings.map(f => `
-              <div class="font-mono text-[#7F1D1D]">${escapeHtml(f.description)}: ${escapeHtml(f.redacted)}</div>
+              <div class="font-mono text-[11.5px] text-[var(--danger)]">${escapeHtml(f.description)}: ${escapeHtml(f.redacted)}</div>
             `).join('')}
           </div>
         ` : ''}
 
         <div>
-          <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1.5">Detected Risks (OWASP LLM)</div>
+          <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em] mb-1.5">Detected Risks (OWASP LLM)</div>
           <div class="flex flex-wrap gap-1.5">
             ${(appRisks.detected_risks || []).length > 0 ? (appRisks.detected_risks || []).map(r => `
-              <span class="px-2 py-0.5 bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] text-[11px] font-medium rounded">
+              <span class="pill pill-warning">
                 ${escapeHtml(r)}
               </span>
-            `).join('') : '<span class="text-[#176B45] font-medium">No critical application risk categories triggered.</span>'}
+            `).join('') : '<span class="text-[var(--text-3)] text-[12px]">No critical application risk categories triggered.</span>'}
           </div>
         </div>
 
-        <div class="pt-2 border-t border-[#E2E9E3] flex justify-between items-center">
-          <span class="text-[11px] text-[#8B9C8E]">Evaluated by Guardvane Local Security Engine</span>
-          <button onclick="closeModal(); openModal('request_review', { promptText: '${escapeForAttr(text)}' })" class="px-3 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth">
+        <div class="pt-3 border-t border-[var(--border)] flex justify-between items-center">
+          <span class="text-[11px] text-[var(--text-3)]">Evaluated by Guardvane Local Security Engine</span>
+          <button onclick="closeModal(); openModal('request_review', { promptText: '${escapeForAttr(text)}' })" class="btn-primary text-[12px] py-1.5 px-3">
             Submit for Provider Hardening →
           </button>
         </div>
@@ -5842,8 +5773,8 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
 
   resultsBox.classList.remove('hidden');
   resultsBox.innerHTML = `
-    <div class="flex items-center gap-2.5 p-3 text-[12.5px] text-[#176B45] font-medium bg-[#EAF5EE] rounded border border-[#CDE5D5]">
-      <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+    <div class="flex items-center gap-2.5 p-3 text-[12.5px] text-[var(--text)] bg-[var(--surface-sunk)] rounded-[var(--radius-md)] border border-[var(--border)]">
+      <div class="w-4 h-4 border-2 border-[var(--text)] border-t-transparent rounded-full animate-spin shrink-0"></div>
       <span>${bypassCache ? 'Retrying fresh 0G Private Computer AI reasoning (bypassing cache)...' : '0G Private Computer performing AI threat reasoning & prompt hardening (Verified Mode)...'}</span>
     </div>
   `;
@@ -5884,66 +5815,65 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
 
     // Execution status labels
     let statusLabel = '0G reasoning completed';
-    let statusBadgeClass = 'bg-[#EAF5EE] text-[#176B45] border-[#CDE5D5]';
+    let statusBadgeClass = 'pill pill-success';
     if (isFailed) {
       statusLabel = '0G reasoning failed';
-      statusBadgeClass = 'bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]';
+      statusBadgeClass = 'pill pill-danger';
     } else if (isLocalOnly) {
       statusLabel = 'Local-only analysis';
-      statusBadgeClass = 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]';
+      statusBadgeClass = 'pill pill-warning';
     } else if (isCached) {
-      statusLabel = '0G reasoning completed (Cached • 0 Credits)';
-      statusBadgeClass = 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]';
+      statusLabel = '0G reasoning completed (Cached)';
+      statusBadgeClass = 'pill pill-info';
     }
 
     // Severity color helper
     const getSevBadge = (sev) => {
       const s = String(sev || 'medium').toLowerCase();
-      if (s === 'critical') return 'bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]';
-      if (s === 'high') return 'bg-[#FFEDD5] text-[#C2410C] border-[#FED7AA]';
-      if (s === 'medium') return 'bg-[#FEF3C7] text-[#92400E] border-[#FDE68A]';
-      return 'bg-[#EFF6FF] text-[#1E40AF] border-[#BFDBFE]';
+      if (s === 'critical' || s === 'high') return 'pill pill-danger';
+      if (s === 'medium') return 'pill pill-warning';
+      return 'pill pill-info';
     };
 
     if (isFailed) {
       // 0G Reasoning Failed View
       resultsBox.innerHTML = `
         <div class="space-y-3.5 text-[12.5px]">
-          <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-2">
-            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${statusBadgeClass}">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+            <span class="${statusBadgeClass}">
               ${statusLabel}
             </span>
-            <span class="text-[11px] font-mono text-[#627566]">${meta.duration_ms ? `${meta.duration_ms}ms` : '0ms'}</span>
+            <span class="text-[11px] font-mono text-[var(--text-3)]">${meta.duration_ms ? `${meta.duration_ms}ms` : '0ms'}</span>
           </div>
 
-          <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12px] text-[#991B1B] space-y-1.5">
-            <div class="font-semibold flex items-center gap-1.5">
-              <span>⚠️ 0G Private Computer AI Reasoning Encountered an Error</span>
+          <div class="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-[var(--radius-md)] text-[12px] text-[var(--danger)] space-y-1.5">
+            <div class="font-medium">
+              0G Private Computer AI Reasoning Encountered an Error
             </div>
             <p class="font-mono text-[11.5px]">${escapeHtml(data.error || meta.error || '0G node returned an invalid response structure or network timeout.')}</p>
-            <div class="text-[11px] text-[#7F1D1D] pt-1">
+            <div class="text-[11px] opacity-80 pt-1">
               Guardvane does NOT silently substitute local heuristics for missing 0G AI reasoning. You may retry the remote inference below.
             </div>
           </div>
 
           <!-- Preserved Local Preprocessing Scan (if available) -->
           ${data.security_analysis ? `
-            <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
-              <div class="text-[11px] font-semibold text-[#627566] uppercase tracking-wider">Preserved Local Preprocessing Signals</div>
+            <div class="surface-card p-3 space-y-2">
+              <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">Preserved Local Preprocessing Signals</div>
               <div class="grid grid-cols-2 gap-2 text-[12px]">
-                <div><span class="text-[#8B9C8E]">Injection Score:</span> <strong>${(data.security_analysis.prompt_security?.malicious_probability * 100 || 0).toFixed(1)}%</strong></div>
-                <div><span class="text-[#8B9C8E]">Detected Secrets:</span> <strong>${data.security_analysis.sensitive_data?.findings_count || 0}</strong></div>
+                <div><span class="text-[var(--text-3)]">Injection Score:</span> <strong>${(data.security_analysis.prompt_security?.malicious_probability * 100 || 0).toFixed(1)}%</strong></div>
+                <div><span class="text-[var(--text-3)]">Detected Secrets:</span> <strong>${data.security_analysis.sensitive_data?.findings_count || 0}</strong></div>
               </div>
             </div>
           ` : ''}
 
           <!-- Actions -->
-          <div class="pt-2 border-t border-[#E2E9E3] flex justify-between items-center">
-            <button onclick="executeQuickOptimize(null, true)" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth inline-flex items-center gap-1.5 cursor-pointer">
-              <span>🔄</span> Retry 0G Reasoning
+          <div class="pt-3 border-t border-[var(--border)] flex justify-between items-center">
+            <button onclick="executeQuickOptimize(null, true)" class="btn-primary text-[12px] py-1.5 px-3">
+              Retry 0G Reasoning
             </button>
-            <button onclick="navigator.clipboard.writeText(document.getElementById('quick-prompt-input').value); showNotification('Copied original prompt!', 'success');" class="text-xs text-[#627566] hover:underline font-medium cursor-pointer">
-              Copy Original Prompt 📋
+            <button onclick="navigator.clipboard.writeText(document.getElementById('quick-prompt-input').value); showNotification('Copied original prompt!', 'success');" class="btn-secondary text-[12px] py-1.5 px-3">
+              Copy Original Prompt
             </button>
           </div>
         </div>
@@ -5955,51 +5885,51 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
     resultsBox.innerHTML = `
       <div class="space-y-4 text-[12.5px]">
         <!-- Execution Status & Telemetry Header -->
-        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
+        <div class="surface-card p-3.5 space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${statusBadgeClass}">
+            <span class="${statusBadgeClass}">
               ${statusLabel}
             </span>
             <div class="flex items-center gap-3">
-              <span class="text-[11px] font-mono text-[#627566]">
+              <span class="text-[11px] font-mono text-[var(--text-3)]">
                 ${meta.duration_ms ? `${meta.duration_ms}ms` : '0ms'}
               </span>
-              <button onclick="const el = document.getElementById('inference-telemetry-drawer'); el.classList.toggle('hidden');" class="text-[11px] text-[#176B45] hover:underline cursor-pointer font-medium">
-                View Inference Details ℹ️
+              <button onclick="const el = document.getElementById('inference-telemetry-drawer'); el.classList.toggle('hidden');" class="text-[11px] text-[var(--accent)] hover:underline cursor-pointer font-medium">
+                View Inference Details
               </button>
             </div>
           </div>
 
           <!-- Inference Details Collapsible Drawer -->
-          <div id="inference-telemetry-drawer" class="hidden p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded mt-2 text-[11px] font-mono space-y-1">
-            <div class="grid grid-cols-2 gap-2 text-[#445246]">
-              <div><span class="text-[#8B9C8E]">Provider:</span> ${escapeHtml(isLocalOnly ? 'Local Deterministic Rules' : (meta.provider || '0G Private Computer'))}</div>
-              <div><span class="text-[#8B9C8E]">Model:</span> ${escapeHtml(isLocalOnly ? 'N/A (Local Heuristic Scan)' : (meta.model || 'glm-5.2'))}</div>
-              <div><span class="text-[#8B9C8E]">Trust Mode:</span> ${escapeHtml(isLocalOnly ? 'N/A' : (meta.trust_mode || 'verified'))}</div>
-              <div><span class="text-[#8B9C8E]">Request ID:</span> <span class="truncate inline-block max-w-[120px]" title="${escapeForAttr(meta.request_id || 'N/A')}">${escapeHtml(meta.request_id || 'N/A')}</span></div>
-              <div><span class="text-[#8B9C8E]">Total Tokens:</span> ${meta.total_tokens ? meta.total_tokens : (meta.usage?.total_tokens ?? 'N/A')}</div>
-              <div><span class="text-[#8B9C8E]">Latency:</span> ${meta.duration_ms || 0}ms</div>
+          <div id="inference-telemetry-drawer" class="hidden p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-sm)] mt-2 text-[11px] font-mono space-y-1">
+            <div class="grid grid-cols-2 gap-2 text-[var(--text-2)]">
+              <div><span class="text-[var(--text-3)]">Provider:</span> ${escapeHtml(isLocalOnly ? 'Local Deterministic Rules' : (meta.provider || '0G Private Computer'))}</div>
+              <div><span class="text-[var(--text-3)]">Model:</span> ${escapeHtml(isLocalOnly ? 'N/A (Local Heuristic Scan)' : (meta.model || 'glm-5.2'))}</div>
+              <div><span class="text-[var(--text-3)]">Trust Mode:</span> ${escapeHtml(isLocalOnly ? 'N/A' : (meta.trust_mode || 'verified'))}</div>
+              <div><span class="text-[var(--text-3)]">Request ID:</span> <span class="truncate inline-block max-w-[120px]" title="${escapeForAttr(meta.request_id || 'N/A')}">${escapeHtml(meta.request_id || 'N/A')}</span></div>
+              <div><span class="text-[var(--text-3)]">Total Tokens:</span> ${meta.total_tokens ? meta.total_tokens : (meta.usage?.total_tokens ?? 'N/A')}</div>
+              <div><span class="text-[var(--text-3)]">Latency:</span> ${meta.duration_ms || 0}ms</div>
             </div>
-            <div class="text-[10px] text-[#8B9C8E] pt-1 border-t border-[#E2E9E3]">
+            <div class="text-[10px] text-[var(--text-3)] pt-1 border-t border-[var(--border)]">
               * Gateway Request ID tracks transport routing; it is not a cryptographic attestation proof. Configured model is only verified upon real provider response.
             </div>
           </div>
         </div>
 
         <!-- 1. Task Understanding -->
-        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
-          <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider flex items-center justify-between">
+        <div class="surface-card p-3.5 space-y-2">
+          <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em] flex items-center justify-between">
             <span>1. Task Understanding</span>
-            <span class="text-[11px] text-[#627566] font-mono font-normal">${escapeHtml(taskUnd.application_type || 'Application Specification')}</span>
+            <span class="text-[11px] text-[var(--text-3)] font-mono font-normal">${escapeHtml(taskUnd.application_type || 'Application Specification')}</span>
           </div>
-          <div class="text-[12px] text-[#202820]">
-            <strong>User Intent:</strong> ${escapeHtml(taskUnd.user_intent || data.preserved_intent || 'Preserved development intention.')}
+          <div class="text-[12px] text-[var(--text)]">
+            <strong class="font-medium">User Intent:</strong> ${escapeHtml(taskUnd.user_intent || data.preserved_intent || 'Preserved development intention.')}
           </div>
           ${Array.isArray(taskUnd.technologies) && taskUnd.technologies.length > 0 ? `
-            <div class="flex flex-wrap gap-1 pt-1">
-              <span class="text-[10.5px] text-[#8B9C8E] font-medium mr-1">Technologies:</span>
+            <div class="flex flex-wrap gap-1.5 pt-1">
+              <span class="text-[10.5px] text-[var(--text-3)] font-medium mr-1">Technologies:</span>
               ${taskUnd.technologies.map(t => `
-                <span class="px-2 py-0.5 bg-[#FAFBF9] border border-[#CBD7CE] text-[#374151] rounded text-[10.5px] font-mono">
+                <span class="pill pill-neutral font-mono text-[10.5px]">
                   ${escapeHtml(t)}
                 </span>
               `).join('')}
@@ -6008,59 +5938,59 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
         </div>
 
         <!-- 2. Security Risk Assessment -->
-        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-1.5">
+        <div class="surface-card p-3.5 space-y-1.5">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">2. Security Risk Assessment</span>
-            <span class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ${getSevBadge(secAnalysis.overall_risk || data.overall_risk || 'Low')}">
+            <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">2. Security Risk Assessment</span>
+            <span class="${getSevBadge(secAnalysis.overall_risk || data.overall_risk || 'Low')}">
               ${escapeHtml(secAnalysis.overall_risk || data.overall_risk || 'Low')} Risk
             </span>
           </div>
-          <p class="text-[12px] text-[#445246]">
+          <p class="text-[12px] text-[var(--text-2)] leading-relaxed">
             ${escapeHtml(data.reasoning?.contextual_summary || 'Contextual threat analysis performed on requested application parameters.')}
           </p>
         </div>
 
         <!-- 3. Vulnerability Findings -->
-        <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2.5">
-          <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">
+        <div class="surface-card p-3.5 space-y-2.5">
+          <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">
             3. Vulnerability Findings (${findings.length})
           </div>
           ${findings.length > 0 ? `
             <div class="space-y-2">
               ${findings.map((f, i) => `
-                <div class="p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] space-y-1">
+                <div class="p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12px] space-y-1">
                   <div class="flex items-center justify-between">
-                    <strong class="text-[#202820] text-[12px]">${i+1}. ${escapeHtml(f.vulnerability)}</strong>
+                    <strong class="text-[var(--text)] font-medium text-[12.5px]">${i+1}. ${escapeHtml(f.vulnerability)}</strong>
                     <div class="flex items-center gap-1.5">
-                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${getSevBadge(f.severity)}">
+                      <span class="${getSevBadge(f.severity)} text-[10px]">
                         ${escapeHtml(f.severity)}
                       </span>
-                      ${f.confidence ? `<span class="text-[10px] font-mono text-[#8B9C8E]">(${(f.confidence * 100).toFixed(0)}% conf)</span>` : ''}
+                      ${f.confidence ? `<span class="text-[10px] font-mono text-[var(--text-3)]">(${(f.confidence * 100).toFixed(0)}% conf)</span>` : ''}
                     </div>
                   </div>
-                  ${f.evidence ? `<div class="text-[11px] text-[#627566] italic">"${escapeHtml(f.evidence)}"</div>` : ''}
-                  <div class="text-[#445246]">${escapeHtml(f.explanation)}</div>
+                  ${f.evidence ? `<div class="text-[11px] text-[var(--text-3)] italic">"${escapeHtml(f.evidence)}"</div>` : ''}
+                  <div class="text-[var(--text-2)]">${escapeHtml(f.explanation)}</div>
                   ${f.recommendation ? `
-                    <div class="text-[11px] text-[#176B45] pt-0.5">
-                      <strong>Mitigation:</strong> ${escapeHtml(f.recommendation)}
+                    <div class="text-[11.5px] text-[var(--text)] pt-0.5">
+                      <span class="font-medium text-[var(--text-3)]">Mitigation:</span> ${escapeHtml(f.recommendation)}
                     </div>
                   ` : ''}
                 </div>
               `).join('')}
             </div>
           ` : `
-            <div class="text-[12px] text-[#176B45] font-medium">No critical application vulnerabilities detected in this request.</div>
+            <div class="text-[12px] text-[var(--text-3)]">No critical application vulnerabilities detected in this request.</div>
           `}
         </div>
 
         <!-- 4. Attack Scenarios -->
         ${findings.some(f => f.attack_scenario) ? `
-          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-2">
-            <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">4. Attack Scenarios</div>
+          <div class="surface-card p-3.5 space-y-2">
+            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">4. Attack Scenarios</div>
             <div class="space-y-1.5">
               ${findings.filter(f => f.attack_scenario).map(f => `
-                <div class="p-2 bg-[#FFFBEB] border border-[#FDE68A] rounded text-[11.5px] text-[#92400E] space-y-0.5">
-                  <strong>${escapeHtml(f.vulnerability)}:</strong>
+                <div class="p-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[11.5px] text-[var(--text-2)] space-y-0.5">
+                  <strong class="text-[var(--text)] font-medium">${escapeHtml(f.vulnerability)}:</strong>
                   <div>${escapeHtml(f.attack_scenario)}</div>
                 </div>
               `).join('')}
@@ -6070,9 +6000,9 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
 
         <!-- 5. Recommended Security Controls -->
         ${missingReqs.length > 0 ? `
-          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-1.5">
-            <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">5. Recommended Security Controls</div>
-            <ul class="list-disc list-inside space-y-1 text-[12px] text-[#445246]">
+          <div class="surface-card p-3.5 space-y-1.5">
+            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">5. Recommended Security Controls</div>
+            <ul class="list-disc list-inside space-y-1 text-[12px] text-[var(--text-2)]">
               ${missingReqs.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
             </ul>
           </div>
@@ -6081,24 +6011,22 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
         <!-- 6. Hardened Prompt -->
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">6. Hardened Prompt Specification</span>
-            <div class="flex items-center gap-2">
-              <button onclick="navigator.clipboard.writeText(document.getElementById('opt-prompt-result-text').innerText); showNotification('Copied hardened prompt to clipboard!', 'success');" class="text-xs text-[#176B45] hover:underline font-medium cursor-pointer">
-                Copy Hardened Prompt 📋
-              </button>
-            </div>
+            <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">6. Hardened Prompt Specification</span>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('opt-prompt-result-text').innerText); showNotification('Copied hardened prompt to clipboard!', 'success');" class="text-xs text-[var(--accent)] hover:underline font-medium cursor-pointer">
+              Copy Hardened Prompt
+            </button>
           </div>
-          <pre id="opt-prompt-result-text" class="p-3 bg-white border border-[#CBD7CE] rounded-lg text-[12px] font-mono text-[#202820] max-h-64 overflow-y-auto whitespace-pre-wrap select-all">${escapeHtml(data.optimized_prompt || data.hardened_prompt || '')}</pre>
+          <pre id="opt-prompt-result-text" class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12px] font-mono text-[var(--text)] max-h-64 overflow-y-auto whitespace-pre-wrap select-all leading-relaxed">${escapeHtml(data.optimized_prompt || data.hardened_prompt || '')}</pre>
         </div>
 
         <!-- 7. Changes Made -->
         ${changesMade.length > 0 ? `
-          <div class="p-3 bg-white border border-[#E2E9E3] rounded-lg space-y-1.5">
-            <div class="text-[11px] font-semibold text-[#176B45] uppercase tracking-wider">7. Changes Made & Rationale</div>
+          <div class="surface-card p-3.5 space-y-1.5">
+            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">7. Changes Made & Rationale</div>
             <div class="space-y-1">
               ${changesMade.map(c => `
-                <div class="text-[11.5px] text-[#445246]">
-                  <span class="font-semibold text-[#202820]">• ${escapeHtml(c.change || c)}:</span> ${escapeHtml(c.reason || 'Embedded security requirement')}
+                <div class="text-[11.5px] text-[var(--text-2)]">
+                  <span class="font-medium text-[var(--text)]">• ${escapeHtml(c.change || c)}:</span> ${escapeHtml(c.reason || 'Embedded security requirement')}
                 </div>
               `).join('')}
             </div>
@@ -6109,17 +6037,17 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
         ${(assumptions.length > 0 || remainingRisks.length > 0) ? `
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             ${assumptions.length > 0 ? `
-              <div class="p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] space-y-1">
-                <div class="font-semibold text-[#627566] text-[11px] uppercase tracking-wider">Assumptions</div>
-                <ul class="list-disc list-inside space-y-0.5 text-[#445246]">
+              <div class="surface-card p-3 space-y-1">
+                <div class="font-medium text-[var(--text-3)] text-[11px] uppercase tracking-[0.06em]">Assumptions</div>
+                <ul class="list-disc list-inside space-y-0.5 text-[11.5px] text-[var(--text-2)]">
                   ${assumptions.map(a => `<li>${escapeHtml(a)}</li>`).join('')}
                 </ul>
               </div>
             ` : ''}
             ${remainingRisks.length > 0 ? `
-              <div class="p-2.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-md text-[11.5px] space-y-1">
-                <div class="font-semibold text-[#991B1B] text-[11px] uppercase tracking-wider">Remaining Residual Risks</div>
-                <ul class="list-disc list-inside space-y-0.5 text-[#7F1D1D]">
+              <div class="surface-card p-3 space-y-1">
+                <div class="font-medium text-[var(--danger)] text-[11px] uppercase tracking-[0.06em]">Remaining Residual Risks</div>
+                <ul class="list-disc list-inside space-y-0.5 text-[11.5px] text-[var(--text-2)]">
                   ${remainingRisks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
                 </ul>
               </div>
@@ -6128,17 +6056,17 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
         ` : ''}
 
         <!-- Footer Control Actions -->
-        <div class="pt-2 border-t border-[#E2E9E3] flex flex-wrap justify-between items-center gap-2">
+        <div class="pt-3 border-t border-[var(--border)] flex flex-wrap justify-between items-center gap-2">
           <div class="flex items-center gap-2">
-            <button onclick="navigator.clipboard.writeText(document.getElementById('quick-prompt-input').value); showNotification('Copied original prompt!', 'success');" class="px-2.5 py-1.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
-              Copy Original Prompt 📋
+            <button onclick="navigator.clipboard.writeText(document.getElementById('quick-prompt-input').value); showNotification('Copied original prompt!', 'success');" class="btn-secondary text-[12px] py-1.5 px-3">
+              Copy Original Prompt
             </button>
-            <button onclick="executeQuickOptimize(null, true)" class="px-2.5 py-1.5 bg-white border border-[#CBD7CE] hover:border-[#176B45] text-[#202820] text-[11.5px] font-medium rounded transition-smooth cursor-pointer">
-              Retry 0G Reasoning 🔄
+            <button onclick="executeQuickOptimize(null, true)" class="btn-secondary text-[12px] py-1.5 px-3">
+              Retry 0G Reasoning
             </button>
           </div>
-          <button onclick="saveOptimizedPromptFromModal('${escapeForAttr(data.optimized_prompt || data.hardened_prompt || '')}')" class="px-3.5 py-1.5 bg-[#176B45] hover:bg-[#115638] text-white text-[12px] font-medium rounded transition-smooth cursor-pointer">
-            Save to My Prompts 💾
+          <button onclick="saveOptimizedPromptFromModal('${escapeForAttr(data.optimized_prompt || data.hardened_prompt || '')}')" class="btn-primary text-[12px] py-1.5 px-3.5">
+            Save to My Prompts
           </button>
         </div>
       </div>
@@ -6160,17 +6088,17 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
     }
   } catch (err) {
     resultsBox.innerHTML = `
-      <div class="p-3 bg-[#FEF2F2] border border-[#FCA5A5] rounded-md text-[12.5px] text-[#991B1B] space-y-1.5">
-        <div class="font-semibold flex items-center justify-between">
+      <div class="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-[var(--radius-md)] text-[12.5px] text-[var(--danger)] space-y-1.5">
+        <div class="font-medium flex items-center justify-between">
           <span>0G AI Reasoning Request Failed</span>
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase border bg-[#FEE2E2] text-[#991B1B] border-[#FECACA]">
+          <span class="pill pill-danger">
             0G reasoning failed
           </span>
         </div>
         <p class="font-mono text-[11.5px]">${escapeHtml(err.message || 'An unexpected error occurred during 0G reasoning.')}</p>
         <div class="pt-2">
-          <button onclick="executeQuickOptimize(null, true)" class="px-3 py-1 bg-[#991B1B] hover:bg-[#7F1D1D] text-white text-[11px] font-medium rounded cursor-pointer">
-            Retry 0G Reasoning 🔄
+          <button onclick="executeQuickOptimize(null, true)" class="btn-primary text-[11.5px] py-1 px-3">
+            Retry 0G Reasoning
           </button>
         </div>
       </div>
@@ -6225,22 +6153,22 @@ function showNotification(message, type = 'info', duration = 4000) {
   const isSuccess = type === 'success';
   const isError = type === 'error';
   const borderBg = isSuccess
-    ? 'bg-white border-[#CDE5D5] text-[#202820]'
+    ? 'bg-[var(--surface)] border-[var(--border)] text-[var(--text)]'
     : isError
-    ? 'bg-white border-[#FECACA] text-[#202820]'
-    : 'bg-white border-[#E2E9E3] text-[#202820]';
+    ? 'bg-[var(--surface)] border-[#FECACA] text-[var(--text)]'
+    : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text)]';
 
   const icon = isSuccess
-    ? `<svg class="w-5 h-5 text-[#176B45] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
+    ? `<svg class="w-4 h-4 text-[var(--success)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
     : isError
-    ? `<svg class="w-5 h-5 text-[#DC2626] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`
-    : `<svg class="w-5 h-5 text-[#2563EB] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+    ? `<svg class="w-4 h-4 text-[var(--danger)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`
+    : `<svg class="w-4 h-4 text-[var(--info)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
 
-  toast.className = `pointer-events-auto p-3.5 rounded-lg border shadow-sm flex items-start gap-3 text-[13px] transition-all duration-300 opacity-0 translate-y-2 ${borderBg}`;
+  toast.className = `pointer-events-auto p-3.5 rounded-[var(--radius-md)] border shadow-xs flex items-start gap-3 text-[13px] transition-all duration-300 opacity-0 translate-y-2 ${borderBg}`;
   toast.innerHTML = `
     ${icon}
     <div class="flex-1 leading-snug">${escapeHtml(message)}</div>
-    <button onclick="this.parentElement.remove()" class="text-[#8B9C8E] hover:text-[#202820] text-sm shrink-0 ml-1 cursor-pointer">✕</button>
+    <button onclick="this.parentElement.remove()" class="text-[var(--text-3)] hover:text-[var(--text)] text-sm shrink-0 ml-1 cursor-pointer">✕</button>
   `;
 
   container.appendChild(toast);
@@ -6326,7 +6254,7 @@ function renderEVMEscrowModal() {
   const orderId = payload.orderId;
   const order = (STATE.data.orders || []).find(o => o.id === orderId);
   if (!order) {
-    return `<div class="p-6 text-center text-[#627566]">Order not found.</div>`;
+    return `<div class="p-6 text-center text-[var(--text-3)]">Order not found.</div>`;
   }
 
   const specialistWallet = order.provider_wallet || '0xaf6b2b8df91a6063a35c3f491183ec35d1fbff54';
@@ -6334,53 +6262,50 @@ function renderEVMEscrowModal() {
   const amountEth = (priceUsd * 0.00025).toFixed(4);
 
   return `
-    <div class="p-5 sm:p-6 space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-[#176B45]"></span>
-          <h3 class="text-[15.5px] font-bold text-[#202820]">MetaMask EVM Smart Escrow</h3>
+    <div class="p-6 space-y-4.5">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-3.5">
+        <div>
+          <h3 class="text-[20px] font-serif font-normal text-[var(--text)] tracking-tight">MetaMask EVM Smart Escrow</h3>
+          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Direct on-chain escrow funding on Rabdi Testnet</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] text-sm cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none cursor-pointer">✕</button>
       </div>
 
       <!-- Order & Escrow Summary -->
-      <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 space-y-2.5 text-[12.5px]">
-        <div class="flex items-center justify-between pb-2 border-b border-[#E2E9E3]">
+      <div class="bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] p-4 space-y-3 text-[12.5px]">
+        <div class="flex items-center justify-between pb-2.5 border-b border-[var(--border)]">
           <div>
-            <span class="text-[#627566] text-[11px] block uppercase">Specialist Audit</span>
-            <strong class="text-[#202820] text-[13px]">${escapeHtml(order.service_title)}</strong>
+            <span class="text-[11px] text-[var(--text-3)] uppercase tracking-[0.06em] block">Specialist Audit</span>
+            <span class="text-[var(--text)] font-medium text-[13.5px]">${escapeHtml(order.service_title)}</span>
           </div>
           <div class="text-right">
-            <span class="text-[#627566] text-[11px] block uppercase">Locked Escrow Fee</span>
-            <span class="font-mono text-[#176B45] font-bold text-[14px]">$${priceUsd.toFixed(2)} USD</span>
+            <span class="text-[11px] text-[var(--text-3)] uppercase tracking-[0.06em] block">Locked Escrow Fee</span>
+            <span class="font-mono text-[var(--text)] font-medium text-[14px]">$${priceUsd.toFixed(2)} USD</span>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 text-[12px]">
+        <div class="grid grid-cols-2 gap-3 text-[12px]">
           <div>
-            <span class="text-[#627566] text-[10.5px] block">Network</span>
-            <strong class="text-[#202820]">Rabdi Testnet (Chain ID 7794095)</strong>
+            <span class="text-[11px] text-[var(--text-3)] block">Network</span>
+            <strong class="text-[var(--text)] font-medium">Rabdi Testnet (Chain ID 7794095)</strong>
           </div>
           <div>
-            <span class="text-[#627566] text-[10.5px] block">Escrow Contract</span>
-            <span class="font-mono text-[11px] text-[#445246]">GuardvaneEscrow.sol</span>
+            <span class="text-[11px] text-[var(--text-3)] block">Escrow Contract</span>
+            <span class="font-mono text-[11.5px] text-[var(--text-2)]">GuardvaneEscrow.sol</span>
           </div>
           <div class="col-span-2">
-            <span class="text-[#627566] text-[10.5px] block">Assigned Specialist Wallet</span>
-            <span class="font-mono text-[11px] text-[#176B45] truncate block">${specialistWallet}</span>
+            <span class="text-[11px] text-[var(--text-3)] block">Assigned Specialist Wallet</span>
+            <span class="font-mono text-[11.5px] text-[var(--text-2)] truncate block">${specialistWallet}</span>
           </div>
         </div>
       </div>
 
       <!-- Execution Gate Warning -->
-      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-lg text-[12px] text-[#445246] space-y-1">
-        <div class="font-semibold text-[#176B45] flex items-center gap-1.5">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
+      <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12px] text-[var(--text-2)] space-y-1">
+        <div class="font-medium text-[var(--text)] flex items-center gap-1.5">
           <span>Decentralized Escrow Protection Gate</span>
         </div>
-        <p class="text-[11.5px] leading-relaxed">
+        <p class="text-[11.5px] text-[var(--text-3)] leading-relaxed">
           Funds remain held safely in smart escrow during auditing. The provider receives this order in their workspace only after verified on-chain deposit. You retain 100% control to release or dispute once the deliverable is reviewed.
         </p>
       </div>
@@ -6388,16 +6313,16 @@ function renderEVMEscrowModal() {
       <div id="evm-escrow-status-box" class="hidden"></div>
 
       <!-- Actions -->
-      <div class="pt-2 flex items-center justify-between gap-3">
-        <button onclick="closeModal()" class="px-4 py-2 border border-[#CBD7CE] rounded-md text-[12.5px] text-[#445246] hover:bg-[#F0F5F1] cursor-pointer">
+      <div class="pt-2 flex items-center justify-between gap-3 border-t border-[var(--border)]">
+        <button onclick="closeModal()" class="btn-secondary text-[12.5px] py-2 px-4">
           Cancel
         </button>
         <button
           id="evm-escrow-deposit-btn"
           onclick="executeEVMEscrowDeposit('${order.id}')"
-          class="px-5 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-[12.5px] font-medium rounded-md shadow-xs flex items-center gap-2 cursor-pointer"
+          class="btn-primary text-[12.5px] py-2 px-4.5"
         >
-          <span>Deposit in Escrow 🦊</span>
+          Deposit in Escrow
         </button>
       </div>
     </div>
@@ -6410,8 +6335,8 @@ async function executeEVMEscrowDeposit(orderId) {
   if (statusBox) {
     statusBox.classList.remove('hidden');
     statusBox.innerHTML = `
-      <div class="p-3 bg-[#EAF5EE] border border-[#CDE5D5] rounded-md text-[12px] text-[#176B45] flex items-center gap-2">
-        <div class="w-4 h-4 border-2 border-[#176B45] border-t-transparent rounded-full animate-spin shrink-0"></div>
+      <div class="p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12px] text-[var(--text)] flex items-center gap-2.5">
+        <div class="w-4 h-4 border-2 border-[var(--text)] border-t-transparent rounded-full animate-spin shrink-0"></div>
         <span>Confirming deposit in MetaMask & broadcasting on-chain...</span>
       </div>
     `;
@@ -6591,78 +6516,72 @@ function renderArkivVerifyModal() {
   const explorerBase = 'https://rabdi.explorer.arkiv.network';
 
   return `
-    <div class="p-6 space-y-5 select-none">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3.5">
-        <div class="flex items-center gap-2.5">
-          <span class="w-8 h-8 rounded-lg bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-base">📜</span>
-          <div>
-            <h3 class="text-[16px] font-bold text-[#202820]">Arkiv On-Chain Service Inspector</h3>
-            <p class="text-[11.5px] text-[#627566] font-mono">Rabdi Testnet (Chain ID 7794095) • Schema: guardvane.services.v1</p>
-          </div>
+    <div class="p-6 space-y-4.5 select-none">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-3.5">
+        <div>
+          <h3 class="text-[20px] font-serif font-normal text-[var(--text)] tracking-tight">Arkiv On-Chain Service Inspector</h3>
+          <p class="text-[12px] text-[var(--text-3)] font-mono mt-0.5">Rabdi Testnet (Chain ID 7794095) • Schema: guardvane.services.v1</p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] text-sm cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none cursor-pointer">✕</button>
       </div>
 
       ${loading ? `
         <div class="p-10 text-center space-y-3">
-          <div class="inline-block animate-spin w-8 h-8 border-3 border-[#176B45] border-t-transparent rounded-full"></div>
+          <div class="inline-block animate-spin w-6 h-6 border-2 border-[var(--text)] border-t-transparent rounded-full"></div>
           <div class="space-y-1">
-            <h4 class="text-[13.5px] font-semibold text-[#202820]">Querying Rabdi Testnet via Arkiv SDK...</h4>
-            <p class="text-[12px] font-mono text-[#627566]">client.getEntity(entityKey, ServicesSchema) / JSON-RPC: arkiv_getEntity</p>
+            <h4 class="text-[13px] font-medium text-[var(--text)]">Querying Rabdi Testnet via Arkiv SDK...</h4>
+            <p class="text-[11.5px] font-mono text-[var(--text-3)]">client.getEntity(entityKey, ServicesSchema) / JSON-RPC: arkiv_getEntity</p>
           </div>
         </div>
       ` : error ? `
-        <div class="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-xl space-y-2 text-[12.5px]">
-          <div class="font-bold text-[#991B1B]">Network Query Error</div>
-          <p class="text-[#7F1D1D]">${escapeHtml(error)}</p>
+        <div class="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-[var(--radius-md)] space-y-1 text-[12.5px]">
+          <div class="font-medium text-[var(--danger)]">Network Query Error</div>
+          <p class="text-[var(--danger)] font-mono text-[11.5px]">${escapeHtml(error)}</p>
         </div>
       ` : data && data.is_verified ? `
         <!-- On-Chain Confirmed Verification State -->
         <div class="space-y-4">
-          <div class="p-3.5 bg-[#EAF5EE] border border-[#CDE5D5] rounded-xl flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <span class="w-6 h-6 rounded-full bg-[#176B45] text-white flex items-center justify-center font-bold text-xs">✓</span>
-              <div>
-                <div class="text-[13px] font-bold text-[#176B45]">VERIFIED ON-CHAIN STORAGE (Rabdi Testnet)</div>
-                <div class="text-[11.5px] text-[#445246]">Entity integrity cryptographically confirmed via Arkiv SDK <code>client.getEntity()</code></div>
-              </div>
+          <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] flex items-center justify-between">
+            <div>
+              <div class="text-[13px] font-medium text-[var(--text)]">Verified On-Chain Storage</div>
+              <div class="text-[11.5px] text-[var(--text-3)]">Entity integrity cryptographically confirmed via Arkiv SDK on Rabdi Testnet</div>
             </div>
-            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#CDE5D5] text-[#176B45]">Verified Active</span>
+            <span class="pill pill-success">Verified Active</span>
           </div>
 
           <!-- Entity & Tx Hash -->
-          <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 space-y-3 text-[12.5px]">
+          <div class="surface-card p-4 space-y-3 text-[12.5px]">
             <div>
               <div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Arkiv Entity Key</span>
+                <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">Arkiv Entity Key</span>
                 <button
                   onclick="navigator.clipboard.writeText('${escapeForAttr(data.entity_key || '')}'); showNotification('Entity key copied!', 'success');"
-                  class="text-[11px] text-[#176B45] hover:underline cursor-pointer"
+                  class="text-[11px] text-[var(--accent)] hover:underline cursor-pointer"
                 >
                   Copy Key
                 </button>
               </div>
-              <code class="block font-mono text-xs text-[#202820] bg-white px-2.5 py-1.5 rounded border border-[#E2E9E3] break-all select-all">
+              <code class="block font-mono text-xs text-[var(--text)] bg-[var(--surface-sunk)] px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-[var(--border)] break-all select-all">
                 ${escapeHtml(data.entity_key || '')}
               </code>
             </div>
 
             <div>
               <div class="flex items-center justify-between mb-1">
-                <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Confirmed Transaction Hash</span>
+                <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">Confirmed Transaction Hash</span>
                 ${data.tx_hash ? `
                   <a
                     href="${explorerBase}/tx/${escapeForAttr(data.tx_hash)}"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="text-[11px] text-[#176B45] hover:underline cursor-pointer flex items-center gap-1 font-medium"
+                    class="text-[11px] text-[var(--accent)] hover:underline cursor-pointer flex items-center gap-1 font-medium"
                   >
                     <span>View on Rabdi Explorer</span>
                     <span>↗</span>
                   </a>
                 ` : ''}
               </div>
-              <code class="block font-mono text-xs text-[#202820] bg-white px-2.5 py-1.5 rounded border border-[#E2E9E3] break-all select-all">
+              <code class="block font-mono text-xs text-[var(--text)] bg-[var(--surface-sunk)] px-2.5 py-1.5 rounded-[var(--radius-sm)] border border-[var(--border)] break-all select-all">
                 ${escapeHtml(data.tx_hash || 'Confirmed on-chain')}
               </code>
             </div>
@@ -6670,74 +6589,71 @@ function renderArkivVerifyModal() {
 
           <!-- Decoded On-Chain Attributes -->
           <div>
-            <div class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-2">Decoded On-Chain Record (guardvane.services.v1)</div>
-            <div class="bg-white border border-[#E2E9E3] rounded-xl overflow-hidden divide-y divide-[#E2E9E3] text-[12.5px]">
+            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em] mb-2">Decoded On-Chain Record (guardvane.services.v1)</div>
+            <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden divide-y divide-[var(--border)] text-[12.5px]">
               <div class="p-2.5 px-3 flex items-center justify-between">
-                <span class="text-[#627566]">On-Chain Title:</span>
-                <strong class="text-[#202820] font-mono">${escapeHtml(data.on_chain_entity?.title || data.title)}</strong>
+                <span class="text-[var(--text-3)]">On-Chain Title:</span>
+                <strong class="text-[var(--text)] font-mono font-medium">${escapeHtml(data.on_chain_entity?.title || data.title)}</strong>
               </div>
               <div class="p-2.5 px-3 flex items-center justify-between">
-                <span class="text-[#627566]">Provider Wallet (Owner):</span>
-                <code class="text-[#202820] font-mono text-xs">${escapeHtml(data.on_chain_entity?.provider_wallet || data.on_chain_entity?.owner || '')}</code>
+                <span class="text-[var(--text-3)]">Provider Wallet (Owner):</span>
+                <code class="text-[var(--text)] font-mono text-xs">${escapeHtml(data.on_chain_entity?.provider_wallet || data.on_chain_entity?.owner || '')}</code>
               </div>
               <div class="p-2.5 px-3 flex items-center justify-between">
-                <span class="text-[#627566]">Category:</span>
-                <span class="text-[#202820] font-mono">${escapeHtml(data.on_chain_entity?.service_category || 'prompt_engineering')}</span>
+                <span class="text-[var(--text-3)]">Category:</span>
+                <span class="text-[var(--text)] font-mono">${escapeHtml(data.on_chain_entity?.service_category || 'prompt_engineering')}</span>
               </div>
               <div class="p-2.5 px-3 flex items-center justify-between">
-                <span class="text-[#627566]">Price (Indicative):</span>
-                <span class="text-[#176B45] font-bold font-mono">${escapeHtml(String(data.on_chain_entity?.indicative_price || '3'))} tGLM / USD</span>
+                <span class="text-[var(--text-3)]">Price (Indicative):</span>
+                <span class="text-[var(--text)] font-medium font-mono">${escapeHtml(String(data.on_chain_entity?.indicative_price || '3'))} tGLM / USD</span>
               </div>
               <div class="p-2.5 px-3 flex items-center justify-between">
-                <span class="text-[#627566]">Expiration Block:</span>
-                <span class="text-[#627566] font-mono">Block ${escapeHtml(String(data.on_chain_entity?.expires_at || '1594464'))} (valid ~30 days)</span>
+                <span class="text-[var(--text-3)]">Expiration Block:</span>
+                <span class="text-[var(--text-3)] font-mono">Block ${escapeHtml(String(data.on_chain_entity?.expires_at || '1594464'))} (valid ~30 days)</span>
               </div>
               <div class="p-2.5 px-3 flex items-center justify-between">
-                <span class="text-[#627566]">Verification Source:</span>
-                <span class="text-[#176B45] font-mono text-xs">${payload.clientSideQueried ? 'Browser Arkiv SDK + Rabdi RPC' : 'Authoritative Rabdi RPC (@arkiv-network/sdk)'}</span>
+                <span class="text-[var(--text-3)]">Verification Source:</span>
+                <span class="text-[var(--text-2)] font-mono text-xs">${payload.clientSideQueried ? 'Browser Arkiv SDK + Rabdi RPC' : 'Authoritative Rabdi RPC (@arkiv-network/sdk)'}</span>
               </div>
             </div>
           </div>
 
           <!-- Privacy Guarantee Notice -->
-          <div class="p-3 bg-[#FAFBF9] border border-[#E2E9E3] rounded-lg text-[11.5px] text-[#627566] leading-relaxed">
-            <strong class="text-[#202820] block mb-0.5">🔒 Off-Chain Confidentiality Architecture</strong>
+          <div class="p-3 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[11.5px] text-[var(--text-3)] leading-relaxed">
+            <strong class="text-[var(--text)] font-medium block mb-0.5">Off-Chain Confidentiality Architecture</strong>
             Only public service marketplace discovery metadata is anchored to Arkiv decentralized storage. Customer prompts, confidential security reports, payment credentials, and 0G inference computations remain strictly confidential and off-chain.
           </div>
         </div>
       ` : `
         <!-- Unverified / Off-Chain Only State -->
         <div class="space-y-4">
-          <div class="p-3.5 bg-[#FEF2F2] border border-[#FECACA] rounded-xl flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <span class="w-6 h-6 rounded-full bg-[#DC2626] text-white flex items-center justify-center font-bold text-xs">✕</span>
-              <div>
-                <div class="text-[13px] font-bold text-[#991B1B]">NOT VERIFIED ON ARKIV</div>
-                <div class="text-[11.5px] text-[#7F1D1D]">Stored in off-chain database (Supabase) only. No confirmed entity on Rabdi Testnet.</div>
-              </div>
+          <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] flex items-center justify-between">
+            <div>
+              <div class="text-[13px] font-medium text-[var(--text)]">Not Verified on Arkiv</div>
+              <div class="text-[11.5px] text-[var(--text-3)]">Stored in off-chain database (Supabase) only. No confirmed entity on Rabdi Testnet.</div>
             </div>
-            <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-[#FEE2E2] text-[#991B1B]">Off-Chain Only</span>
+            <span class="pill pill-warning">Off-Chain Only</span>
           </div>
 
-          <div class="bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl p-4 space-y-2 text-[12.5px] text-[#445246] leading-relaxed">
-            <strong class="text-[#202820] block">Honest Verification Guarantee:</strong>
+          <div class="surface-card p-4 space-y-2 text-[12.5px] text-[var(--text-2)] leading-relaxed">
+            <strong class="text-[var(--text)] font-medium block">Honest Verification Guarantee:</strong>
             <p>
               Guardvane does NOT claim on-chain verification based solely on Supabase records. This service ('${escapeHtml(serviceTitle)}') has not yet had an on-chain entity anchored to the <code>guardvane.services.v1</code> schema on Rabdi Testnet.
             </p>
-            <p class="text-[11.5px] text-[#627566] pt-1">
+            <p class="text-[11.5px] text-[var(--text-3)] pt-1">
               Status returned by Rabdi RPC: <code class="font-mono text-xs">${escapeHtml(data?.error || 'No matching on-chain entity')}</code>
             </p>
           </div>
         </div>
       `}
 
-      <div class="flex items-center justify-between pt-3 border-t border-[#E2E9E3]">
-        <div class="text-xs text-[#8B9C8E] font-mono">
+      <div class="flex items-center justify-between pt-3 border-t border-[var(--border)]">
+        <div class="text-xs text-[var(--text-3)] font-mono">
           RPC: <a href="https://rpc.rabdi.db-chain.testnet.arkiv.network" target="_blank" class="hover:underline">rpc.rabdi.db-chain.testnet.arkiv.network</a>
         </div>
         <button
           onclick="closeModal()"
-          class="px-4 py-2 bg-[#176B45] text-white text-xs font-semibold rounded-md hover:bg-[#115638] transition-smooth cursor-pointer"
+          class="btn-secondary text-xs py-2 px-4"
         >
           Close Inspector
         </button>
@@ -6799,35 +6715,32 @@ function renderArkivInspectorModal() {
   const error = payload.error;
 
   return `
-    <div class="p-6 space-y-5 select-none">
-      <div class="flex items-center justify-between border-b border-[#E2E9E3] pb-3.5">
-        <div class="flex items-center gap-2.5">
-          <span class="w-8 h-8 rounded-lg bg-[#EAF5EE] border border-[#CDE5D5] flex items-center justify-center text-[#176B45] font-bold text-base">⚡</span>
-          <div>
-            <h3 class="text-[16px] font-bold text-[#202820]">Arkiv Rabdi Testnet Live Inspector</h3>
-            <p class="text-[11.5px] text-[#627566] font-mono">Chain ID: 7794095 • Native SDK Query: <code>client.getEntity()</code></p>
-          </div>
+    <div class="p-6 space-y-4.5 select-none">
+      <div class="flex items-start justify-between border-b border-[var(--border)] pb-3.5">
+        <div>
+          <h3 class="text-[20px] font-serif font-normal text-[var(--text)] tracking-tight">Arkiv Rabdi Testnet Live Inspector</h3>
+          <p class="text-[12px] text-[var(--text-3)] font-mono mt-0.5">Chain ID: 7794095 • Native SDK Query: <code>client.getEntity()</code></p>
         </div>
-        <button onclick="closeModal()" class="text-[#8B9C8E] hover:text-[#202820] text-sm cursor-pointer">✕</button>
+        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none cursor-pointer">✕</button>
       </div>
 
       <form onsubmit="executeArkivDirectQuery(event)" class="space-y-3">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="sm:col-span-2">
-            <label class="block text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Entity Key (Hex 32-byte)</label>
+            <label class="block text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em] mb-1">Entity Key (Hex 32-byte)</label>
             <input
               type="text"
               id="arkiv-inspector-key-input"
               value="${escapeForAttr(currentKey)}"
               required
-              class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md font-mono text-xs text-[#202820] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-sm)] font-mono text-xs text-[var(--text)] focus:outline-none focus:border-[var(--accent)]"
             />
           </div>
           <div>
-            <label class="block text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider mb-1">Arkiv Schema</label>
+            <label class="block text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em] mb-1">Arkiv Schema</label>
             <select
               id="arkiv-inspector-schema-select"
-              class="w-full px-3 py-2 bg-white border border-[#CBD7CE] rounded-md font-mono text-xs text-[#202820] focus:outline-none focus:border-[#176B45]"
+              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-sm)] font-mono text-xs text-[var(--text)] focus:outline-none focus:border-[var(--accent)]"
             >
               <option value="services" ${currentSchema === 'services' ? 'selected' : ''}>guardvane.services.v1 (Service Listings)</option>
               <option value="specialists" ${currentSchema === 'specialists' ? 'selected' : ''}>guardvane.specialists.v1 (Specialist Profiles)</option>
@@ -6836,53 +6749,53 @@ function renderArkivInspectorModal() {
         </div>
 
         <div class="flex items-center justify-between pt-1">
-          <div class="text-[11px] text-[#627566]">
-            Confirmed Transaction: <a href="https://rabdi.explorer.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c" target="_blank" class="font-mono text-[#176B45] hover:underline">0xce3c...058c ↗</a>
+          <div class="text-[11px] text-[var(--text-3)]">
+            Confirmed Transaction: <a href="https://rabdi.explorer.arkiv.network/tx/0xce3c68d1e4bfaac6b01623f8203ea8f88e676e023ca55f6894e17051cf02058c" target="_blank" class="font-mono text-[var(--accent)] hover:underline">0xce3c...058c ↗</a>
           </div>
           <button
             type="submit"
             ${loading ? 'disabled' : ''}
-            class="px-4 py-2 bg-[#176B45] hover:bg-[#115638] text-white text-xs font-semibold rounded-md shadow-xs transition-smooth cursor-pointer ${loading ? 'opacity-60 cursor-not-allowed' : ''}"
+            class="btn-primary text-xs py-2 px-4 ${loading ? 'opacity-60 cursor-not-allowed' : ''}"
           >
-            ${loading ? 'Fetching from Rabdi...' : 'Fetch Entity via Arkiv SDK ⚡'}
+            ${loading ? 'Fetching from Rabdi...' : 'Fetch Entity via Arkiv SDK'}
           </button>
         </div>
       </form>
 
       ${loading ? `
         <div class="p-8 text-center space-y-2">
-          <div class="inline-block animate-spin w-6 h-6 border-2 border-[#176B45] border-t-transparent rounded-full"></div>
-          <div class="text-xs font-mono text-[#627566]">JSON-RPC: arkiv_getEntity ...</div>
+          <div class="inline-block animate-spin w-6 h-6 border-2 border-[var(--text)] border-t-transparent rounded-full"></div>
+          <div class="text-xs font-mono text-[var(--text-3)]">JSON-RPC: arkiv_getEntity ...</div>
         </div>
       ` : error ? `
-        <div class="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-xl text-[12.5px] text-[#991B1B] space-y-1">
-          <div class="font-bold">Rabdi Query Response:</div>
+        <div class="p-4 bg-[#FEF2F2] border border-[#FECACA] rounded-[var(--radius-md)] text-[12.5px] text-[var(--danger)] space-y-1">
+          <div class="font-medium">Rabdi Query Response:</div>
           <p class="font-mono text-xs">${escapeHtml(error)}</p>
         </div>
       ` : result ? `
         <div class="space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-semibold text-[#8B9C8E] uppercase tracking-wider">Live On-Chain Decoded Attributes:</span>
-            <span class="text-[10px] bg-[#EAF5EE] text-[#176B45] font-mono px-2 py-0.5 rounded font-semibold">Decoded Successfully</span>
+            <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">Live On-Chain Decoded Attributes:</span>
+            <span class="pill pill-success">Decoded Successfully</span>
           </div>
-          <pre class="p-3.5 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl text-xs font-mono text-[#202820] overflow-x-auto max-h-60 leading-relaxed">${escapeHtml(JSON.stringify(result, null, 2))}</pre>
+          <pre class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-xs font-mono text-[var(--text)] overflow-x-auto max-h-60 leading-relaxed">${escapeHtml(JSON.stringify(result, null, 2))}</pre>
         </div>
       ` : `
-        <div class="p-6 bg-[#FAFBF9] border border-[#E2E9E3] rounded-xl text-center text-xs text-[#627566]">
-          Click <strong>Fetch Entity via Arkiv SDK</strong> above to query the Rabdi Testnet live using the official @arkiv-network/sdk client.
+        <div class="p-6 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-center text-xs text-[var(--text-3)]">
+          Click <strong class="text-[var(--text)] font-medium">Fetch Entity via Arkiv SDK</strong> above to query the Rabdi Testnet live using the official @arkiv-network/sdk client.
         </div>
       `}
 
-      <div class="flex items-center justify-between pt-3 border-t border-[#E2E9E3] text-xs">
+      <div class="flex items-center justify-between pt-3 border-t border-[var(--border)] text-xs">
         <a
           href="https://rabdi.explorer.arkiv.network"
           target="_blank"
-          class="text-[#176B45] hover:underline flex items-center gap-1 font-mono"
+          class="text-[var(--accent)] hover:underline flex items-center gap-1 font-mono"
         >
           <span>Open Rabdi Explorer</span>
           <span>↗</span>
         </a>
-        <button onclick="closeModal()" class="px-3.5 py-1.5 border border-[#E2E9E3] text-[#202820] rounded-md hover:bg-[#F0F5F1] transition-smooth cursor-pointer">
+        <button onclick="closeModal()" class="btn-secondary text-xs py-1.5 px-3.5">
           Done
         </button>
       </div>

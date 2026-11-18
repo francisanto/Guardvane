@@ -1,0 +1,380 @@
+/* ==========================================================================
+   Guardvane Design System Tokens
+   Editorial, human, calm aesthetic inspired by Anthropic / Claude.
+   ========================================================================== */
+
+:root {
+  /* -------------------------------------------------------------------------
+     Colors: Authentic Claude Warm Parchment Canvas & High-Contrast Inks
+     ------------------------------------------------------------------------- */
+  --bg:            #F7F5EE;   /* Authentic Claude warm parchment paper canvas */
+  --surface:       #FFFFFF;   /* Pure crisp paper cards and modal dialogs */
+  --surface-sunk:  #ECE8DE;   /* Claude sidebar and subtle recessed wells */
+  --border:        #E2DFD4;   /* Warm, gentle 1px hairlines and dividers */
+  --border-strong: #C8C3B4;   /* Interactive input borders and defined edges */
+
+  /* High-Contrast Readability Inks */
+  --text:          #141413;   /* Primary ink: deep, rich charcoal black (17.8:1 contrast) */
+  --text-2:        #343330;   /* Secondary text: dark warm slate, highly readable (9.7:1 contrast) */
+  --text-3:        #595750;   /* Tertiary labels & meta: crisp, solid readability (6.1:1 contrast) */
+
+  /* Single Accent: Terracotta (Claude Signature Orange) */
+  --accent:        #D97757;   /* Claude signature terracotta */
+  --accent-hover:  #C46545;
+  --accent-soft:   #F5EAE5;
+
+  /* Semantic status pairs: Muted backgrounds with high-contrast, deep text */
+  --success:       #275630;
+  --success-bg:    #E2EDE0;
+  --warning:       #7D4F0B;
+  --warning-bg:    #F7ECCE;
+  --info:          #234E75;
+  --info-bg:       #DEE9F3;
+  --danger:        #962E25;
+  --danger-bg:     #F8DFDC;
+
+  /* -------------------------------------------------------------------------
+     Typography
+     ------------------------------------------------------------------------- */
+  --font-serif:    'Newsreader', 'Source Serif 4', Georgia, serif;
+  --font-sans:     'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Radius */
+  --radius-sm:     8px;       /* Buttons, inputs */
+  --radius-md:     12px;      /* Cards, dropdowns */
+  --radius-full:   999px;     /* Status pills */
+
+  /* Elevation */
+  --shadow-none:   none;
+  --shadow-hover:  0 1px 2px rgba(20, 20, 19, 0.08);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+}
+
+/* ---------------------------------------------------------------------------
+   Dark Mode Tokens (Honors system dark preference)
+   --------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:            #141413;
+    --surface:       #1E1E1C;
+    --surface-sunk:  #181816;
+    --border:        #2E2D2A;
+    --border-strong: #44433E;
+    --text:          #FAF9F5;
+    --text-2:        #D6D3C8;
+    --text-3:        #A5A296;
+
+    --accent:        #D97757;
+    --accent-hover:  #E2886A;
+    --accent-soft:   #34241E;
+
+    --success:       #8EC196;
+    --success-bg:    #1F2F23;
+    --warning:       #E0B05C;
+    --warning-bg:    #332717;
+    --info:          #85A8CE;
+    --info-bg:       #1E2935;
+    --danger:        #E07F75;
+    --danger-bg:     #35201E;
+
+    --shadow-hover:  0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Force dark class support */
+.dark {
+  --bg:            #141413;
+  --surface:       #1E1E1C;
+  --surface-sunk:  #181816;
+  --border:        #2E2D2A;
+  --border-strong: #44433E;
+  --text:          #FAF9F5;
+  --text-2:        #D6D3C8;
+  --text-3:        #A5A296;
+
+  --accent:        #D97757;
+  --accent-hover:  #E2886A;
+  --accent-soft:   #34241E;
+
+  --success:       #8EC196;
+  --success-bg:    #1F2F23;
+  --warning:       #E0B05C;
+  --warning-bg:    #332717;
+  --info:          #85A8CE;
+  --info-bg:       #1E2935;
+  --danger:        #E07F75;
+  --danger-bg:     #35201E;
+
+  --shadow-hover:  0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------------------------------------------------------------------------
+   Base Styles
+   --------------------------------------------------------------------------- */
+html, body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure strong, high-contrast readability across all text and forms */
+p, span, div, li, td, th, label {
+  text-rendering: optimizeLegibility;
+}
+
+input, textarea, select {
+  color: var(--text);
+  background-color: var(--surface);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-3);
+  opacity: 0.85;
+}
+
+/* Refined Typography Classes */
+.font-serif {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ---------------------------------------------------------------------------
+   Surface & Card Styles
+   --------------------------------------------------------------------------- */
+.surface-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-none);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.surface-card-hover:hover {
+  box-shadow: var(--shadow-hover);
+  border-color: var(--border-strong);
+}
+
+.surface-sunk {
+  background-color: var(--surface-sunk);
+}
+
+/* ---------------------------------------------------------------------------
+   Button System
+   --------------------------------------------------------------------------- */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  background-color: var(--accent);
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  background-color: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background-color: var(--surface-sunk);
+  border-color: var(--text-2);
+}
+
+.btn-secondary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--border-strong);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  background-color: transparent;
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  background-color: var(--surface-sunk);
+  border-radius: var(--radius-sm);
+}
+
+.btn-ghost-accent {
+  color: var(--accent);
+}
+
+.btn-ghost-accent:hover {
+  color: var(--accent-hover);
+  background-color: var(--accent-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   Status Pills (Quiet, muted, sentence case)
+   --------------------------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+.pill-success {
+  background-color: var(--success-bg);
+  color: var(--success);
+}
+
+.pill-warning {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+}
+
+.pill-info {
+  background-color: var(--info-bg);
+  color: var(--info);
+}
+
+.pill-danger {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+}
+
+.pill-neutral {
+  background-color: var(--surface-sunk);
+  color: var(--text-2);
+}
+
+/* ---------------------------------------------------------------------------
+   Navigation Active States
+   --------------------------------------------------------------------------- */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-2);
+  background-color: transparent;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background-color: var(--surface-sunk);
+  color: var(--text);
+}
+
+.nav-item-active {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.04);
+  position: relative;
+}
+
+.nav-item-active::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 10px;
+  bottom: 10px;
+  width: 2.5px;
+  border-radius: 2px;
+  background-color: var(--accent);
+}
+
+/* Hairline borders */
+.border-hairline {
+  border-color: var(--border);
+}
+
+.divide-hairline > * + * {
+  border-color: var(--border);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+}

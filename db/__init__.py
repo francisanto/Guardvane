@@ -1,4 +1,0 @@
-"""
-Guardvane Database Package
-"""
-
