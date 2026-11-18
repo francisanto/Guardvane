@@ -16,9 +16,9 @@ PLATFORM_AGENTS: List[Dict[str, object]] = [
         "title": "Platform-managed prompt engineering, loop defense, and optimization",
         "provider_type": "automated",
         "description": (
-            "Guardvane platform agent. Uses local Guardvane analyzers and optional 0G Private "
-            "Computer reasoning to engineer, optimize, and bound prompts. Capabilities are limited "
-            "to Prompt Engineering, Prompt Loop Engineering, and Prompt Optimization."
+            "Guardvane platform agent. Uses 0G Private Computer AI reasoning to engineer, "
+            "optimize, and bound prompts. Capabilities are focused on Prompt Engineering, "
+            "Prompt Loop Engineering, and Prompt Optimization."
         ),
         "skills": [
             "Prompt Engineering",
@@ -60,9 +60,8 @@ PLATFORM_AGENTS: List[Dict[str, object]] = [
         "title": "Platform-managed prompt security analysis",
         "provider_type": "automated",
         "description": (
-            "Guardvane platform agent. Runs Guardvane prompt-security classifiers and sensitive-data "
-            "detectors. Capability is limited to Prompt Security Analysis. It does not perform "
-            "codebase, application, or smart-contract audits."
+            "Guardvane platform agent. Uses 0G Private Computer AI reasoning for deep prompt security "
+            "analysis, injection detection, and secret leakage defense. Capability is focused on Prompt Security Analysis."
         ),
         "skills": [
             "Prompt injection detection",

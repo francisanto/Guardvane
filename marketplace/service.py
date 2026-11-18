@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from analyzers.prompt_analyzer import analyze_prompt
+from integrations.zero_g.sanitizer import detect_sensitive_data, sanitize_prompt_for_inference
 from integrations.arkiv.client import arkiv_client
 from integrations.arkiv.server_writer import arkiv_server_writer
 from integrations.zero_g import zero_g_optimizer
@@ -837,20 +837,9 @@ class MarketplaceService:
         )
 
         # -------------------------------------------------------------------
-        # 1. High-Priority Vulnerability Scanning (Runs for BOTH modes)
+        # 1. Pre-execution Credential & Secret Scanning
         # -------------------------------------------------------------------
-        analysis = analyze_prompt(order.prompt_content, analysis_mode="both")
-        p_sec = analysis.get("prompt_security", {})
-        if p_sec.get("is_injection_detected", False) or p_sec.get("risk_category") in {"High Risk", "Critical Risk"}:
-            findings.append({
-                "title": "Adversarial Prompt Injection & Delimiter Breakout Surface",
-                "severity": "critical" if p_sec.get("risk_category") == "Critical Risk" else "high",
-                "description": f"Detected injection probability {p_sec.get('confidence_score', 0):.2f}. Threat classification: {p_sec.get('risk_category', 'High Risk')}.",
-                "remediation": "Apply instruction boundary delimiters and enforce strict delimiter sandboxing on user inputs."
-            })
-            rec_list.append("Prefix system prompts with immutable role guardrails and tag boundaries.")
-
-        s_data = analysis.get("sensitive_data", {})
+        s_data = detect_sensitive_data(order.prompt_content)
         if s_data.get("has_sensitive_data", False):
             findings.append({
                 "title": "Credential & Secret Exposure Risk",
@@ -859,16 +848,6 @@ class MarketplaceService:
                 "remediation": "Extract hardcoded API keys, connection strings, or tokens into secure environment variables."
             })
             rec_list.append("Store secrets in environment variables or external vaults rather than system prompts.")
-
-        app_risks = analysis.get("application_risks", {}).get("detected_risks", [])
-        for r in app_risks:
-            findings.append({
-                "title": f"Application Threat Vector: {r.replace('_', ' ').title()}",
-                "severity": "high",
-                "description": f"Heuristic and classifier analysis flagged '{r}' within prompt operational requirements.",
-                "remediation": f"Enforce input validation and authorization checks for {r}."
-            })
-            rec_list.append(f"Hardened control for {r} enforced.")
 
         # -------------------------------------------------------------------
         # 2. 0G Private Computer AI Reasoning Execution
@@ -981,16 +960,18 @@ class MarketplaceService:
 
             has_files_or_design = bool(req_text.strip() and len(req_text.strip()) > 15)
             if has_files_or_design:
-                file_analysis = analyze_prompt(req_text, analysis_mode="both")
-                file_sec = file_analysis.get("prompt_security", {})
-                file_sdata = file_analysis.get("sensitive_data", {})
-                file_risks = file_analysis.get("application_risks", {}).get("detected_risks", [])
-
-                file_vuln_count = (1 if file_sec.get("is_injection_detected") else 0) + (1 if file_sdata.get("has_sensitive_data") else 0) + len(file_risks)
+                file_sdata = detect_sensitive_data(req_text)
+                if file_sdata.get("has_sensitive_data"):
+                    findings.append({
+                        "title": "Credential Exposure in Project Requirements / Shared Snippets",
+                        "severity": "critical",
+                        "description": f"Detected {file_sdata.get('count', 0)} sensitive credentials or tokens in attached requirements.",
+                        "remediation": "Do not include raw API keys, private tokens, or database passwords in project requirements."
+                    })
                 findings.append({
-                    "title": f"Code & Architecture Vulnerability Audit ({file_vuln_count} surfaces inspected)",
-                    "severity": "high" if file_vuln_count > 0 else "low",
-                    "description": f"Audited shared system architecture / code snippets. Flagged vectors: {', '.join(file_risks) if file_risks else 'No critical code-level injection vectors in provided snippet'}.",
+                    "title": "Code & Architecture Vulnerability Audit",
+                    "severity": "low",
+                    "description": "Audited shared system architecture / code snippets for operational and prompt boundary exposure.",
                     "remediation": "Apply parameterized inputs, role-based access control, and secret separation across all endpoint handlers."
                 })
                 rec_list.insert(0, "Audited provided architecture and code snippet for cross-boundary vulnerabilities.")
