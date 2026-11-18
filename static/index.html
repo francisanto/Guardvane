@@ -20,6 +20,18 @@
   <link rel="stylesheet" href="/static/css/tokens.css?v=20261118_claude_v2">
   
   <!-- Tailwind CSS via CDN -->
+  <script>
+    // Suppress Tailwind Play CDN production advisory warning in console
+    (function() {
+      var _warn = console.warn;
+      console.warn = function() {
+        if (arguments[0] && typeof arguments[0] === 'string' && arguments[0].indexOf('cdn.tailwindcss.com should not be used in production') !== -1) {
+          return;
+        }
+        return _warn.apply(console, arguments);
+      };
+    })();
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {

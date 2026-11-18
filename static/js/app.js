@@ -977,12 +977,8 @@ function renderTopbar() {
         <span class="text-[var(--text-2)] font-medium">${activeLabel}</span>
       </nav>
 
-      <!-- Right: Network Chip, Quiet Wallet Chip & Log out -->
+      <!-- Right: Quiet Wallet Chip & Log out -->
       <div class="flex items-center gap-3">
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-sans text-[var(--text-2)] bg-[var(--surface-sunk)] border border-[var(--border)]">
-          <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
-          <span>Rabdi Testnet</span>
-        </div>
         ${address ? `
           <button
             onclick="openModal('wallet_modal')"
@@ -3984,20 +3980,6 @@ function renderSettingsModal() {
                 Register →
               </button>
             `}
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Session Security</label>
-          <div class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] space-y-1.5 text-[12px] text-[var(--text-2)]">
-            <div class="flex items-center justify-between text-[var(--text)]">
-              <span>Authentication Standard</span>
-              <span class="font-mono text-[11px] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">EIP-4361 (SIWE)</span>
-            </div>
-            <div class="flex items-center justify-between text-[var(--text)] pt-1">
-              <span>Session Storage</span>
-              <span class="font-mono text-[11px] bg-[var(--surface)] px-2 py-0.5 rounded border border-[var(--border)]">Secure HttpOnly Cookie</span>
-            </div>
           </div>
         </div>
 
