@@ -519,6 +519,151 @@ function closeModal() {
 }
 
 // ---------------------------------------------------------------------------
+// Claude Design System Shared Components
+// ---------------------------------------------------------------------------
+
+function renderPageHeader(title, description, actionsHtml = '') {
+  return `
+    <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 mb-8">
+      <div>
+        <h1 class="font-serif text-[32px] sm:text-[36px] font-normal tracking-[-0.01em] text-[var(--text)] leading-tight">
+          ${escapeHtml(title)}
+        </h1>
+        ${description ? `
+          <p class="text-[14px] sm:text-[15px] text-[var(--text-2)] mt-1.5 leading-relaxed">
+            ${escapeHtml(description)}
+          </p>
+        ` : ''}
+      </div>
+      ${actionsHtml ? `
+        <div class="flex items-center gap-2.5 shrink-0">
+          ${actionsHtml}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderIdChip(id) {
+  if (!id) return '';
+  const shortId = id.length > 7 ? '#' + id.slice(-6) : id;
+  return `
+    <button
+      type="button"
+      onclick="event.stopPropagation(); navigator.clipboard.writeText('${id}'); showNotification('Copied ID ${id}', 'success');"
+      title="Click to copy full ID: ${id}"
+      class="inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] text-[12px] font-mono text-[var(--text-3)] bg-[var(--surface-sunk)] hover:text-[var(--text)] hover:bg-[var(--border)] transition-colors cursor-pointer border-none"
+    >
+      ${shortId}
+    </button>
+  `;
+}
+
+function renderShortAddress(address) {
+  if (!address) return '';
+  const short = address.length > 12
+    ? address.substring(0, 6) + '…' + address.substring(address.length - 4)
+    : address;
+  return `
+    <span class="inline-flex items-center gap-1 font-mono text-[12px] text-[var(--text-2)]">
+      <span>${short}</span>
+      <button
+        type="button"
+        onclick="event.stopPropagation(); navigator.clipboard.writeText('${address}'); showNotification('Copied address', 'success');"
+        title="Copy address: ${address}"
+        class="text-[var(--text-3)] hover:text-[var(--text)] cursor-pointer border-none bg-transparent p-0 inline-flex items-center"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      </button>
+    </span>
+  `;
+}
+
+function renderProgressSteps(step) {
+  const steps = [
+    { num: 1, label: 'Delivered' },
+    { num: 2, label: 'Released' },
+    { num: 3, label: 'Paid out' }
+  ];
+  return `
+    <div class="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-3)] mt-1 select-none">
+      ${steps.map((s, idx) => {
+        const isDone = s.num <= step;
+        const isCurrent = s.num === step;
+        return `
+          <span class="inline-flex items-center gap-1 ${isCurrent ? 'text-[var(--text)] font-semibold' : isDone ? 'text-[var(--success)]' : 'text-[var(--text-3)]'}">
+            ${isDone ? `<span class="w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-[var(--accent)]' : 'bg-[var(--success)]'}"></span>` : `<span class="w-1.5 h-1.5 rounded-full bg-[var(--border-strong)]"></span>`}
+            <span>${s.label}</span>
+          </span>
+          ${idx < steps.length - 1 ? `<span class="text-[var(--border-strong)] text-[10px]">&gt;</span>` : ''}
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderStatusPill(status, isEscrow = false, escrowState = '') {
+  const norm = (status || '').toLowerCase().replace(/[-_ ]/g, '_');
+  let pillClass = 'pill-neutral';
+  let label = status || 'Unknown';
+  let progressStep = 0;
+
+  if (norm === 'requested') {
+    pillClass = 'pill-warning';
+    label = 'Requested';
+  } else if (norm === 'accepted' || norm === 'in_progress') {
+    pillClass = 'pill-info';
+    label = 'In progress';
+  } else if (norm === 'delivered') {
+    pillClass = 'pill-warning';
+    label = (isEscrow && escrowState !== 'released') ? 'Awaiting release' : 'Delivered';
+    progressStep = 1;
+  } else if (norm === 'completed' || norm === 'verified') {
+    pillClass = 'pill-success';
+    label = (isEscrow && escrowState === 'released') ? 'Paid out' : 'Completed';
+    progressStep = isEscrow ? 3 : 0;
+  } else if (norm === 'pending_payment' || norm === 'pending') {
+    pillClass = 'pill-neutral';
+    label = 'Pending payment';
+  } else if (norm === 'failed' || norm === 'rejected' || norm === 'cancelled') {
+    pillClass = 'pill-danger';
+    label = norm === 'failed' ? 'Failed' : norm === 'rejected' ? 'Rejected' : 'Cancelled';
+  }
+
+  if (isEscrow && escrowState === 'released' && norm !== 'completed') {
+    progressStep = 2;
+  }
+
+  return `
+    <div class="inline-flex flex-col items-start gap-0.5">
+      <span class="pill ${pillClass}">
+        ${label}
+      </span>
+      ${isEscrow && progressStep > 0 ? renderProgressSteps(progressStep) : ''}
+    </div>
+  `;
+}
+
+function renderEmptyState(message, linkText = '', linkAction = '') {
+  return `
+    <div class="min-h-[96px] py-6 px-4 flex flex-col items-center justify-center text-center bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)]">
+      <p class="text-[13.5px] text-[var(--text-3)] leading-relaxed">${escapeHtml(message)}</p>
+      ${linkText && linkAction ? `
+        <button
+          onclick="${linkAction}"
+          class="mt-2 text-[13px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer bg-transparent border-none p-0 inline-flex items-center gap-1"
+        >
+          <span>${escapeHtml(linkText)}</span>
+          <span>&rarr;</span>
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
 // Main Render Loop
 // ---------------------------------------------------------------------------
 
@@ -542,7 +687,7 @@ function renderApp() {
         ${renderTopbar()}
 
         <!-- Page Content View (48px horizontal, 40px top, max 1120px) -->
-        <main class="flex-1 overflow-y-auto px-6 sm:px-12 pt-10 pb-16" id="main-content">
+        <main class="flex-1 overflow-y-auto px-6 sm:px-12 pt-10 pb-16 scroll-container" id="main-content" style="scrollbar-gutter: stable;">
           <div class="max-w-[1120px] mx-auto">
             ${renderCurrentView()}
           </div>
@@ -724,7 +869,7 @@ function renderSidebar() {
             <svg class="w-4 h-4 shrink-0 text-[var(--text-2)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
-            <span>My requests</span>
+            <span>Security requests</span>
             <span class="ml-auto text-[13px] font-mono text-[var(--text-3)]">${mySentOrders.length}</span>
           </button>
 
@@ -812,11 +957,11 @@ function renderTopbar() {
     : 'Connect wallet';
 
   const viewLabels = {
-    dashboard: 'Workspace overview',
-    opihub: 'Security services & requests',
-    my_prompts: 'Prompt repository',
+    dashboard: 'Dashboard',
+    opihub: 'OpiHub',
+    my_prompts: 'Saved prompts',
     my_requests: 'Security requests',
-    security_reports: 'Audit reports & certificates',
+    security_reports: 'Security reports',
     become_provider: 'Provider registration',
     provider_workspace: 'Provider workspace',
     provider_detail: 'Specialist profile'
@@ -832,8 +977,12 @@ function renderTopbar() {
         <span class="text-[var(--text-2)] font-medium">${activeLabel}</span>
       </nav>
 
-      <!-- Right: Quiet Wallet Chip & Log out -->
+      <!-- Right: Network Chip, Quiet Wallet Chip & Log out -->
       <div class="flex items-center gap-3">
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-sans text-[var(--text-2)] bg-[var(--surface-sunk)] border border-[var(--border)]">
+          <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
+          <span>Rabdi Testnet</span>
+        </div>
         ${address ? `
           <button
             onclick="openModal('wallet_modal')"
@@ -976,58 +1125,46 @@ function renderDashboardView() {
   return `
     <div class="space-y-12">
       <!-- Greeting Header -->
-      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
-        <div>
-          <h1 class="font-serif text-[32px] sm:text-[36px] font-normal tracking-[-0.01em] text-[var(--text)] leading-tight">
-            ${timeGreeting}, ${escapeHtml(firstName)}.
-          </h1>
-          <p class="text-[14px] text-[var(--text-2)] mt-1.5">
-            ${activeRequestsCount > 0
-              ? `You have ${activeRequestsCount} active ${activeRequestsCount === 1 ? 'audit' : 'audits'} in progress and ${myReports.length} completed ${myReports.length === 1 ? 'report' : 'reports'}.`
-              : `You have ${myReports.length} completed security ${myReports.length === 1 ? 'report' : 'reports'}. Explore OpiHub to request new audits.`
-            }
-          </p>
-        </div>
-        <div class="shrink-0">
-          <button onclick="navigateTo('opihub')" class="btn-primary">
-            Explore OpiHub
-          </button>
-        </div>
-      </div>
+      ${renderPageHeader(
+        `${timeGreeting}, ${escapeHtml(firstName)}.`,
+        activeRequestsCount > 0
+          ? `You have ${activeRequestsCount} active ${activeRequestsCount === 1 ? 'audit' : 'audits'} in progress and ${myReports.length} completed ${myReports.length === 1 ? 'report' : 'reports'}.`
+          : `You have ${myReports.length} completed security ${myReports.length === 1 ? 'report' : 'reports'}. Explore OpiHub to request new audits.`,
+        `<button onclick="navigateTo('opihub')" class="btn-primary !h-9 text-[13px]">Explore OpiHub</button>`
+      )}
 
       <!-- Section 1: Needs your attention -->
       <section>
-        <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] mb-3">Needs your attention</div>
+        <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)] mb-3">Needs your attention</div>
         ${attentionOrders.length > 0 ? `
           <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
             ${attentionOrders.slice(0, 3).map(o => `
               <div class="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[var(--surface-sunk)] transition-colors">
                 <div class="flex items-center gap-2.5 min-w-0">
                   <span class="text-[14px] font-medium text-[var(--text)] truncate">${escapeHtml(o.service_title || 'Security Request')}</span>
+                  ${renderIdChip(o.id)}
                   <span class="text-[var(--text-3)]">&middot;</span>
                   <span class="text-[13px] text-[var(--text-2)] truncate">with ${escapeHtml(o.provider_name || 'Specialist')}</span>
                 </div>
                 <div class="flex items-center gap-4 shrink-0">
-                  ${renderStatusBadge(o.status)}
-                  <button onclick="openOrderDetail('${o.id}')" class="text-[13px] font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer bg-transparent border-none p-0">
+                  ${renderStatusPill(o.status)}
+                  <button onclick="openOrderDetail('${o.id}')" class="btn-secondary !h-8 text-[12.5px]">
                     Review request &rarr;
                   </button>
                 </div>
               </div>
             `).join('')}
           </div>
-        ` : `
-          <p class="text-[13.5px] text-[var(--text-3)]">All caught up. No pending requests require your review.</p>
-        `}
+        ` : renderEmptyState('All caught up. No pending requests require your review.')}
       </section>
 
       <!-- Section 2: At a glance (One card, 4 columns divided by vertical hairlines) -->
       <section>
-        <div class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)] mb-3">At a glance</div>
+        <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)] mb-3">At a glance</div>
         <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] overflow-hidden">
           <!-- 1: AI Audits -->
           <div onclick="navigateTo('security_reports')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
-            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${aiAuditsDelivered === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+            <span class="font-serif text-[28px] sm:text-[32px] font-normal leading-none tracking-[-0.01em] tabular-nums ${aiAuditsDelivered === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
               ${aiAuditsDelivered}
             </span>
             <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
@@ -1037,7 +1174,7 @@ function renderDashboardView() {
 
           <!-- 2: Specialist Audits -->
           <div onclick="navigateTo('security_reports')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
-            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${specialistAuditsDelivered === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+            <span class="font-serif text-[28px] sm:text-[32px] font-normal leading-none tracking-[-0.01em] tabular-nums ${specialistAuditsDelivered === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
               ${specialistAuditsDelivered}
             </span>
             <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
@@ -1047,7 +1184,7 @@ function renderDashboardView() {
 
           <!-- 3: Active Requests -->
           <div onclick="navigateTo('my_requests')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
-            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${activeRequestsCount === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+            <span class="font-serif text-[28px] sm:text-[32px] font-normal leading-none tracking-[-0.01em] tabular-nums ${activeRequestsCount === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
               ${activeRequestsCount}
             </span>
             <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
@@ -1057,7 +1194,7 @@ function renderDashboardView() {
 
           <!-- 4: Saved Prompts -->
           <div onclick="navigateTo('my_prompts')" class="p-6 flex flex-col justify-center hover:bg-[var(--surface-sunk)] cursor-pointer transition-colors select-none group">
-            <span class="font-serif text-[32px] font-normal leading-none tracking-[-0.01em] ${savedPromptsCount === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
+            <span class="font-serif text-[28px] sm:text-[32px] font-normal leading-none tracking-[-0.01em] tabular-nums ${savedPromptsCount === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">
               ${savedPromptsCount}
             </span>
             <span class="text-[13px] text-[var(--text-2)] group-hover:text-[var(--text)] transition-colors mt-2">
@@ -1072,27 +1209,25 @@ function renderDashboardView() {
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- Left: Activity (7 cols) -->
           <div class="lg:col-span-7 flex flex-col">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Recent Activity</span>
-              <button onclick="navigateTo('my_requests')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors cursor-pointer bg-transparent border-none p-0">
-                View all &rarr;
-              </button>
-            </div>
+            <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)] mb-3">Recent activity</div>
             <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden flex-1">
               ${recentActivity.length > 0 ? recentActivity.map(act => `
                 <div onclick="openOrderDetail('${act.id}')" class="min-h-[64px] px-5 py-3 flex items-center justify-between gap-4 hover:bg-[var(--surface-sunk)] transition-colors cursor-pointer">
                   <div class="min-w-0 pr-2">
-                    <div class="text-[14px] font-medium text-[var(--text)] truncate leading-snug">
-                      ${escapeHtml(act.title || 'Security Request')}
+                    <div class="flex items-center gap-2">
+                      <span class="text-[14px] font-medium text-[var(--text)] truncate leading-snug">
+                        ${escapeHtml(act.title || 'Security Request')}
+                      </span>
+                      ${renderIdChip(act.id)}
                     </div>
                     <div class="text-[13px] text-[var(--text-2)] truncate leading-snug mt-0.5">
                       with ${escapeHtml(act.provider || 'Specialist')}
                     </div>
                   </div>
                   <div class="flex items-center gap-3 shrink-0">
-                    ${renderStatusBadge(act.status)}
+                    ${renderStatusPill(act.status)}
                     ${act.timestamp ? `
-                      <span class="text-[12px] text-[var(--text-3)] font-sans">
+                      <span class="text-[12px] text-[var(--text-3)] font-sans tabular-nums">
                         ${formatQuietDate(act.timestamp)}
                       </span>
                     ` : ''}
@@ -1106,12 +1241,7 @@ function renderDashboardView() {
 
           <!-- Right: Security Reports (5 cols) -->
           <div class="lg:col-span-5 flex flex-col">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Security Reports</span>
-              <button onclick="navigateTo('security_reports')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors cursor-pointer bg-transparent border-none p-0">
-                View all &rarr;
-              </button>
-            </div>
+            <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)] mb-3">Security reports</div>
             <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden flex-1">
               ${recentReports.length > 0 ? recentReports.map(r => {
                 const findings = r.findings || [];
@@ -1126,8 +1256,8 @@ function renderDashboardView() {
                         by ${escapeHtml(r.provider_name || '0G Defence Agent')} &middot; ${findingCount} ${findingCount === 1 ? 'finding' : 'findings'}
                       </div>
                     </div>
-                    <button onclick="viewReport('${r.id}')" class="btn-ghost !h-8 !px-3 text-[12.5px] border border-transparent hover:border-[var(--border-strong)] shrink-0">
-                      View findings
+                    <button onclick="viewReport('${r.id}')" class="btn-secondary !h-8 !px-3 text-[12.5px] shrink-0">
+                      View report
                     </button>
                   </div>
                 `;
@@ -1139,15 +1269,9 @@ function renderDashboardView() {
         </div>
       </section>
 
-      <!-- Section 4: Suggested Providers (renamed from Recommended) -->
+      <!-- Section 4: Suggested Providers -->
       <section>
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Suggested Providers</span>
-          <button onclick="navigateTo('opihub')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] transition-colors cursor-pointer bg-transparent border-none p-0">
-            Explore all on OpiHub (${STATE.data.providers.length}) &rarr;
-          </button>
-        </div>
-
+        <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)] mb-3">Suggested providers</div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           ${suggestedProviders.length > 0 ? suggestedProviders.map(p => renderCleanProviderCard(p)).join('') : `
             <div class="col-span-3 p-8 text-center text-[13px] text-[var(--text-3)] bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)]">
@@ -1220,44 +1344,42 @@ function renderOpiHubView() {
 
   return `
     <div class="space-y-8">
-      <!-- Top Title & View Mode Toggle -->
-      <div class="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
-        <div>
-          <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">OpiHub Marketplace</h1>
-          <p class="text-[14px] text-[var(--text-2)] mt-1.5">
-            Direct AI security services: choose a service offering or specialist to submit review requests directly.
-          </p>
-        </div>
-
-        <!-- View Mode Switcher -->
-        <div class="inline-flex p-0.5 bg-[var(--surface-sunk)] rounded-[var(--radius-sm)] border border-[var(--border)] shrink-0 self-start sm:self-auto">
+      <!-- Page Header with sentence-case title and tabs -->
+      ${renderPageHeader(
+        'OpiHub',
+        'Find specialized security agents and human auditors to review your prompts, codebases, and architectures.',
+        `
+        <div class="inline-flex p-0.5 bg-[var(--surface-sunk)] rounded-[var(--radius-sm)] border border-[var(--border)] shrink-0">
           <button
             onclick="setOpihubTab('services')"
-            class="px-3.5 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+            class="px-3.5 py-1.5 text-[13px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
               isServicesTab ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
             }"
           >
-            Services (${filteredServices.length})
+            <span>Services</span>
+            <span class="ml-1 text-[var(--text-3)] tabular-nums">${filteredServices.length}</span>
           </button>
           <button
             onclick="setOpihubTab('providers')"
-            class="px-3.5 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+            class="px-3.5 py-1.5 text-[13px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
               !isServicesTab ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
             }"
           >
-            Specialists & Agents (${filteredProviders.length})
+            <span>Specialists & agents</span>
+            <span class="ml-1 text-[var(--text-3)] tabular-nums">${filteredProviders.length}</span>
           </button>
         </div>
-      </div>
+        `
+      )}
 
-      <!-- Category Filter Tabs -->
+      <!-- Category Filter Tabs: Single row, selected = --accent-soft fill, 1px accent border, --text colour -->
       <div class="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[var(--border)]">
         ${categories.map(c => `
           <button
             onclick="setCategoryFilter('${c.id}')"
             class="px-3.5 py-1.5 rounded-full text-[12.5px] font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
               STATE.filters.category === c.id
-                ? 'bg-[var(--text)] text-[var(--bg)]'
+                ? 'bg-[var(--accent-soft)] border border-[var(--accent)] text-[var(--text)]'
                 : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:text-[var(--text)]'
             }"
           >
@@ -1266,13 +1388,13 @@ function renderOpiHubView() {
         `).join('')}
       </div>
 
-      <!-- Controls: Search & Provider Type Filter -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[var(--surface)] p-3.5 border border-[var(--border)] rounded-[var(--radius-md)]">
-        <div class="flex items-center gap-3">
-          <span class="text-[13px] text-[var(--text-2)]">Provider type:</span>
+      <!-- Filter Bar: Quiet Row, No Card, Rabdi Testnet Chip Moved to Topbar -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+        <div class="flex items-center gap-2.5">
+          <span class="text-[13px] text-[var(--text-2)] font-medium">Provider type:</span>
           <select
             onchange="setProviderTypeFilter(this.value)"
-            class="bg-[var(--surface)] border border-[var(--border-strong)] text-[13px] text-[var(--text)] font-medium rounded-[var(--radius-sm)] px-3 py-1.5 focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+            class="bg-[var(--surface)] border border-[var(--border)] text-[13px] text-[var(--text)] font-medium rounded-[var(--radius-sm)] px-3 py-1.5 focus:outline-none focus:border-[var(--accent)] cursor-pointer"
           >
             <option value="" ${!STATE.filters.providerType ? 'selected' : ''}>All types (0G Agents & Specialists)</option>
             <option value="automated" ${STATE.filters.providerType === 'automated' ? 'selected' : ''}>Autonomous 0G Defense Agents</option>
@@ -1280,19 +1402,8 @@ function renderOpiHubView() {
           </select>
         </div>
 
-        <div class="flex items-center gap-3">
-          <button
-            onclick="openArkivInspectorModal()"
-            class="flex items-center gap-1.5 px-3 py-1 text-[12px] font-mono bg-[var(--surface-sunk)] text-[var(--text-2)] hover:text-[var(--text)] border border-[var(--border)] rounded-full transition-colors cursor-pointer"
-            title="Inspect Arkiv schemas and entities live on Rabdi Testnet via Arkiv SDK"
-          >
-            <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
-            <span>Rabdi Testnet</span>
-            <span class="text-[11px] text-[var(--text-3)]">&middot; Arkiv Inspector</span>
-          </button>
-          <div class="text-[13px] text-[var(--text-3)] font-sans">
-            Showing <strong class="text-[var(--text)] font-medium">${isServicesTab ? filteredServices.length : filteredProviders.length}</strong> ${isServicesTab ? 'services' : 'providers'}
-          </div>
+        <div class="text-[13px] text-[var(--text-2)] tabular-nums font-medium">
+          ${isServicesTab ? `${filteredServices.length} services` : `${filteredProviders.length} specialists & agents`}
         </div>
       </div>
 
@@ -1302,30 +1413,14 @@ function renderOpiHubView() {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             ${filteredServices.map(s => renderCleanServiceCard(s, true)).join('')}
           </div>
-        ` : `
-          <div class="surface-card p-12 text-center space-y-3">
-            <h3 class="font-serif text-[18px] text-[var(--text)]">No services match your filter</h3>
-            <p class="text-[13px] text-[var(--text-2)]">Try selecting a different category or clearing search filters.</p>
-            <button onclick="resetFilters()" class="btn-secondary !h-8 text-[12.5px]">
-              Reset filters
-            </button>
-          </div>
-        `}
+        ` : renderEmptyState('No services match your filter.', 'Reset filters', 'resetFilters()')}
       ` : `
         <!-- Providers Grid -->
         ${filteredProviders.length > 0 ? `
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             ${filteredProviders.map(p => renderCleanProviderCard(p)).join('')}
           </div>
-        ` : `
-          <div class="surface-card p-12 text-center space-y-3">
-            <h3 class="font-serif text-[18px] text-[var(--text)]">No providers matched your filter</h3>
-            <p class="text-[13px] text-[var(--text-2)]">Try clearing your search query or selecting a different category.</p>
-            <button onclick="resetFilters()" class="btn-secondary !h-8 text-[12.5px]">
-              Reset filters
-            </button>
-          </div>
-        `}
+        ` : renderEmptyState('No specialists or agents match your filter.', 'Reset filters', 'resetFilters()')}
       `}
     </div>
   `;
@@ -1619,12 +1714,12 @@ function renderProviderWorkspaceView() {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
         </div>
-        <h2 class="font-serif text-[24px] font-normal tracking-[-0.01em] text-[var(--text)]">Provider Registration Required</h2>
+        <h2 class="font-serif text-[24px] font-normal tracking-[-0.01em] text-[var(--text)]">Provider registration required</h2>
         <p class="text-[14px] text-[var(--text-2)] max-w-md mx-auto leading-relaxed">
           You are not currently registered as a provider. Register your security profile to offer prompt audits, receive scan requests from clients, and review submissions.
         </p>
         <div class="pt-2">
-          <button onclick="navigateTo('become_provider')" class="btn-primary">
+          <button onclick="navigateTo('become_provider')" class="btn-primary !h-9 text-[13px]">
             Register as provider &rarr;
           </button>
         </div>
@@ -1641,59 +1736,172 @@ function renderProviderWorkspaceView() {
     const isVisibleState = o.payment_status === 'verified' || o.escrow_state === 'funded' || ['requested', 'accepted', 'in_progress', 'delivered', 'completed', 'rejected'].includes(o.status);
     return isForMe && isVisibleState;
   });
+
   const incoming = assignedOrders.filter(o => o.status === 'requested');
   const inProgress = assignedOrders.filter(o => o.status === 'accepted' || o.status === 'in_progress');
+  const awaitingRelease = assignedOrders.filter(o => o.status === 'delivered' && o.escrow_state !== 'released');
   const completed = assignedOrders.filter(o => o.status === 'completed' || o.status === 'delivered');
+  const totalEarned = completed.filter(o => o.status === 'completed' || o.escrow_state === 'released').reduce((acc, o) => acc + (o.price || 0), 0);
 
   return `
-    <div class="space-y-8">
-      <!-- Provider Workspace Banner -->
-      <div class="surface-card flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-2.5 flex-wrap">
-            <h1 class="font-serif text-[26px] font-normal tracking-[-0.01em] text-[var(--text)]">${escapeHtml(provider.display_name)}</h1>
-            <span class="pill pill-neutral text-[11px]">Provider workspace</span>
-          </div>
-          <p class="text-[14px] text-[var(--text-2)] mt-1">${escapeHtml(provider.title || '')}</p>
-        </div>
+    <div class="space-y-10">
+      <!-- Page Header: sentence-case title, 14-15px --text-2 description, secondary actions top-right -->
+      ${renderPageHeader(
+        'Provider workspace',
+        "Orders you've received and their payouts.",
+        `
+        <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="btn-secondary !h-9 text-[13px]">
+          Edit services
+        </button>
+        <button onclick="openModal('edit_provider', { providerId: '${provider.id}' })" class="btn-secondary !h-9 text-[13px]">
+          Edit profile
+        </button>
+        `
+      )}
 
-        <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <button onclick="openModal('edit_provider', { providerId: '${provider.id}' })" class="btn-secondary !h-9 text-[13px]">
-            Edit profile
-          </button>
-          <button onclick="navigateTo('provider_detail', '${provider.id}')" class="btn-secondary !h-9 text-[13px]">
-            Public profile
-          </button>
-          <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="btn-primary !h-9 text-[13px]">
-            + Publish service
-          </button>
-        </div>
-      </div>
-
-      <!-- Quick Metrics Strip (1 Card, 4 Columns divided by hairlines) -->
+      <!-- Summary Strip: 1 card, 4 cols, hairlines, serif 28px numbers with tabular-nums -->
       <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] overflow-hidden">
         <div class="p-6 flex flex-col justify-center">
-          <span class="font-serif text-[32px] font-normal leading-none ${incoming.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${incoming.length}</span>
-          <span class="text-[13px] text-[var(--text-2)] mt-2">Incoming requests</span>
+          <span class="font-serif text-[28px] font-normal leading-none tabular-nums ${awaitingRelease.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${awaitingRelease.length}</span>
+          <span class="text-[13px] text-[var(--text-2)] mt-2">Awaiting release</span>
         </div>
         <div class="p-6 flex flex-col justify-center">
-          <span class="font-serif text-[32px] font-normal leading-none ${inProgress.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${inProgress.length}</span>
+          <span class="font-serif text-[28px] font-normal leading-none tabular-nums ${inProgress.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${inProgress.length}</span>
           <span class="text-[13px] text-[var(--text-2)] mt-2">In progress</span>
         </div>
         <div class="p-6 flex flex-col justify-center">
-          <span class="font-serif text-[32px] font-normal leading-none ${completed.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${completed.length}</span>
-          <span class="text-[13px] text-[var(--text-2)] mt-2">Delivered / completed</span>
+          <span class="font-serif text-[28px] font-normal leading-none tabular-nums ${completed.length === 0 ? 'text-[var(--text-3)]' : 'text-[var(--text)]'}">${completed.length}</span>
+          <span class="text-[13px] text-[var(--text-2)] mt-2">Completed</span>
         </div>
         <div class="p-6 flex flex-col justify-center">
-          <span class="font-serif text-[32px] font-normal leading-none text-[var(--text)] font-mono">$${(completed.reduce((acc, o) => acc + (o.price || 0), 0)).toFixed(2)}</span>
-          <span class="text-[13px] text-[var(--text-2)] mt-2">Completed value</span>
+          <span class="font-serif text-[28px] font-normal leading-none text-[var(--text)] tabular-nums font-sans">$${totalEarned.toFixed(2)}</span>
+          <span class="text-[13px] text-[var(--text-2)] mt-2">Total earned</span>
         </div>
       </div>
 
-      <!-- My Published Services Section -->
+      <!-- In Progress Section -->
+      <section>
+        <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)] mb-3">In progress</div>
+        ${inProgress.length > 0 || incoming.length > 0 ? `
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
+            ${[...incoming, ...inProgress].map(o => `
+              <div class="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[var(--surface-sunk)] transition-colors cursor-pointer" onclick="openModal('order_detail', '${o.id}')">
+                <div class="min-w-0 space-y-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-medium text-[14px] text-[var(--text)]">${escapeHtml(o.service_title)}</span>
+                    ${renderIdChip(o.id)}
+                    ${renderStatusPill(o.status, true, o.escrow_state)}
+                  </div>
+                  <div class="text-[13px] text-[var(--text-2)]">
+                    Client: <strong class="text-[var(--text)] font-medium">${escapeHtml(o.customer_name)}</strong> &middot; Fee: <span class="tabular-nums font-medium text-[var(--text)]">$${o.price.toFixed(2)}</span> &middot; <span class="text-[var(--text-3)] tabular-nums">${formatQuietDate(o.created_at)}</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation()">
+                  ${o.status === 'requested' ? `
+                    <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="btn-primary !h-8 text-[12.5px]">
+                      Accept request
+                    </button>
+                    <button onclick="handleOrderReject('${o.id}')" class="btn-secondary !h-8 text-[12.5px]">
+                      Reject
+                    </button>
+                  ` : `
+                    <button onclick="openModal('deliver_modal', { orderId: '${o.id}' })" class="btn-primary !h-8 text-[12.5px]">
+                      Submit deliverable
+                    </button>
+                  `}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : renderEmptyState('No active orders right now.')}
+      </section>
+
+      <!-- Delivered and Completed Section as Table -->
+      <section>
+        <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)] mb-3">Delivered and completed</div>
+        ${completed.length > 0 ? `
+          <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-[13px]">
+                <thead class="border-b border-[var(--border)] text-[var(--text-2)] text-[12px] uppercase font-semibold tracking-[0.06em]">
+                  <tr>
+                    <th class="px-5 py-3.5">Order</th>
+                    <th class="px-5 py-3.5">Client</th>
+                    <th class="px-5 py-3.5">Fee</th>
+                    <th class="px-5 py-3.5">Status</th>
+                    <th class="px-5 py-3.5">Date</th>
+                    <th class="px-5 py-3.5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border)]">
+                  ${completed.map(o => {
+                    const isAwaitingRelease = o.status === 'delivered' && o.escrow_state !== 'released';
+                    return `
+                      <tr class="hover:bg-[var(--surface-sunk)] transition-colors cursor-pointer" onclick="openModal('order_detail', '${o.id}')">
+                        <td class="px-5 py-4">
+                          <div class="flex items-center gap-2">
+                            <span class="font-medium text-[13.5px] text-[var(--text)]">${escapeHtml(o.service_title)}</span>
+                            ${renderIdChip(o.id)}
+                          </div>
+                          <!-- Expandable payment details -->
+                          <div class="mt-2 pt-2 border-t border-[var(--border)] flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]" onclick="event.stopPropagation()">
+                            <div class="flex items-center gap-1.5 text-[var(--text-3)]">
+                              <span>Payout:</span>
+                              ${renderShortAddress(provider.wallet_address || o.provider_wallet)}
+                            </div>
+                            ${o.escrow_release_tx_hash ? `
+                              <div class="flex items-center gap-1 text-[var(--text-3)] font-mono">
+                                <span>Release:</span>
+                                <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] underline hover:text-[var(--accent)] font-sans">
+                                  Rabdi Explorer &nearr;
+                                </a>
+                              </div>
+                            ` : o.escrow_tx_hash ? `
+                              <div class="flex items-center gap-1 text-[var(--text-3)] font-mono">
+                                <span>Deposit:</span>
+                                <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] underline hover:text-[var(--accent)] font-sans">
+                                  Rabdi Explorer &nearr;
+                                </a>
+                              </div>
+                            ` : ''}
+                          </div>
+                        </td>
+                        <td class="px-5 py-4 text-[var(--text-2)] align-top">${escapeHtml(o.customer_name || 'Client')}</td>
+                        <td class="px-5 py-4 font-sans font-medium text-[var(--text)] tabular-nums align-top">$${o.price.toFixed(2)}</td>
+                        <td class="px-5 py-4 align-top">
+                          ${renderStatusPill(o.status, true, o.escrow_state)}
+                        </td>
+                        <td class="px-5 py-4 text-[var(--text-3)] font-sans text-[12px] tabular-nums align-top">${formatQuietDate(o.updated_at || o.created_at)}</td>
+                        <td class="px-5 py-4 text-right align-top" onclick="event.stopPropagation()">
+                          ${isAwaitingRelease ? `
+                            <button onclick="executeEVMEscrowRelease('${o.id}')" class="btn-primary !h-8 text-[12.5px]">
+                              Release payment
+                            </button>
+                          ` : o.report_id ? `
+                            <button onclick="viewReport('${o.report_id}')" class="btn-secondary !h-8 text-[12.5px]">
+                              View report
+                            </button>
+                          ` : `
+                            <button onclick="openModal('order_detail', '${o.id}')" class="btn-secondary !h-8 text-[12.5px]">
+                              View details
+                            </button>
+                          `}
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : renderEmptyState('No delivered or completed audits recorded yet.')}
+      </section>
+
+      <!-- Published Services Section -->
       <section>
         <div class="flex items-center justify-between mb-3">
-          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Published Services (${myServices.length})</span>
+          <div class="text-[12px] font-semibold tracking-[0.06em] uppercase text-[var(--text-2)]">Published services (${myServices.length})</div>
           <button onclick="openModal('add_service_modal', { providerId: '${provider.id}' })" class="text-[13px] text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors cursor-pointer bg-transparent border-none p-0">
             + Add service
           </button>
@@ -1706,10 +1914,10 @@ function renderProviderWorkspaceView() {
                 <div>
                   <div class="flex items-start justify-between gap-3">
                     <h3 class="font-serif text-[18px] font-normal text-[var(--text)] leading-snug">${escapeHtml(s.title)}</h3>
-                    <span class="font-mono text-[16px] font-semibold text-[var(--text)] shrink-0">$${s.price.toFixed(2)}</span>
+                    <span class="text-[16px] font-bold text-[var(--text)] tabular-nums font-sans shrink-0">$${s.price.toFixed(2)}</span>
                   </div>
                   <div class="text-[12px] text-[var(--text-3)] mt-1">
-                    Category: <strong class="text-[var(--text-2)] font-medium">${formatCategoryName(s.category)}</strong> &middot; Delivery: ${escapeHtml(s.estimated_delivery)}
+                    ${formatCategoryName(s.category)} &middot; ${escapeHtml(s.estimated_delivery)}
                   </div>
                   <p class="text-[13px] text-[var(--text-2)] line-clamp-2 leading-relaxed mt-2.5">${escapeHtml(s.description)}</p>
                 </div>
@@ -1725,159 +1933,7 @@ function renderProviderWorkspaceView() {
               </div>
             `).join('')}
           </div>
-        ` : `
-          <div class="surface-card p-8 text-center text-[13px] text-[var(--text-3)]">
-            You have not published any service offerings yet.
-          </div>
-        `}
-      </section>
-
-      <!-- Incoming Requests Section -->
-      <section>
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Incoming Requests (${incoming.length})</span>
-          <span class="text-[13px] text-[var(--text-3)]">Review customer submissions</span>
-        </div>
-
-        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
-          ${incoming.length > 0 ? incoming.map(o => `
-            <div class="p-6 space-y-4 hover:bg-[var(--surface-sunk)] transition-colors">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="space-y-1 min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-mono text-[12px] text-[var(--text-3)]">${o.id}</span>
-                    <strong class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(o.service_title)}</strong>
-                    <span class="font-mono text-[13px] font-semibold text-[var(--text)]">$${o.price.toFixed(2)}</span>
-                  </div>
-                  <div class="text-[13px] text-[var(--text-2)]">
-                    Submitted by: <strong class="text-[var(--text)]">${escapeHtml(o.customer_name)}</strong> &middot; <span class="text-[var(--text-3)] font-sans">${formatQuietDate(o.created_at)}</span>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2.5 shrink-0">
-                  <button onclick="handleOrderStatusUpdate('${o.id}', 'accepted')" class="btn-primary !h-8 text-[12.5px]">
-                    Accept request
-                  </button>
-                  <button onclick="handleOrderReject('${o.id}')" class="btn-secondary !h-8 text-[12.5px]">
-                    Reject
-                  </button>
-                </div>
-              </div>
-
-              ${renderOrderSubmittedSpec(o, provider.wallet_address)}
-            </div>
-          `).join('') : `
-            <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No incoming pending requests at this time.</div>
-          `}
-        </div>
-      </section>
-
-      <!-- Active Work In Progress Section -->
-      <section>
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Active Work In Progress (${inProgress.length})</span>
-          <span class="text-[13px] text-[var(--text-3)]">Submissions under active audit</span>
-        </div>
-
-        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
-          ${inProgress.length > 0 ? inProgress.map(o => `
-            <div class="p-6 space-y-4 hover:bg-[var(--surface-sunk)] transition-colors">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div class="flex items-center gap-2.5 flex-wrap">
-                    <span class="font-mono text-[12px] text-[var(--text-3)]">${o.id}</span>
-                    <strong class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(o.service_title)}</strong>
-                    ${renderStatusBadge(o.status)}
-                  </div>
-                  <div class="text-[13px] text-[var(--text-2)] mt-1">
-                    Client: <strong class="text-[var(--text)]">${escapeHtml(o.customer_name)}</strong> &middot; Escrow: <strong class="font-mono text-[var(--text)]">$${o.price.toFixed(2)}</strong>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2 shrink-0">
-                  ${o.status === 'accepted' ? `
-                    <button onclick="handleOrderStatusUpdate('${o.id}', 'in_progress')" class="btn-secondary !h-8 text-[12.5px]">
-                      Mark in progress
-                    </button>
-                  ` : ''}
-                  <button onclick="openModal('deliver_modal', { orderId: '${o.id}' })" class="btn-primary !h-8 text-[12.5px]">
-                    Submit report & deliverable
-                  </button>
-                </div>
-              </div>
-
-              ${renderOrderSubmittedSpec(o, provider.wallet_address)}
-            </div>
-          `).join('') : `
-            <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No orders currently in progress.</div>
-          `}
-        </div>
-      </section>
-
-      <!-- Delivered & Completed Audits Section -->
-      <section>
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-[11px] font-medium tracking-[0.06em] uppercase text-[var(--text-3)]">Delivered & Completed Audits (${completed.length})</span>
-          <span class="text-[13px] text-[var(--text-3)]">Escrow releases and reports</span>
-        </div>
-
-        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] divide-y divide-[var(--border)] overflow-hidden">
-          ${completed.length > 0 ? completed.map(o => `
-            <div class="p-6 space-y-3.5 hover:bg-[var(--surface-sunk)] transition-colors">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div class="flex items-center gap-2.5 flex-wrap">
-                    <span class="font-mono text-[12px] text-[var(--text-3)]">${o.id}</span>
-                    <strong class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(o.service_title)}</strong>
-                    ${renderStatusBadge(o.status)}
-                  </div>
-                  <div class="text-[13px] text-[var(--text-2)] mt-1">
-                    Client: <strong class="text-[var(--text)]">${escapeHtml(o.customer_name)}</strong> &middot; Fee: <strong class="font-mono text-[var(--text)]">$${o.price.toFixed(2)}</strong> &middot; <span class="text-[var(--text-3)] font-sans">${formatQuietDate(o.updated_at || o.created_at)}</span>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2 shrink-0">
-                  <button onclick="openModal('order_detail', '${o.id}')" class="btn-secondary !h-8 text-[12px]">
-                    View details
-                  </button>
-                  ${o.report_id ? `
-                    <button onclick="viewReport('${o.report_id}')" class="btn-secondary !h-8 text-[12px]">
-                      Report
-                    </button>
-                  ` : ''}
-                </div>
-              </div>
-
-              <!-- Payout status line -->
-              <div class="flex flex-wrap items-center justify-between gap-3 text-[12.5px] pt-1">
-                <div class="flex items-center gap-2">
-                  <span class="pill ${o.escrow_state === 'released' ? 'pill-success' : 'pill-warning'} text-[11px]">
-                    ${o.escrow_state === 'released' ? 'Disbursed' : 'Awaiting release'}
-                  </span>
-                  <span class="text-[var(--text-3)]">Destination:</span>
-                  <span class="font-mono text-[var(--text-2)] text-[12px]">${provider.wallet_address || 'Connected Wallet'}</span>
-                </div>
-
-                <div class="flex items-center gap-3 font-mono text-[12px]">
-                  ${o.escrow_release_tx_hash ? `
-                    <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--accent)] hover:underline flex items-center gap-1" title="View release transaction on Rabdi Explorer">
-                      <span>Release tx: ${o.escrow_release_tx_hash.slice(0, 10)}...</span>
-                      <span>&nearr;</span>
-                    </a>
-                  ` : ''}
-                  ${o.escrow_tx_hash ? `
-                    <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-3)] hover:text-[var(--text)] flex items-center gap-1" title="View deposit transaction on Rabdi Explorer">
-                      <span>Deposit: ${o.escrow_tx_hash.slice(0, 8)}...</span>
-                      <span>&nearr;</span>
-                    </a>
-                  ` : ''}
-                </div>
-              </div>
-            </div>
-          `).join('') : `
-            <div class="p-8 text-center text-[13px] text-[var(--text-3)]">No delivered or completed audits recorded yet.</div>
-          `}
-        </div>
+        ` : renderEmptyState('You have not published any service offerings yet.', '+ Add service', `openModal('add_service_modal', { providerId: '${provider.id}' })`)}
       </section>
     </div>
   `;
@@ -1897,15 +1953,11 @@ function renderMyPromptsView() {
 
   return `
     <div class="space-y-8">
-      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
-        <div>
-          <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Saved Prompts</h1>
-          <p class="text-[14px] text-[var(--text-2)] mt-1.5">Prompt repository: store hardened prompt directives, defense instructions, and audit test suites.</p>
-        </div>
-        <button onclick="openModal('create_prompt')" class="btn-primary shrink-0">
-          + New prompt
-        </button>
-      </div>
+      ${renderPageHeader(
+        'Saved prompts',
+        'Prompt repository: store improved prompts, defense instructions, and audit test suites.',
+        `<button onclick="openModal('create_prompt')" class="btn-primary !h-9 text-[13px]">+ New prompt</button>`
+      )}
 
       <div class="space-y-4">
         ${prompts.length > 0 ? prompts.map(p => `
@@ -2210,67 +2262,139 @@ function renderArkivTasksView() {
 // 7. My Requests & Security Reports Pages
 // ---------------------------------------------------------------------------
 
+function setRequestsTab(tab) {
+  STATE.requestsTab = tab;
+  renderApp();
+}
+
+function setRequestsSearch(q) {
+  STATE.requestsSearch = q;
+  renderApp();
+}
+
 function renderMyRequestsView() {
   const currentWallet = (STATE.auth.walletAddress || STATE.user.id || '').toLowerCase();
   const allOrders = STATE.data.orders || [];
-  const myProvider = getMyProvider();
 
-  // "My Requests" strictly shows requests submitted by the current user as a customer
+  // Strictly show requests submitted by current user
   const mySentOrders = allOrders.filter(o => {
     const custId = (o.customer_id || '').toLowerCase();
     if (!currentWallet) return false;
     return custId === currentWallet || custId === (STATE.user.id || '').toLowerCase();
   });
 
-  // Track received work if this user is a registered provider
-  const assignedOrders = allOrders.filter(o => {
-    if (!myProvider) return false;
-    return o.provider_id === myProvider.id ||
-      (myProvider.wallet_address && (o.provider_wallet || '').toLowerCase() === myProvider.wallet_address.toLowerCase()) ||
-      (o.provider_name && o.provider_name.toLowerCase() === (myProvider.display_name || '').toLowerCase());
-  });
+  const activeTab = STATE.requestsTab || 'all';
+  const searchQuery = (STATE.requestsSearch || '').trim().toLowerCase();
 
-  const orders = mySentOrders;
+  const filteredOrders = mySentOrders.filter(o => {
+    const isAutomated = (
+      o.execution_type === 'automated' ||
+      o.payment_type === '0g_direct' ||
+      (o.provider_id && (o.provider_id.startsWith('prov_zero') || o.provider_id.startsWith('prov_prompt') || o.provider_id === 'prov_zerog')) ||
+      Number(o.price) === 0
+    );
+
+    // Tab filtering
+    if (activeTab === 'needs_payment') {
+      if (isAutomated || Number(o.price) <= 0) return false;
+      if (o.payment_status !== 'pending' && o.payment_status !== 'failed') return false;
+      if (o.status === 'rejected' || o.status === 'cancelled') return false;
+    } else if (activeTab === 'in_progress') {
+      if (!['requested', 'accepted', 'in_progress'].includes(o.status)) return false;
+    } else if (activeTab === 'completed') {
+      if (o.status !== 'completed' && o.status !== 'delivered') return false;
+    }
+
+    // Search query filtering
+    if (searchQuery) {
+      const matchTitle = (o.service_title || '').toLowerCase().includes(searchQuery);
+      const matchProv = (o.provider_name || '').toLowerCase().includes(searchQuery);
+      const matchId = (o.id || '').toLowerCase().includes(searchQuery);
+      if (!matchTitle && !matchProv && !matchId) return false;
+    }
+
+    return true;
+  });
 
   return `
     <div class="space-y-8">
-      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
-        <div>
-          <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Security Requests</h1>
-          <p class="text-[14px] text-[var(--text-2)] mt-1.5">Track security service requests you submitted, on-chain escrow deposits, and releases.</p>
-        </div>
-        <div class="flex items-center gap-2.5 shrink-0">
-          ${myProvider ? `
-            <button onclick="navigateTo('provider_workspace')" class="btn-secondary !h-9 text-[13px]">
-              <span>Provider workspace</span>
-              <span class="text-[11px] text-[var(--text-3)] font-mono ml-1.5">(${assignedOrders.length})</span>
-            </button>
-          ` : ''}
-          <button onclick="navigateTo('opihub')" class="btn-primary !h-9 text-[13px]">
-            Explore OpiHub
+      <!-- Page Header: sentence-case title, 14-15px --text-2 description, primary button Explore OpiHub (removed provider workspace button) -->
+      ${renderPageHeader(
+        'Security requests',
+        "Track the requests you've submitted, their payments and results.",
+        `
+        <button onclick="navigateTo('opihub')" class="btn-primary !h-9 text-[13px]">
+          Explore OpiHub
+        </button>
+        `
+      )}
+
+      <!-- Controls: Status tabs + Search input -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <!-- Status Tabs -->
+        <div class="inline-flex p-0.5 bg-[var(--surface-sunk)] rounded-[var(--radius-sm)] border border-[var(--border)] shrink-0">
+          <button
+            onclick="setRequestsTab('all')"
+            class="px-3 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+              activeTab === 'all' ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
+            }"
+          >
+            All
           </button>
+          <button
+            onclick="setRequestsTab('needs_payment')"
+            class="px-3 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+              activeTab === 'needs_payment' ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
+            }"
+          >
+            Needs payment
+          </button>
+          <button
+            onclick="setRequestsTab('in_progress')"
+            class="px-3 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+              activeTab === 'in_progress' ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
+            }"
+          >
+            In progress
+          </button>
+          <button
+            onclick="setRequestsTab('completed')"
+            class="px-3 py-1.5 text-[12.5px] font-medium rounded-[var(--radius-sm)] transition-colors cursor-pointer ${
+              activeTab === 'completed' ? 'bg-[var(--surface)] text-[var(--text)] shadow-xs' : 'text-[var(--text-2)] hover:text-[var(--text)]'
+            }"
+          >
+            Completed
+          </button>
+        </div>
+
+        <!-- Search Input -->
+        <div class="relative sm:w-64">
+          <input
+            type="text"
+            placeholder="Search requests..."
+            value="${escapeForAttr(STATE.requestsSearch || '')}"
+            oninput="setRequestsSearch(this.value)"
+            class="w-full px-3 py-1.5 text-[13px] bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[var(--text)] placeholder-[var(--text-3)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+          />
         </div>
       </div>
 
-      <!-- Orders Table -->
-      <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden">
-        ${orders.length > 0 ? `
+      <!-- Requests Table: Service | Status | Cost | Date | Action -->
+      ${filteredOrders.length > 0 ? `
+        <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left text-[13px]">
-              <thead class="bg-[var(--surface-sunk)] border-b border-[var(--border)] text-[var(--text-3)] text-[11px] uppercase font-medium tracking-[0.06em]">
+              <thead class="border-b border-[var(--border)] text-[var(--text-2)] text-[12px] uppercase font-semibold tracking-[0.06em]">
                 <tr>
-                  <th class="px-5 py-3.5">Order ID</th>
                   <th class="px-5 py-3.5">Service</th>
-                  <th class="px-5 py-3.5">Provider</th>
                   <th class="px-5 py-3.5">Status</th>
-                  <th class="px-5 py-3.5">Payment & Escrow</th>
-                  <th class="px-5 py-3.5">Price</th>
+                  <th class="px-5 py-3.5">Cost</th>
                   <th class="px-5 py-3.5">Date</th>
-                  <th class="px-5 py-3.5 text-right">Actions</th>
+                  <th class="px-5 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-[var(--border)]">
-                ${orders.map(o => {
+                ${filteredOrders.map(o => {
                   const isAutomated = (
                     o.execution_type === 'automated' ||
                     o.payment_type === '0g_direct' ||
@@ -2278,82 +2402,68 @@ function renderMyRequestsView() {
                     Number(o.price) === 0
                   );
                   const isManualEscrow = !isAutomated && (o.execution_type === 'manual' || !!o.escrow_tx_hash || (o.escrow_state && o.escrow_state !== 'not_applicable' && o.escrow_state !== 'none'));
+
+                  // Bug fix: Free orders never show "pending payment"
+                  let effectiveStatus = o.status;
+                  if ((isAutomated || Number(o.price) <= 0) && (effectiveStatus === 'pending_payment' || o.payment_status === 'pending')) {
+                    effectiveStatus = 'completed';
+                  }
+
+                  const needsPayment = !isAutomated && Number(o.price) > 0 && (o.payment_status === 'pending' || o.payment_status === 'failed') && o.status !== 'rejected' && o.status !== 'cancelled';
+                  const isCompleted = o.status === 'completed' || o.status === 'delivered';
+
                   return `
-                    <tr class="hover:bg-[var(--surface-sunk)] transition-colors">
-                      <td class="px-5 py-4 font-mono text-[12px] text-[var(--text-3)]">${o.id}</td>
+                    <tr class="hover:bg-[var(--surface-sunk)] transition-colors cursor-pointer" onclick="openModal('order_detail', '${o.id}')">
+                      <!-- Column 1: Service title + IdChip + Provider name underneath -->
                       <td class="px-5 py-4">
-                        <div class="font-medium text-[13.5px] text-[var(--text)]">${escapeHtml(o.service_title)}</div>
-                        <div class="text-[12px] text-[var(--text-3)] mt-0.5">
-                          ${isAutomated ? 'Autonomous 0G defense' : 'Specialist review'}
+                        <div class="flex items-center gap-2">
+                          <span class="font-medium text-[13.5px] text-[var(--text)]">${escapeHtml(o.service_title)}</span>
+                          ${renderIdChip(o.id)}
+                        </div>
+                        <div class="text-[12.5px] text-[var(--text-2)] mt-0.5">
+                          ${escapeHtml(o.provider_name || 'Specialist')}
                         </div>
                       </td>
-                      <td class="px-5 py-4 text-[var(--text-2)]">${escapeHtml(o.provider_name)}</td>
-                      <td class="px-5 py-4">${renderStatusBadge(o.status)}</td>
-                      <td class="px-5 py-4">
-                        ${isAutomated ? `
-                          <span class="pill pill-neutral text-[11px]">
-                            0G Direct AI (Free)
-                          </span>
-                        ` : isManualEscrow ? `
-                          <div class="flex flex-col gap-1 items-start">
-                            <span class="pill ${o.escrow_state === 'released' ? 'pill-success' : o.escrow_state === 'funded' ? 'pill-warning' : 'pill-danger'} text-[11px]">
-                              ${o.escrow_state === 'released' ? 'Disbursed' : (o.escrow_state === 'funded' ? 'Escrow locked' : 'Pending escrow')}
-                            </span>
-                            <div class="flex items-center gap-2 text-[11px] font-mono">
-                              ${o.escrow_release_tx_hash ? `
-                                <a href="${o.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--accent)] hover:underline" title="View release on Rabdi Explorer">
-                                  release &nearr;
-                                </a>
-                              ` : ''}
-                              ${o.escrow_tx_hash ? `
-                                <a href="${o.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + o.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-3)] hover:text-[var(--text)]" title="View deposit on Rabdi Explorer">
-                                  deposit &nearr;
-                                </a>
-                              ` : ''}
-                            </div>
-                          </div>
-                        ` : o.payment_status === 'verified' ? `
-                          <span class="pill pill-success text-[11px]">
-                            Escrow verified
-                          </span>
-                        ` : o.payment_status === 'pending' ? `
-                          <span class="pill pill-warning text-[11px]">
-                            Pending deposit
-                          </span>
-                        ` : o.payment_status === 'failed' ? `
-                          <span class="pill pill-danger text-[11px]">
-                            Failed
-                          </span>
-                        ` : `
-                          <span class="text-[12px] text-[var(--text-3)] capitalize">${escapeHtml(o.payment_status || 'N/A')}</span>
-                        `}
+
+                      <!-- Column 2: Single status pill -->
+                      <td class="px-5 py-4 align-middle">
+                        ${renderStatusPill(effectiveStatus, isManualEscrow, o.escrow_state)}
                       </td>
-                      <td class="px-5 py-4 font-mono font-medium text-[var(--text)]">${isAutomated ? '<span class="text-[var(--text-3)] font-normal">Free</span>' : '$' + o.price.toFixed(2)}</td>
-                      <td class="px-5 py-4 text-[var(--text-3)] font-sans text-[12px]">${formatQuietDate(o.created_at)}</td>
-                      <td class="px-5 py-4 text-right">
-                        <div class="flex items-center justify-end gap-2">
-                          <button onclick="openModal('order_detail', '${o.id}')" class="btn-secondary !h-8 text-[12px]">
-                            Details
+
+                      <!-- Column 3: Cost in tabular-nums (NOT mono) -->
+                      <td class="px-5 py-4 font-sans font-medium text-[var(--text)] tabular-nums align-middle">
+                        ${isAutomated ? '<span class="text-[var(--text-2)] font-medium">Free</span>' : '$' + o.price.toFixed(2)}
+                      </td>
+
+                      <!-- Column 4: Date -->
+                      <td class="px-5 py-4 text-[var(--text-3)] font-sans text-[12px] tabular-nums align-middle">
+                        ${formatQuietDate(o.created_at)}
+                      </td>
+
+                      <!-- Column 5: Max ONE button per row -->
+                      <td class="px-5 py-4 text-right align-middle" onclick="event.stopPropagation()">
+                        ${needsPayment ? `
+                          <button
+                            onclick="handleInitiatePayment('${o.id}')"
+                            class="btn-primary !h-8 text-[12.5px]"
+                          >
+                            Complete payment
                           </button>
-                          ${!isAutomated && (o.payment_status === 'pending' || o.payment_status === 'failed') && o.status !== 'rejected' && o.status !== 'cancelled' ? `
-                            <button
-                              onclick="handleInitiatePayment('${o.id}')"
-                              class="btn-primary !h-8 text-[12px]"
-                            >
-                              Deposit escrow ($${o.price.toFixed(2)})
-                            </button>
-                          ` : ''}
-                          ${o.report_id ? `
-                            <button onclick="viewReport('${o.report_id}')" class="btn-secondary !h-8 text-[12px]">
-                              Report
-                            </button>
-                          ` : ''}
-                          ${o.status === 'delivered' && o.escrow_state === 'funded' ? `
-                            <button onclick="executeEVMEscrowRelease('${o.id}')" class="btn-primary !h-8 text-[12px]" title="Release smart escrow payment to specialist">
-                              Release escrow
-                            </button>
-                          ` : ''}
-                        </div>
+                        ` : isCompleted && o.report_id ? `
+                          <button
+                            onclick="viewReport('${o.report_id}')"
+                            class="btn-secondary !h-8 text-[12.5px]"
+                          >
+                            View report
+                          </button>
+                        ` : `
+                          <button
+                            onclick="openModal('order_detail', '${o.id}')"
+                            class="btn-secondary !h-8 text-[12.5px]"
+                          >
+                            View details
+                          </button>
+                        `}
                       </td>
                     </tr>
                   `;
@@ -2361,20 +2471,8 @@ function renderMyRequestsView() {
               </tbody>
             </table>
           </div>
-        ` : `
-          <div class="py-16 text-center space-y-3">
-            <h3 class="font-serif text-[18px] text-[var(--text)]">No service requests sent yet</h3>
-            <p class="text-[13px] text-[var(--text-2)] max-w-sm mx-auto">
-              You haven't requested any security reviews. Browse OpiHub to order from automated 0G AI agents or human specialists.
-            </p>
-            <div class="pt-2">
-              <button onclick="navigateTo('opihub')" class="btn-primary">
-                Explore OpiHub
-              </button>
-            </div>
-          </div>
-        `}
-      </div>
+        </div>
+      ` : renderEmptyState('No security requests found.', 'Explore OpiHub', "navigateTo('opihub')")}
     </div>
   `;
 }
@@ -2387,52 +2485,128 @@ function renderSecurityReportsView() {
     return custId === currentWallet || custId === (STATE.user.id || '').toLowerCase();
   });
 
+  // Calculate severity statistics across reports
+  let totalCritical = 0;
+  let totalMedium = 0;
+  reports.forEach(r => {
+    (r.findings || []).forEach(f => {
+      const sev = (f.severity || '').toLowerCase();
+      if (sev === 'critical') totalCritical++;
+      else if (sev === 'medium' || sev === 'high') totalMedium++;
+    });
+  });
+
   return `
-    <div class="space-y-8">
-      <div>
-        <h1 class="font-serif text-[32px] font-normal tracking-[-0.01em] text-[var(--text)]">Security Reports</h1>
-        <p class="text-[14px] text-[var(--text-2)] mt-1.5">Delivered audit certificates, vulnerability assessments, and hardened prompt directives.</p>
+    <div class="space-y-6">
+      <!-- Page Header -->
+      ${renderPageHeader(
+        'Security reports',
+        'Findings and improved prompts from your completed audits.'
+      )}
+
+      <!-- Summary line (not a card): X reports · Y critical · Z medium with tiny severity dots and counts in --text-2 -->
+      <div class="flex items-center gap-3 text-[13px] text-[var(--text-2)] pb-2 select-none">
+        <span><strong class="font-medium text-[var(--text)] tabular-nums">${reports.length}</strong> ${reports.length === 1 ? 'report' : 'reports'}</span>
+        <span class="text-[var(--border-strong)]">&middot;</span>
+        <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[var(--danger)]"></span><strong class="font-medium text-[var(--text)] tabular-nums">${totalCritical}</strong> critical</span>
+        <span class="text-[var(--border-strong)]">&middot;</span>
+        <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[var(--warning)]"></span><strong class="font-medium text-[var(--text)] tabular-nums">${totalMedium}</strong> medium</span>
       </div>
 
+      <!-- Report Cards with 16px gap -->
       <div class="space-y-4">
-        ${reports.length > 0 ? reports.map(r => `
-          <div class="surface-card space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-[12px] text-[var(--text-3)]">${r.id}</span>
-                  <span class="pill pill-success text-[10.5px]">Verified audit</span>
+        ${reports.length > 0 ? reports.map(r => {
+          const findings = r.findings || [];
+          const findingCount = findings.length;
+          const hasCritical = findings.some(f => (f.severity || '').toLowerCase() === 'critical');
+          const hasHigh = findings.some(f => (f.severity || '').toLowerCase() === 'high');
+          const hasMedium = findings.some(f => (f.severity || '').toLowerCase() === 'medium');
+
+          let overallPill = 'pill-success';
+          let overallLabel = 'Clean';
+          if (hasCritical) {
+            overallPill = 'pill-danger';
+            overallLabel = 'Critical';
+          } else if (hasHigh) {
+            overallPill = 'pill-warning';
+            overallLabel = 'High';
+          } else if (hasMedium) {
+            overallPill = 'pill-info';
+            overallLabel = 'Medium';
+          }
+
+          const vulnSummary = findingCount === 0
+            ? 'No vulnerabilities found'
+            : findingCount === 1
+            ? '1 vulnerability found'
+            : `${findingCount} vulnerabilities found`;
+
+          return `
+            <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-6 space-y-3.5 hover:border-[var(--border-strong)] transition-all">
+              <!-- Top Row: Title left (serif 20px), Severity pill top right -->
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <h3 class="font-serif text-[20px] font-normal text-[var(--text)] leading-snug">
+                    ${escapeHtml(r.service_title || 'Security Audit')}
+                  </h3>
+                  <!-- Row 2: Auditor with small check icon + 'Verified' -->
+                  <div class="text-[13px] text-[var(--text-3)] flex items-center gap-1.5 mt-1">
+                    <span>Audited by</span>
+                    <strong class="text-[var(--text-2)] font-medium">${escapeHtml(r.provider_name || '0G Defence Agent')}</strong>
+                    <span class="inline-flex items-center gap-1 text-[11.5px] text-[var(--success)] font-medium ml-1">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                      <span>Verified</span>
+                    </span>
+                    <span class="text-[var(--border-strong)]">&middot;</span>
+                    <span class="text-[var(--text-3)] tabular-nums">${formatQuietDate(r.created_at)}</span>
+                  </div>
                 </div>
-                <h3 class="font-serif text-[18px] font-normal text-[var(--text)] mt-1.5 leading-snug">${escapeHtml(r.service_title)}</h3>
-                <div class="text-[12.5px] text-[var(--text-3)] mt-0.5">
-                  Audited by: <strong class="text-[var(--text-2)] font-medium">${escapeHtml(r.provider_name)}</strong> &middot; Order: <span class="font-mono">${r.order_id}</span>
+
+                <div class="shrink-0">
+                  <span class="pill ${overallPill} text-[11px]">
+                    ${overallLabel}
+                  </span>
                 </div>
               </div>
 
-              <div class="shrink-0">
+              <!-- Row 3: One-line summary, 14px --text-2 -->
+              <p class="text-[14px] text-[var(--text-2)] line-clamp-2 leading-relaxed">
+                ${escapeHtml(r.summary || 'Security analysis and improved prompt directives successfully generated.')}
+              </p>
+
+              <!-- Row 4: Vulnerability chips with severity prefix + grammar fix -->
+              <div class="flex flex-wrap items-center gap-2 pt-1">
+                ${findingCount > 0 ? `
+                  ${findings.map(f => `
+                    <div class="pill ${f.severity === 'critical' ? 'pill-danger' : f.severity === 'high' ? 'pill-warning' : 'pill-neutral'} text-[11px]">
+                      <span class="font-semibold uppercase text-[10px] mr-1">${escapeHtml(f.severity)}:</span>
+                      <span>${escapeHtml(f.title)}</span>
+                    </div>
+                  `).join('')}
+                  <span class="text-[12px] text-[var(--text-3)] tabular-nums font-sans ml-1">(${vulnSummary})</span>
+                ` : `
+                  <span class="pill pill-success text-[11px]">
+                    No vulnerabilities found
+                  </span>
+                `}
+              </div>
+
+              <!-- Footer: Separated by hairline, Order ID as IdChip left, secondary button View report right (NOT accent) -->
+              <div class="pt-4 border-t border-[var(--border)] flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 text-[12px] text-[var(--text-3)]">
+                  <span>Order:</span>
+                  ${renderIdChip(r.order_id || r.id)}
+                </div>
+
                 <button onclick="viewReport('${r.id}')" class="btn-secondary !h-8 text-[12.5px]">
-                  Inspect findings & prompt
+                  View report
                 </button>
               </div>
             </div>
-
-            <p class="text-[13.5px] text-[var(--text-2)] leading-relaxed">${escapeHtml(r.summary)}</p>
-
-            <!-- Findings Summary Chips -->
-            <div class="flex flex-wrap gap-2 pt-3 border-t border-[var(--border)]">
-              ${(r.findings || []).map(f => `
-                <div class="pill ${f.severity === 'critical' ? 'pill-danger' : f.severity === 'high' ? 'pill-warning' : 'pill-neutral'} text-[11px]">
-                  <span class="font-semibold uppercase text-[10px]">${f.severity}:</span>
-                  <span>${escapeHtml(f.title)}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `).join('') : `
-          <div class="surface-card p-12 text-center text-[13px] text-[var(--text-3)]">
-            No completed security reports recorded yet.
-          </div>
-        `}
+          `;
+        }).join('') : renderEmptyState('No completed security reports recorded yet.', 'Explore OpiHub', "navigateTo('opihub')")}
       </div>
     </div>
   `;
@@ -2629,78 +2803,81 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
   return `
     <div class="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-6 flex flex-col justify-between hover:border-[var(--border-strong)] transition-all">
       <div>
+        <!-- Row 1: Service name left, price right with subtitle under price -->
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <h3 class="font-serif text-[18px] font-normal text-[var(--text)] tracking-[-0.01em] leading-snug">
               ${escapeHtml(s.title)}
             </h3>
+            <!-- Row 2: By [Name] + provider pill -->
             ${showProvider ? `
-              <div class="text-[12.5px] text-[var(--text-3)] flex items-center gap-1.5 mt-1">
+              <div class="text-[13px] text-[var(--text-3)] flex items-center gap-1.5 mt-1">
                 <span>By</span>
                 <strong class="text-[var(--text-2)] hover:text-[var(--text)] cursor-pointer font-medium" onclick="navigateTo('provider_detail', '${s.provider_id}')">${escapeHtml(s.provider_name)}</strong>
-                <span class="pill pill-neutral shrink-0 text-[10.5px]">
-                  ${isAutomated ? '0G AI Agent' : 'Specialist'}
+                <span class="pill pill-neutral shrink-0 text-[11px]">
+                  ${isAutomated ? '0G agent' : 'Specialist'}
                 </span>
               </div>
             ` : ''}
           </div>
           <div class="text-right shrink-0">
             ${isAutomated ? `
-              <span class="font-mono text-[15px] font-semibold text-[var(--text)]">Free</span>
-              <div class="text-[11px] font-mono text-[var(--text-3)]">0G Direct</div>
+              <div class="text-[16px] font-bold text-[var(--text)] tabular-nums font-sans">Free</div>
+              <div class="text-[11px] text-[var(--text-3)]">Instant</div>
             ` : `
-              <span class="font-mono text-[15px] font-semibold text-[var(--text)]">$${s.price.toFixed(2)}</span>
-              <div class="text-[11px] font-mono text-[var(--text-3)]">Smart Escrow</div>
+              <div class="text-[16px] font-bold text-[var(--text)] tabular-nums font-sans">$${s.price.toFixed(2)}</div>
+              <div class="text-[11px] text-[var(--text-3)]">Held in escrow</div>
             `}
           </div>
         </div>
 
+        <!-- Row 3: Description, 2 lines clamped -->
         <p class="text-[13px] text-[var(--text-2)] mt-3 line-clamp-2 leading-relaxed">
           ${escapeHtml(s.description || '')}
         </p>
 
+        <!-- Row 4: Turnaround with clock icon + category with tag icon (no Turnaround: or Category: labels!) -->
         <div class="flex items-center gap-3 text-[12px] text-[var(--text-3)] mt-4">
-          <span>Turnaround: <strong class="text-[var(--text-2)] font-medium">${escapeHtml(s.estimated_delivery)}</strong></span>
-          <span>&middot;</span>
-          <span>Category: <strong class="text-[var(--text-2)] font-medium">${formatCategoryName(s.category)}</strong></span>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-[var(--text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-[var(--text-2)] font-medium tabular-nums">${escapeHtml(s.estimated_delivery)}</span>
+          </div>
+          <span class="text-[var(--border-strong)]">&middot;</span>
+          <div class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-[var(--text-3)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" />
+            </svg>
+            <span class="text-[var(--text-2)] font-medium">${formatCategoryName(s.category)}</span>
+          </div>
         </div>
       </div>
 
+      <!-- Footer: Left has verified trust badge; Right has max one button -->
       <div class="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-between gap-2">
-        <div>
-          ${s.arkiv_entity_key ? `
-            <button
-              type="button"
-              onclick="event.stopPropagation(); openArkivVerificationModal('${s.id}')"
-              class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--radius-full)] text-[11px] font-mono font-medium bg-[var(--success-bg)] text-[var(--success)] hover:opacity-90 transition-opacity cursor-pointer border-none"
-              title="Click to verify live on Rabdi Testnet"
-            >
-              <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
-              <span>Arkiv verified</span>
-            </button>
-          ` : `
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--radius-full)] text-[11px] font-mono text-[var(--text-3)] bg-[var(--surface-sunk)]">
-              <span>${isAutomated ? 'Instant 0G inference' : 'Smart escrow'}</span>
-            </span>
-          `}
+        <div class="flex items-center gap-1.5 text-[12px] text-[var(--success)] font-medium select-none">
+          <svg class="w-3.5 h-3.5 text-[var(--success)]" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+          </svg>
+          <span>Verified</span>
         </div>
 
         <div>
           ${ownsService ? `
             <div class="flex items-center gap-2">
-              <button onclick="navigateTo('provider_workspace')" class="btn-secondary !h-8 text-[12.5px]">
-                My service &rarr;
-              </button>
-              <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="btn-ghost !h-8 text-[12.5px] border border-transparent hover:border-[var(--border)]">
+              <span class="text-[12.5px] text-[var(--text-3)] font-medium">Your service</span>
+              <button onclick="openModal('edit_service_modal', { serviceId: '${s.id}' })" class="btn-ghost !h-8 text-[12.5px] border border-transparent hover:border-[var(--border-strong)]">
                 Edit
               </button>
             </div>
           ` : `
             <button
               onclick="openModal('request_review', { serviceId: '${s.id}', providerId: '${s.provider_id}' })"
-              class="btn-secondary !h-8 text-[12.5px]"
+              class="btn-primary !h-8 text-[12.5px]"
             >
-              ${isAutomated ? 'Run 0G defense' : 'Request review'}
+              ${isAutomated ? 'Run 0G defense' : 'Request service'}
             </button>
           `}
         </div>
@@ -2709,31 +2886,8 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
   `;
 }
 
-function renderStatusBadge(status) {
-  const norm = (status || '').toLowerCase().replace('-', '_');
-  let pillClass = 'pill-neutral';
-  let label = status || '';
-
-  if (['requested', 'pending', 'pending_escrow'].includes(norm)) {
-    pillClass = 'pill-warning';
-    label = norm === 'requested' ? 'Requested' : 'Pending';
-  } else if (['accepted', 'in_progress'].includes(norm)) {
-    pillClass = 'pill-info';
-    label = norm === 'in_progress' ? 'In progress' : 'Accepted';
-  } else if (['completed', 'disbursed', 'released', 'funded'].includes(norm)) {
-    pillClass = 'pill-success';
-    label = norm === 'completed' ? 'Completed' : norm === 'funded' ? 'Funded' : 'Disbursed';
-  } else if (['delivered'].includes(norm)) {
-    pillClass = 'pill-info';
-    label = 'Delivered';
-  } else if (['rejected', 'cancelled', 'failed'].includes(norm)) {
-    pillClass = 'pill-danger';
-    label = norm === 'rejected' ? 'Rejected' : norm === 'cancelled' ? 'Cancelled' : 'Failed';
-  } else {
-    label = norm.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
-  }
-
-  return `<span class="pill ${pillClass}">${escapeHtml(label)}</span>`;
+function renderStatusBadge(status, isEscrow = false, escrowState = '') {
+  return renderStatusPill(status, isEscrow, escrowState);
 }
 
 function renderActivityFeed(activities) {
@@ -6008,12 +6162,12 @@ async function executeQuickOptimize(promptId = null, bypassCache = false) {
           </div>
         ` : ''}
 
-        <!-- 6. Hardened Prompt -->
+        <!-- 6. Improved Prompt -->
         <div class="space-y-1.5">
           <div class="flex items-center justify-between">
-            <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-[0.06em]">6. Hardened Prompt Specification</span>
-            <button onclick="navigator.clipboard.writeText(document.getElementById('opt-prompt-result-text').innerText); showNotification('Copied hardened prompt to clipboard!', 'success');" class="text-xs text-[var(--accent)] hover:underline font-medium cursor-pointer">
-              Copy Hardened Prompt
+            <span class="text-[12px] font-semibold text-[var(--text-2)] uppercase tracking-[0.06em]">6. Improved Prompt Specification</span>
+            <button onclick="navigator.clipboard.writeText(document.getElementById('opt-prompt-result-text').innerText); showNotification('Copied improved prompt to clipboard!', 'success');" class="text-xs text-[var(--accent)] hover:underline font-medium cursor-pointer">
+              Copy improved prompt
             </button>
           </div>
           <pre id="opt-prompt-result-text" class="p-3.5 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12px] font-mono text-[var(--text)] max-h-64 overflow-y-auto whitespace-pre-wrap select-all leading-relaxed">${escapeHtml(data.optimized_prompt || data.hardened_prompt || '')}</pre>

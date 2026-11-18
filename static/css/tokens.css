@@ -1,37 +1,46 @@
 /* ==========================================================================
    Guardvane Design System Tokens
-   Editorial, human, calm aesthetic inspired by Anthropic / Claude.
+   Refined Anthropic / Claude Editorial Aesthetic
    ========================================================================== */
 
 :root {
   /* -------------------------------------------------------------------------
-     Colors: Authentic Claude Warm Parchment Canvas & High-Contrast Inks
+     Surfaces & Canvas
      ------------------------------------------------------------------------- */
-  --bg:            #F7F5EE;   /* Authentic Claude warm parchment paper canvas */
-  --surface:       #FFFFFF;   /* Pure crisp paper cards and modal dialogs */
-  --surface-sunk:  #ECE8DE;   /* Claude sidebar and subtle recessed wells */
-  --border:        #E2DFD4;   /* Warm, gentle 1px hairlines and dividers */
-  --border-strong: #C8C3B4;   /* Interactive input borders and defined edges */
+  --bg:            #FAF9F5;   /* Warm paper background */
+  --surface:       #FFFFFF;   /* Clean paper surfaces & cards */
+  --surface-sunk:  #F1EFE7;   /* Sidebar, recessed wells, hover states */
+  --border:        #E0DCCF;   /* Hairlines & structural dividers */
+  --border-strong: #C9C4B3;   /* Interactive input borders & active edges */
 
-  /* High-Contrast Readability Inks */
-  --text:          #141413;   /* Primary ink: deep, rich charcoal black (17.8:1 contrast) */
-  --text-2:        #343330;   /* Secondary text: dark warm slate, highly readable (9.7:1 contrast) */
-  --text-3:        #595750;   /* Tertiary labels & meta: crisp, solid readability (6.1:1 contrast) */
+  /* -------------------------------------------------------------------------
+     Typography & Inks (High contrast, minimum ratio 4.9:1)
+     ------------------------------------------------------------------------- */
+  --text:          #1A1A18;   /* Primary ink: near-black (17.5:1 contrast) */
+  --text-2:        #45443F;   /* Secondary ink: rich charcoal (9.2:1 contrast) */
+  --text-3:        #6B695F;   /* Tertiary / metadata: crisp, legible (5.1:1 contrast) */
 
-  /* Single Accent: Terracotta (Claude Signature Orange) */
-  --accent:        #D97757;   /* Claude signature terracotta */
-  --accent-hover:  #C46545;
-  --accent-soft:   #F5EAE5;
+  /* -------------------------------------------------------------------------
+     Single Accent: Terracotta (Key primary CTAs & active nav only)
+     ------------------------------------------------------------------------- */
+  --accent:        #B5532F;   /* White text on accent = 4.9:1 (WCAG AA) */
+  --accent-hover:  #9E4526;
+  --accent-soft:   #F6E4DB;
+  --accent-text:   #FFFFFF;
 
-  /* Semantic status pairs: Muted backgrounds with high-contrast, deep text */
-  --success:       #275630;
-  --success-bg:    #E2EDE0;
-  --warning:       #7D4F0B;
-  --warning-bg:    #F7ECCE;
-  --info:          #234E75;
-  --info-bg:       #DEE9F3;
-  --danger:        #962E25;
-  --danger-bg:     #F8DFDC;
+  /* -------------------------------------------------------------------------
+     Semantic Status Pairs (Muted backgrounds, deep contrast text)
+     ------------------------------------------------------------------------- */
+  --success:       #2F6B3A;
+  --success-bg:    #E3EEE2;
+  --warning:       #8A5A00;
+  --warning-bg:    #F7EAC8;
+  --info:          #2F5577;
+  --info-bg:       #E1EAF2;
+  --danger:        #9A3328;
+  --danger-bg:     #F8E1DD;
+  --neutral:       #45443F;
+  --neutral-bg:    #ECE9DF;
 
   /* -------------------------------------------------------------------------
      Typography
@@ -47,74 +56,83 @@
 
   /* Elevation */
   --shadow-none:   none;
-  --shadow-hover:  0 1px 2px rgba(20, 20, 19, 0.08);
+  --shadow-hover:  0 1px 2px rgba(26, 26, 24, 0.06);
 
-  /* Transitions */
+  /* Transitions: Color/background/border only */
   --transition-fast: 150ms ease;
 }
 
 /* ---------------------------------------------------------------------------
-   Dark Mode Tokens (Honors system dark preference)
+   Dark Mode Tokens (Honors system dark preference & .dark class)
    --------------------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg:            #141413;
-    --surface:       #1E1E1C;
-    --surface-sunk:  #181816;
+    --bg:            #171715;
+    --surface:       #1F1F1D;
+    --surface-sunk:  #171715;
     --border:        #2E2D2A;
     --border-strong: #44433E;
-    --text:          #FAF9F5;
-    --text-2:        #D6D3C8;
-    --text-3:        #A5A296;
+    --text:          #F3F1EA;
+    --text-2:        #CFCCC0;
+    --text-3:        #A3A095;
 
-    --accent:        #D97757;
-    --accent-hover:  #E2886A;
-    --accent-soft:   #34241E;
+    --accent:        #E08A68;
+    --accent-hover:  #E89C7E;
+    --accent-soft:   #2E1E17;
+    --accent-text:   #1A0F0A;
 
-    --success:       #8EC196;
-    --success-bg:    #1F2F23;
-    --warning:       #E0B05C;
-    --warning-bg:    #332717;
-    --info:          #85A8CE;
-    --info-bg:       #1E2935;
-    --danger:        #E07F75;
-    --danger-bg:     #35201E;
+    --success:       #8BC496;
+    --success-bg:    #1F3323;
+    --warning:       #E5B556;
+    --warning-bg:    #362812;
+    --info:          #85ACD1;
+    --info-bg:       #1C2A38;
+    --danger:        #E58175;
+    --danger-bg:     #381E1C;
+    --neutral:       #CFCCC0;
+    --neutral-bg:    #292825;
 
     --shadow-hover:  0 1px 2px rgba(0, 0, 0, 0.4);
   }
 }
 
-/* Force dark class support */
 .dark {
-  --bg:            #141413;
-  --surface:       #1E1E1C;
-  --surface-sunk:  #181816;
+  --bg:            #171715;
+  --surface:       #1F1F1D;
+  --surface-sunk:  #171715;
   --border:        #2E2D2A;
   --border-strong: #44433E;
-  --text:          #FAF9F5;
-  --text-2:        #D6D3C8;
-  --text-3:        #A5A296;
+  --text:          #F3F1EA;
+  --text-2:        #CFCCC0;
+  --text-3:        #A3A095;
 
-  --accent:        #D97757;
-  --accent-hover:  #E2886A;
-  --accent-soft:   #34241E;
+  --accent:        #E08A68;
+  --accent-hover:  #E89C7E;
+  --accent-soft:   #2E1E17;
+  --accent-text:   #1A0F0A;
 
-  --success:       #8EC196;
-  --success-bg:    #1F2F23;
-  --warning:       #E0B05C;
-  --warning-bg:    #332717;
-  --info:          #85A8CE;
-  --info-bg:       #1E2935;
-  --danger:        #E07F75;
-  --danger-bg:     #35201E;
+  --success:       #8BC496;
+  --success-bg:    #1F3323;
+  --warning:       #E5B556;
+  --warning-bg:    #362812;
+  --info:          #85ACD1;
+  --info-bg:       #1C2A38;
+  --danger:        #E58175;
+  --danger-bg:     #381E1C;
+  --neutral:       #CFCCC0;
+  --neutral-bg:    #292825;
 
   --shadow-hover:  0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 /* ---------------------------------------------------------------------------
-   Base Styles
+   Base Styles & Scrollbar Stability
    --------------------------------------------------------------------------- */
-html, body {
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
@@ -122,21 +140,40 @@ html, body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-gutter: stable;
 }
 
-/* Ensure strong, high-contrast readability across all text and forms */
+.scroll-container {
+  scrollbar-gutter: stable;
+}
+
+/* Legibility and Tabular Numbers */
 p, span, div, li, td, th, label {
   text-rendering: optimizeLegibility;
 }
 
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inputs & Form Elements */
 input, textarea, select {
   color: var(--text);
   background-color: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(181, 83, 47, 0.6);
 }
 
 input::placeholder, textarea::placeholder {
   color: var(--text-3);
-  opacity: 0.85;
 }
 
 /* Refined Typography Classes */
@@ -151,10 +188,20 @@ input::placeholder, textarea::placeholder {
 
 .font-mono {
   font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+/* Section Header Labels */
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
 }
 
 /* ---------------------------------------------------------------------------
-   Surface & Card Styles
+   Surface & Card Styles (Never card inside card)
    --------------------------------------------------------------------------- */
 .surface-card {
   background-color: var(--surface);
@@ -162,7 +209,7 @@ input::placeholder, textarea::placeholder {
   border-radius: var(--radius-md);
   padding: 24px;
   box-shadow: var(--shadow-none);
-  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .surface-card-hover:hover {
@@ -186,7 +233,7 @@ input::placeholder, textarea::placeholder {
   padding: 0 16px;
   border-radius: var(--radius-sm);
   background-color: var(--accent);
-  color: #FFFFFF;
+  color: var(--accent-text);
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 500;
@@ -202,7 +249,7 @@ input::placeholder, textarea::placeholder {
 
 .btn-primary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(181, 83, 47, 0.6);
 }
 
 .btn-secondary {
@@ -220,7 +267,7 @@ input::placeholder, textarea::placeholder {
   font-weight: 500;
   border: 1px solid var(--border-strong);
   cursor: pointer;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
   white-space: nowrap;
 }
 
@@ -231,7 +278,7 @@ input::placeholder, textarea::placeholder {
 
 .btn-secondary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--border-strong);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(181, 83, 47, 0.6);
 }
 
 .btn-ghost {
@@ -246,16 +293,17 @@ input::placeholder, textarea::placeholder {
   font-family: var(--font-sans);
   font-size: 13px;
   font-weight: 500;
-  border: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: color var(--transition-fast), background-color var(--transition-fast);
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
   white-space: nowrap;
 }
 
 .btn-ghost:hover {
   color: var(--text);
   background-color: var(--surface-sunk);
-  border-radius: var(--radius-sm);
+  border-color: var(--border);
 }
 
 .btn-ghost-accent {
@@ -282,6 +330,7 @@ input::placeholder, textarea::placeholder {
   font-weight: 600;
   line-height: 22px;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .pill-success {
@@ -305,8 +354,8 @@ input::placeholder, textarea::placeholder {
 }
 
 .pill-neutral {
-  background-color: var(--surface-sunk);
-  color: var(--text-2);
+  background-color: var(--neutral-bg);
+  color: var(--neutral);
 }
 
 /* ---------------------------------------------------------------------------
@@ -339,7 +388,7 @@ input::placeholder, textarea::placeholder {
   background-color: var(--surface) !important;
   color: var(--text) !important;
   font-weight: 500 !important;
-  box-shadow: 0 1px 2px rgba(31, 30, 29, 0.04);
+  box-shadow: 0 1px 2px rgba(26, 26, 24, 0.04);
   position: relative;
 }
 
@@ -361,6 +410,41 @@ input::placeholder, textarea::placeholder {
 
 .divide-hairline > * + * {
   border-color: var(--border);
+}
+
+/* Clean Hairline Tables */
+.data-table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+.data-table td {
+  padding: 14px 16px;
+  font-size: 13.5px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table tr.clickable-row {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.data-table tr.clickable-row:hover {
+  background-color: var(--surface-sunk);
 }
 
 /* Scrollbars */

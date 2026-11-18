@@ -709,6 +709,7 @@ class MarketplaceService:
         now = datetime.now(timezone.utc).isoformat()
 
         # Differentiate execution flows: Automated AI vs Human Specialist
+        is_free = (service.price <= 0.0)
         is_automated = (service.execution_type == ServiceExecutionType.AUTOMATED)
 
         # Provider cannot audit or order their own service
@@ -726,7 +727,7 @@ class MarketplaceService:
                 "product_link": product_link,
                 "docs_link": docs_link,
                 "test_env_notes": test_env_notes,
-                "payment_mode": "0g_direct" if is_automated else "evm_escrow"
+                "payment_mode": "0g_direct" if is_automated else ("free_direct" if is_free else "evm_escrow")
             }
             stored_requirements = json.dumps(req_data)
 
@@ -751,11 +752,34 @@ class MarketplaceService:
                         0.0, service.currency, OrderStatus.IN_PROGRESS.value,
                         ServiceExecutionType.AUTOMATED.value, PaymentStatus.VERIFIED.value,
                         None, "Executing direct 0G Private Computer AI reasoning...",
-                        now, now, None, "0g_direct", None, None
+                        now, now, None, "0g_direct", "not_applicable", None
                     )
                 )
             # Execute 0G Private Computer reasoning immediately and return completed order
             return self.execute_automated_ai_order(order_id)
+        elif is_free:
+            # Free Service Flow: Skip escrow payment and mark directly as requested/verified
+            spec_notes = f"Free security review request submitted to {service.provider_name}."
+            with conn:
+                conn.execute(
+                    """
+                    INSERT INTO orders (
+                        id, customer_id, customer_name, provider_id, provider_name,
+                        provider_type, service_id, service_title, service_category,
+                        prompt_content, requirements, price, currency, status,
+                        execution_type, payment_status, report_id, deliverable_notes,
+                        created_at, updated_at, payment_intent_id, payment_type, escrow_state
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        order_id, customer_id, customer_name, service.provider_id,
+                        service.provider_name, service.provider_type.value, service.id,
+                        service.title, service.category, prompt_content, stored_requirements,
+                        0.0, service.currency, OrderStatus.REQUESTED.value,
+                        ServiceExecutionType.MANUAL.value, PaymentStatus.VERIFIED.value,
+                        None, spec_notes, now, now, None, "free_direct", "not_applicable"
+                    )
+                )
         else:
             # 2. Human Specialist Flow (MetaMask EVM Escrow Route)
             # Order starts in 'pending_payment' state with EVM escrow deposit required
