@@ -16,8 +16,6 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from analyzers.prompt_analyzer import analyze_prompt
-from analyzers.prompt_optimizer import prompt_optimizer, LocalPromptOptimizer, OptimizationResult
 from integrations.zero_g.client import (
     ZeroGClient,
     ZeroGResponse,
@@ -169,11 +167,9 @@ class ZeroGOptimizer:
     def __init__(
         self,
         client: Optional[ZeroGClient] = None,
-        local_optimizer: Optional[LocalPromptOptimizer] = None,
         cache: Optional[ZeroGCache] = None,
     ):
         self.client = client or ZeroGClient()
-        self.local_optimizer = local_optimizer or prompt_optimizer
         self.cache = cache or zero_g_cache
 
     # -----------------------------------------------------------------------
@@ -187,10 +183,7 @@ class ZeroGOptimizer:
         1. Input validation and size limits (max 10,000 chars, non-empty).
         2. Sensitive data detection and redaction (API keys, JWTs, DB URIs, passwords).
         3. Token estimation (~4 characters per token).
-        4. Extracting application context and preliminary local signals.
-        5. Preparing structured request for 0G Private Computer.
-
-        Note: Local heuristics do NOT produce the final AI security reasoning.
+        4. Preparing structured request for 0G Private Computer.
         """
         if not isinstance(prompt, str) or not prompt.strip():
             raise ValueError("Prompt cannot be empty or contain only whitespace.")
@@ -207,16 +200,28 @@ class ZeroGOptimizer:
         # 2. Token estimation
         estimated_tokens = max(1, len(inference_prompt) // 4)
 
-        # 3. Context extraction (local ML scan signals as advisory context for 0G)
-        local_scan = analyze_prompt(cleaned_prompt, analysis_mode=analysis_mode)
-        p_sec = local_scan.get("prompt_security") or {}
-        app_risks = local_scan.get("application_risks") or {}
-        injection_prob = p_sec.get("malicious_probability", 0.0)
+        # 3. Context extraction
+        local_scan = {
+            "sensitive_data": {
+                "has_sensitive_data": sanitization.secrets_detected,
+                "count": sanitization.redacted_count,
+                "findings": [f.to_dict() for f in sanitization.findings],
+            },
+            "prompt_security": {
+                "malicious_probability": 0.0,
+                "is_injection_detected": False,
+                "risk_category": "0G Deep Reasoning Active",
+            },
+            "application_risks": {
+                "detected_risks": [],
+            },
+            "task_type": "general",
+        }
 
         preliminary_signals = {
-            "injection_probability": round(injection_prob, 4) if isinstance(injection_prob, (int, float)) else 0.0,
-            "preliminary_heuristic_risks": app_risks.get("detected_risks", []),
-            "preliminary_task_category": local_scan.get("task_type", "general"),
+            "injection_probability": 0.0,
+            "preliminary_heuristic_risks": [],
+            "preliminary_task_category": "general",
         }
 
         return {
@@ -513,24 +518,18 @@ class ZeroGOptimizer:
         """
         original_prompt = preprocessing["original_prompt"]
         sanitized_prompt = preprocessing["sanitized_prompt"]
-        local_scan = preprocessing["local_scan"]
-
-        local_baseline: OptimizationResult = self.local_optimizer.optimize_prompt(
-            prompt=sanitized_prompt,
-            security_analysis=local_scan,
-        )
 
         now = datetime.now(timezone.utc).isoformat()
         metadata = {
-            "provider": "local_heuristics",
-            "model": None,  # NEVER claim 0G model when 0G did not run!
+            "provider": "0g_offline_fallback",
+            "model": None,
             "request_id": None,
             "trust_mode": None,
             "usage": {},
             "status": "local_only",
             "inference_used": False,
-            "fallback_used": False,
-            "fallback_reason": None,
+            "fallback_used": True,
+            "fallback_reason": reason,
             "duration_ms": 0.0,
             "is_attestation_verified": False,
             "created_at": now,
@@ -538,72 +537,70 @@ class ZeroGOptimizer:
         }
 
         task_under = {
-            "application_type": local_scan.get("task_type", "General Application"),
-            "user_intent": "Evaluated via local deterministic pattern matcher.",
+            "application_type": "General Application",
+            "user_intent": "Direct prompt execution pending 0G Private Computer reasoning.",
             "technologies": [],
         }
 
-        detected_risks = (local_scan.get("application_risks") or {}).get("detected_risks") or []
-        findings = [
-            {
-                "vulnerability": r,
-                "severity": "medium",
-                "confidence": 0.7,
-                "evidence": "Flagged by local rule-based heuristic pattern.",
-                "attack_scenario": f"Local classifier detected pattern matching {r}.",
-                "explanation": f"Heuristic risk signature for {r}.",
-                "recommendation": f"Implement standard defense controls for {r}.",
-            }
-            for r in detected_risks
-        ]
+        findings = []
+        if preprocessing.get("secrets_detected"):
+            findings.append({
+                "vulnerability": "Credential Exposure",
+                "severity": "critical",
+                "confidence": 1.0,
+                "evidence": f"Redacted {preprocessing['sanitization'].redacted_count} hardcoded credentials via regex sanitizer.",
+                "attack_scenario": "Exposed tokens can be intercepted or extracted.",
+                "explanation": "Prompt contains sensitive credentials.",
+                "recommendation": "Use environment variables instead of hardcoded credentials.",
+            })
 
         reasoning = ZeroGReasoningResult(
-            contextual_summary="Local-only heuristic analysis completed without 0G Private Computer AI reasoning.",
-            risk_explanations={r: f"Local heuristic rule matched {r}." for r in detected_risks},
-            missing_security_requirements=local_baseline.detected_risks_addressed,
-            intent_preservation_notes="Maintained user parameters using offline deterministic rules.",
-            justifications=["Protect basic application boundaries without remote AI dependency."],
-            remaining_risks=["Offline heuristics cannot perform deep contextual threat modeling."],
+            contextual_summary="Direct prompt execution. 0G Private Computer AI reasoning required for full threat analysis.",
+            risk_explanations={},
+            missing_security_requirements=[],
+            intent_preservation_notes="Maintained user parameters verbatim.",
+            justifications=["Full AI security analysis requires active 0G Private Computer reasoning."],
+            remaining_risks=["Full threat analysis requires 0G Private Computer connection."],
             task_understanding=task_under,
-            security_analysis={"overall_risk": "Medium" if detected_risks else "Low", "findings": findings},
-            changes_made=[{"change": c, "reason": "Local rule application"} for c in local_baseline.changes_summary],
-            assumptions=["Running without 0G Private Computer reasoning engine."],
-            hardened_prompt=local_baseline.optimized_prompt,
+            security_analysis={"overall_risk": "Critical" if findings else "Low", "findings": findings},
+            changes_made=[],
+            assumptions=["0G Private Computer engine will run upon connectivity."],
+            hardened_prompt=sanitized_prompt,
             structured={
                 "task_understanding": task_under,
-                "security_analysis": {"overall_risk": "Medium" if detected_risks else "Low", "findings": findings},
-                "missing_security_requirements": local_baseline.detected_risks_addressed,
-                "hardened_prompt": local_baseline.optimized_prompt,
-                "changes_made": [{"change": c, "reason": "Local rule application"} for c in local_baseline.changes_summary],
-                "assumptions": ["Running without 0G Private Computer reasoning engine."],
-                "remaining_risks": ["Offline heuristics cannot perform deep contextual threat modeling."],
+                "security_analysis": {"overall_risk": "Critical" if findings else "Low", "findings": findings},
+                "missing_security_requirements": [],
+                "hardened_prompt": sanitized_prompt,
+                "changes_made": [],
+                "assumptions": ["0G Private Computer engine will run upon connectivity."],
+                "remaining_risks": ["Full threat analysis requires 0G Private Computer connection."],
             },
-            raw_content="Local-only analysis executed.",
+            raw_content="Direct prompt execution.",
             metadata=metadata,
         )
 
         return ZeroGOptimizationResult(
             original_prompt=original_prompt,
             sanitized_prompt=sanitized_prompt if preprocessing["secrets_detected"] else None,
-            optimized_prompt=local_baseline.optimized_prompt,
+            optimized_prompt=sanitized_prompt,
             reasoning=reasoning,
-            applied_hardening_rules=local_baseline.applied_hardening_rules,
-            changes_summary=local_baseline.changes_summary,
-            missing_requirements_addressed=local_baseline.detected_risks_addressed,
-            preserved_intent="Preserved core request using PromptShield deterministic rule-based optimizer.",
+            applied_hardening_rules=[],
+            changes_summary=[],
+            missing_requirements_addressed=[],
+            preserved_intent="Preserved submitted prompt.",
             engine="local_only",
             status="local_only",
-            fallback_used=False,
-            fallback_reason=None,
+            fallback_used=True,
+            fallback_reason=reason,
             structured_reasoning=reasoning.structured,
             task_understanding=task_under,
             security_analysis_findings=findings,
-            overall_risk="Medium" if detected_risks else "Low",
-            changes_made=[{"change": c, "reason": "Local rule application"} for c in local_baseline.changes_summary],
-            assumptions=["Running without 0G Private Computer reasoning engine."],
-            remaining_risks=["Offline heuristics cannot perform deep contextual threat modeling."],
+            overall_risk="Critical" if findings else "Low",
+            changes_made=[],
+            assumptions=["0G Private Computer engine will run upon connectivity."],
+            remaining_risks=["Full threat analysis requires 0G Private Computer connection."],
             metadata=metadata,
-            disclaimer="Local-only analysis executed without 0G Private Computer AI reasoning.",
+            disclaimer="Analysis executed without 0G Private Computer AI reasoning.",
         )
 
     # -----------------------------------------------------------------------
