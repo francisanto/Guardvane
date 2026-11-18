@@ -496,7 +496,12 @@ function switchUserRole(role, providerId = 'prov_elena') {
   loadInitialData();
 }
 
-function openModal(modalType, payload = null) {
+function openModal(modalType, payload = null, triggerEl = null) {
+  if (triggerEl) {
+    STATE.modalTriggerEl = triggerEl;
+  } else if (typeof document !== 'undefined' && document.activeElement) {
+    STATE.modalTriggerEl = document.activeElement;
+  }
   if (modalType === 'request_review') {
     const service = (STATE.data.services || []).find(s => s.id === payload?.serviceId);
     const prov = (STATE.data.providers || []).find(p => p.id === (service?.provider_id || payload?.providerId));
@@ -509,13 +514,32 @@ function openModal(modalType, payload = null) {
   }
   STATE.activeModal = modalType;
   STATE.modalPayload = payload;
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = 'hidden';
+  }
   renderApp();
+
+  setTimeout(() => {
+    const primaryInput = document.getElementById('order-prompt-input') ||
+                         document.querySelector('.modal-shell input:not([type="hidden"]), .modal-shell textarea, .modal-shell select');
+    if (primaryInput) {
+      primaryInput.focus();
+    }
+  }, 60);
 }
 
 function closeModal() {
   STATE.activeModal = null;
   STATE.modalPayload = null;
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = '';
+  }
   renderApp();
+
+  if (STATE.modalTriggerEl && typeof STATE.modalTriggerEl.focus === 'function') {
+    try { STATE.modalTriggerEl.focus(); } catch (e) {}
+    STATE.modalTriggerEl = null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -699,13 +723,39 @@ function renderApp() {
     ${STATE.activeModal ? renderModalContainer() : ''}
   `;
 
-  // Attach search shortcut listener if not attached
+  // Attach keyboard shortcuts listener if not attached
   if (!window._shortcutListenerAttached) {
     window.addEventListener('keydown', (e) => {
+      // Global Search: Cmd+K / Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         const searchInput = document.getElementById('topbar-search-input');
         if (searchInput) searchInput.focus();
+        return;
+      }
+
+      // Modal Shortcuts: Esc to close (with draft check), Cmd/Ctrl+Enter to submit
+      if (STATE.activeModal) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeModalWithDraftCheck();
+          return;
+        }
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          const activeForm = document.querySelector('.modal-shell form');
+          if (activeForm) {
+            e.preventDefault();
+            const submitBtn = activeForm.querySelector('button[type="submit"]:not(:disabled)');
+            if (submitBtn) {
+              if (typeof activeForm.requestSubmit === 'function') {
+                activeForm.requestSubmit(submitBtn);
+              } else {
+                submitBtn.click();
+              }
+            }
+          }
+          return;
+        }
       }
     });
     window._shortcutListenerAttached = true;
@@ -1491,10 +1541,6 @@ function renderProviderDetailView() {
             </div>
             <p class="text-[14px] text-[var(--text-2)]">${escapeHtml(provider.title || '')}</p>
             <div class="flex items-center gap-4 text-[12.5px] text-[var(--text-3)] pt-1">
-              <span class="flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
-                <span class="capitalize text-[var(--text-2)]">${escapeHtml(provider.availability || 'Available')}</span>
-              </span>
               ${provider.wallet_address ? `<span>Wallet: <code class="font-mono text-[11.5px] text-[var(--text-2)]">${provider.wallet_address}</code></span>` : ''}
             </div>
           </div>
@@ -2762,11 +2808,7 @@ function renderCleanProviderCard(p) {
         </div>
       </div>
 
-      <div class="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-between">
-        <div class="flex items-center gap-1.5 text-[12px] text-[var(--success)] font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-[var(--success)]"></span>
-          Available
-        </div>
+      <div class="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-end">
         ${isMe ? `
           <button
             onclick="navigateTo('provider_workspace')"
@@ -2851,15 +2893,8 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
         </div>
       </div>
 
-      <!-- Footer: Left has verified trust badge; Right has max one button -->
-      <div class="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-between gap-2">
-        <div class="flex items-center gap-1.5 text-[12px] text-[var(--success)] font-medium select-none">
-          <svg class="w-3.5 h-3.5 text-[var(--success)]" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-          </svg>
-          <span>Verified</span>
-        </div>
-
+      <!-- Footer: Action button aligned to right -->
+      <div class="mt-5 pt-4 border-t border-[var(--border)] flex items-center justify-end gap-2">
         <div>
           ${ownsService ? `
             <div class="flex items-center gap-2">
@@ -2873,7 +2908,7 @@ function renderCleanServiceCard(s, showProvider = true, isOwner = false) {
               onclick="openModal('request_review', { serviceId: '${s.id}', providerId: '${s.provider_id}' })"
               class="btn-primary !h-8 text-[12.5px]"
             >
-              ${isAutomated ? 'Run 0G defense' : 'Request service'}
+              ${isAutomated ? 'Run analysis' : 'Request audit'}
             </button>
           `}
         </div>
