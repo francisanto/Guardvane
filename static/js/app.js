@@ -119,6 +119,11 @@ const STATE = {
   },
   activeModal: null,
   modalPayload: null,
+  modalTriggerEl: null,
+  orderDetailConfirmRelease: false,
+  orderDetailReleaseLoading: false,
+  orderDetailReleaseError: '',
+  orderRequestExpanded: false,
   loading: false
 };
 
@@ -148,13 +153,16 @@ async function apiFetch(endpoint, options = {}) {
         renderApp();
       }
       const errData = await res.json().catch(() => ({ detail: res.statusText }));
-      let errMsg = errData.detail || `API error (${res.status})`;
+      let errMsg = errData.detail || errData.message || `API error (${res.status})`;
       if (Array.isArray(errMsg)) {
         errMsg = errMsg.map(e => e.msg || e.detail || JSON.stringify(e)).join(', ');
       } else if (typeof errMsg === 'object') {
         errMsg = JSON.stringify(errMsg);
       }
-      throw new Error(errMsg);
+      const err = new Error(errMsg);
+      err.status = res.status;
+      err.detail = errMsg;
+      throw err;
     }
     return await res.json();
   } catch (err) {
@@ -531,6 +539,10 @@ function openModal(modalType, payload = null, triggerEl = null) {
 function closeModal() {
   STATE.activeModal = null;
   STATE.modalPayload = null;
+  STATE.orderDetailConfirmRelease = false;
+  STATE.orderDetailReleaseLoading = false;
+  STATE.orderDetailReleaseError = '';
+  STATE.orderRequestExpanded = false;
   if (typeof document !== 'undefined') {
     document.body.style.overflow = '';
   }
@@ -566,6 +578,134 @@ function renderPageHeader(title, description, actionsHtml = '') {
       ` : ''}
     </div>
   `;
+}
+
+function renderCopyChip({ text, displayText, title, isAddress = false, isExternal = false, externalUrl = '', isShortId = false }) {
+  if (!text) return '';
+  const display = displayText || (isAddress
+    ? (text.length > 12 ? text.slice(0, 6) + '…' + text.slice(-4) : text)
+    : text);
+  const tooltip = title || (isShortId ? `Order ID: ${text} (click to copy)` : `Click to copy: ${text}`);
+
+  return `
+    <span class="inline-flex items-center gap-1.5 font-mono text-[12px] text-[var(--text-2)] align-baseline">
+      <button
+        type="button"
+        onclick="event.stopPropagation(); copyTextToClipboard('${escapeForAttr(text)}', this, 'Copied ${isShortId ? 'ID' : 'address'}');"
+        title="${escapeForAttr(tooltip)}"
+        aria-label="Copy ${escapeForAttr(text)}"
+        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--surface-sunk)] hover:bg-[var(--border)] text-[var(--text-3)] hover:text-[var(--text)] transition-colors cursor-pointer border-none font-mono text-[12px] font-normal"
+      >
+        <span>${escapeHtml(display)}</span>
+        <svg class="w-3 h-3 text-[var(--text-3)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      </button>
+      ${isExternal && externalUrl ? `
+        <a
+          href="${escapeForAttr(externalUrl)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="View on explorer"
+          class="text-[var(--text-2)] hover:text-[var(--text)] underline inline-flex items-center gap-0.5 text-[12px]"
+        >
+          <span>View ↗</span>
+        </a>
+      ` : ''}
+    </span>
+  `;
+}
+
+function renderStepper(steps) {
+  return `
+    <div class="space-y-0 select-none">
+      ${steps.map((step, index) => {
+        const isLast = index === steps.length - 1;
+        let circleHtml = '';
+        if (step.state === 'done') {
+          circleHtml = `
+            <div class="w-5 h-5 rounded-full bg-[var(--success)] text-white flex items-center justify-center shrink-0">
+              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          `;
+        } else if (step.state === 'current') {
+          circleHtml = `
+            <div class="w-5 h-5 rounded-full border-2 border-[var(--accent)] bg-[var(--surface-raised)] flex items-center justify-center shrink-0">
+              <div class="w-1.5 h-1.5 rounded-full bg-[var(--accent)]"></div>
+            </div>
+          `;
+        } else {
+          circleHtml = `
+            <div class="w-5 h-5 rounded-full border border-[var(--border-strong)] bg-[var(--surface-sunk)] shrink-0"></div>
+          `;
+        }
+
+        return `
+          <div class="flex items-start gap-3">
+            <div class="flex flex-col items-center">
+              ${circleHtml}
+              ${!isLast ? `
+                <div class="w-[1px] h-7 ${step.state === 'done' ? 'bg-[var(--success)]' : 'bg-[var(--border)]'} my-1"></div>
+              ` : ''}
+            </div>
+            <div class="flex-1 min-w-0 pb-3">
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="text-[14px] font-semibold text-[var(--text)] leading-tight">${escapeHtml(step.title)}</span>
+                ${step.date ? `<span class="text-[12px] text-[var(--text-3)] tabular-nums shrink-0 font-normal">${escapeHtml(step.date)}</span>` : ''}
+              </div>
+              <div class="text-[13px] text-[var(--text-2)] mt-0.5 leading-normal">
+                <span>${escapeHtml(step.detail)}</span>
+                ${step.linkHtml ? `<span class="ml-2">${step.linkHtml}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderDefinitionList(items) {
+  return `
+    <dl class="space-y-2.5">
+      ${items.map(item => `
+        <div class="flex items-baseline justify-between gap-4 text-[13px]">
+          <dt class="text-[13px] text-[var(--text-3)] shrink-0 font-normal">${escapeHtml(item.label)}</dt>
+          <dd class="text-[14px] text-[var(--text)] text-right font-normal">${item.valueHtml}</dd>
+        </div>
+      `).join('')}
+    </dl>
+  `;
+}
+
+function getOrderUnifiedStatus(order) {
+  if (order.status === 'rejected') {
+    return { label: 'Declined', pillClass: 'pill-danger' };
+  }
+  if (order.status === 'cancelled') {
+    return { label: 'Cancelled', pillClass: 'pill-danger' };
+  }
+  if (order.payment_status === 'failed') {
+    return { label: 'Failed', pillClass: 'pill-danger' };
+  }
+  if (order.escrow_state === 'released' || order.status === 'completed') {
+    return { label: 'Completed', pillClass: 'pill-success' };
+  }
+  if (order.status === 'delivered') {
+    return { label: 'Awaiting release', pillClass: 'pill-warning' };
+  }
+  if (order.status === 'in_progress' || order.status === 'accepted') {
+    return { label: 'In progress', pillClass: 'pill-info' };
+  }
+  if (order.payment_status === 'pending' || order.escrow_state === 'pending') {
+    return { label: 'Pending payment', pillClass: 'pill-neutral' };
+  }
+  if (order.status === 'requested') {
+    return { label: 'Requested', pillClass: 'pill-neutral' };
+  }
+  return { label: toSentenceCase(order.status || 'Active'), pillClass: 'pill-neutral' };
 }
 
 function renderIdChip(id) {
@@ -738,6 +878,10 @@ function renderApp() {
       if (STATE.activeModal) {
         if (e.key === 'Escape') {
           e.preventDefault();
+          if (STATE.activeModal === 'order_detail' && STATE.orderDetailConfirmRelease) {
+            cancelReleasePaymentConfirm();
+            return;
+          }
           closeModalWithDraftCheck();
           return;
         }
@@ -2945,21 +3089,177 @@ function renderActivityFeed(activities) {
 }
 
 // ---------------------------------------------------------------------------
-// Modals Container & Dialogs
+// Shared Modal Architecture (Anthropic / Claude Design System)
 // ---------------------------------------------------------------------------
 
-function renderModalContainer() {
-  let maxWidthClass = 'max-w-xl';
-  if (['report_viewer', 'arkiv_verify_modal', 'arkiv_inspector_modal'].includes(STATE.activeModal)) {
-    maxWidthClass = 'max-w-3xl';
-  } else if (['order_detail', 'request_review', 'add_service_modal', 'edit_service_modal'].includes(STATE.activeModal)) {
-    maxWidthClass = 'max-w-2xl';
-  }
+function toSentenceCase(str) {
+  if (!str) return '';
+  const s = str.trim();
+  let res = s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  res = res.replace(/\b0g\b/gi, '0G').replace(/\bai\b/gi, 'AI').replace(/\bapi\b/gi, 'API');
+  return res;
+}
+
+function renderModalShell({ id = 'app-modal', title, subtitle = '', size = 'default', onClose = 'closeModalWithDraftCheck()', bodyHtml = '', footerHtml = '', formOnSubmit = '', ariaLabelledBy = '', ariaDescribedBy = '', statusPillHtml = '', titleExtra = '' }) {
+  const sizeClass = size === 'md' ? 'modal-shell-md' : size === 'wide' ? 'modal-shell-wide' : size === 'xl' ? 'modal-shell-xl' : '';
+  const labelledBy = ariaLabelledBy || `${id}-title`;
+  const describedBy = ariaDescribedBy || (subtitle ? `${id}-subtitle` : '');
+  const formTagOpen = formOnSubmit ? `<form id="${id}-form" onsubmit="${formOnSubmit}" class="flex flex-col flex-1 min-h-0 overflow-hidden m-0 p-0">` : `<div class="flex flex-col flex-1 min-h-0 overflow-hidden">`;
+  const formTagClose = formOnSubmit ? `</form>` : `</div>`;
+
   return `
-    <div class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-      <div class="bg-[var(--surface)] text-[var(--text)] rounded-[var(--radius-md)] border border-[var(--border)] shadow-xl ${maxWidthClass} w-full max-h-[90vh] overflow-y-auto font-sans">
-        ${renderModalContent()}
+    <div
+      class="modal-shell ${sizeClass}"
+      id="${id}-shell"
+      onclick="event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="${labelledBy}"
+      ${describedBy ? `aria-describedby="${describedBy}"` : ''}
+    >
+      ${renderModalHeader({ id, title, subtitle, onClose, statusPillHtml, titleExtra })}
+      ${formTagOpen}
+        ${bodyHtml}
+        ${footerHtml}
+      ${formTagClose}
+    </div>
+  `;
+}
+
+function renderModalHeader({ id = 'modal', title, subtitle = '', onClose = 'closeModalWithDraftCheck()', statusPillHtml = '', titleExtra = '' }) {
+  return `
+    <div class="modal-header flex items-start justify-between gap-3 border-b border-[var(--border)]">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <h2 id="${id}-title" class="font-serif text-[22px] font-normal text-[var(--text)] tracking-[-0.01em] leading-snug">
+            ${escapeHtml(title)}
+          </h2>
+          ${titleExtra || ''}
+        </div>
+        ${subtitle ? `
+          <p id="${id}-subtitle" class="text-[14px] text-[var(--text-2)] mt-1 leading-normal">
+            ${subtitle}
+          </p>
+        ` : ''}
       </div>
+      <div class="flex items-center gap-2.5 shrink-0 -mr-1">
+        ${statusPillHtml || ''}
+        <button
+          type="button"
+          onclick="${onClose}"
+          aria-label="Close"
+          class="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center text-[var(--text-3)] hover:text-[var(--text)] hover:bg-[var(--surface-sunk)] transition-colors cursor-pointer shrink-0 border-none bg-transparent"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderModalBody(contentHtml, customClass = '') {
+  return `
+    <div class="modal-body space-y-5 ${customClass}">
+      ${contentHtml}
+    </div>
+  `;
+}
+
+function renderModalFooter(leftHtml = '', rightHtml = '') {
+  return `
+    <div class="modal-footer">
+      <div class="text-[14px] text-[var(--text-2)] tabular-nums font-normal shrink-0">
+        ${leftHtml}
+      </div>
+      <div class="flex items-center gap-2.5 ml-auto">
+        ${rightHtml}
+      </div>
+    </div>
+  `;
+}
+
+function closeModalWithDraftCheck() {
+  const promptInput = document.getElementById('order-prompt-input');
+  if (promptInput && promptInput.value.trim().length > 0) {
+    if (confirm('Discard this draft?')) {
+      closeModal();
+    }
+    return;
+  }
+  closeModal();
+}
+
+function handleModalOverlayClick(event) {
+  if (event.target && event.target.classList.contains('modal-overlay')) {
+    closeModalWithDraftCheck();
+  }
+}
+
+function handlePromptInput(textarea) {
+  const submitBtn = document.getElementById('order-submit-btn');
+  const countEl = document.getElementById('prompt-char-count');
+  const val = textarea.value.trim();
+  if (submitBtn) {
+    submitBtn.disabled = val.length === 0;
+  }
+  if (countEl) {
+    countEl.textContent = val.length > 0 ? `${val.length} chars` : '';
+  }
+  textarea.style.height = 'auto';
+  textarea.style.height = Math.min(Math.max(textarea.scrollHeight, 160), 280) + 'px';
+}
+
+function handleFileDrop(e, textarea) {
+  e.preventDefault();
+  textarea.classList.remove('border-[var(--accent)]');
+  const files = e.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+  const file = files[0];
+  const validExtensions = ['.txt', '.md', '.json', '.yaml', '.yml', '.sol', '.py', '.js', '.ts'];
+  const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+  if (!validExtensions.includes(ext) && !file.type.startsWith('text/')) {
+    showNotification('Please drop a text, markdown, or JSON file.', 'warning');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const content = event.target.result;
+    textarea.value = (textarea.value ? textarea.value + '\n\n' : '') + `// File: ${file.name}\n` + content;
+    showNotification(`Appended contents of ${file.name}`, 'info');
+  };
+  reader.readAsText(file);
+}
+
+function insertSavedPrompt(content) {
+  if (!content) return;
+  const input = document.getElementById('order-prompt-input');
+  if (input) {
+    input.value = content;
+    handlePromptInput(input);
+  }
+}
+
+function retryOrderSubmit() {
+  const form = document.querySelector('.modal-shell form');
+  if (form) {
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.click();
+  }
+}
+
+function renderModalContainer() {
+  if (!STATE.activeModal) return '';
+  return `
+    <div
+      class="modal-overlay"
+      id="app-modal-overlay"
+      onclick="handleModalOverlayClick(event)"
+      role="dialog"
+      aria-modal="true"
+    >
+      ${renderModalContent()}
     </div>
   `;
 }
@@ -3013,266 +3313,226 @@ function renderModalContent() {
 
 function renderRequestReviewModal() {
   const payload = STATE.modalPayload || {};
-  const services = STATE.data.services;
+  const services = STATE.data.services || [];
   const currentService = services.find(s => s.id === payload.serviceId) || services[0];
   const isAutomated = currentService?.execution_type === 'automated';
   const category = currentService?.category || '';
-  const prompts = STATE.data.prompts;
-  const isApplicationTesting = !isAutomated && category === 'application_testing';
+  const prompts = STATE.data.prompts || [];
+
+  const isApplicationTesting = !isAutomated && category === 'application_security_testing';
   const isCodebaseSecurity = !isAutomated && category === 'codebase_security';
 
-  const isPromptEngineering = isAutomated && (
-    category === 'prompt_engineering' ||
-    category === 'loop_engineering' ||
-    category === 'prompt_optimization' ||
-    (currentService?.title || '').toLowerCase().includes('engineering') ||
-    (currentService?.title || '').toLowerCase().includes('loop') ||
-    (currentService?.title || '').toLowerCase().includes('optimization')
-  );
-  const isPromptSecurity = isAutomated && !isPromptEngineering;
+  const modalTitle = toSentenceCase(currentService?.title || 'Security analysis');
+  const providerName = escapeHtml(currentService?.provider_name || (isAutomated ? '0G Defence Agent' : 'Specialist'));
+  const modalSubtitle = `By ${providerName} · ${isAutomated ? 'Free · Instant' : `$${(currentService?.price || 0).toFixed(2)} · ${escapeHtml(currentService?.estimated_delivery || '24 hours')}`}`;
 
-  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const hasInitialContent = !!payload.promptText;
+  const actionLabel = isAutomated ? 'Run analysis' : 'Request audit';
 
-  return `
-    <div class="p-6 sm:p-7 space-y-5">
-      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
-        <div>
-          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">
-            ${isPromptEngineering ? 'Autonomous Prompt Engineering & Loop Defense' : isPromptSecurity ? 'Autonomous Prompt Security Vulnerability Scan' : 'Request Specialist Security Review'}
-          </h3>
-          <p class="text-[13px] text-[var(--text-3)] mt-0.5">
-            ${isPromptEngineering ? 'Fast Prompt Delivery • Loop Bounds Hardening • 0G Defence Agent' : isPromptSecurity ? 'Vulnerability Analysis & Architecture Audit • Prompt Guard Agent' : `${formatCategoryName(category)} • ${escapeHtml(currentService?.provider_name || '')}`}
-          </p>
+  const bodyHtml = renderModalBody(`
+    <input type="hidden" name="service_id" value="${currentService?.id || ''}" />
+
+    ${isApplicationTesting ? `
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label for="order-target-link" class="text-[14px] font-medium text-[var(--text)]">Product link or staging URL</label>
+          <span class="text-[13px] text-[var(--text-3)] font-normal">Required</span>
         </div>
-        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
+        <p class="text-[13px] text-[var(--text-3)] mb-2">Target environment for injection, authentication, and boundary testing.</p>
+        <input
+          id="order-target-link"
+          type="url"
+          name="product_link"
+          required
+          placeholder="https://staging.example.com"
+          class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[10px] text-[13px] font-mono focus:outline-none transition-colors"
+        />
       </div>
 
-      <form onsubmit="handleOrderSubmit(event)" class="space-y-4">
-        <!-- Selected Service Offering Summary -->
-        <input type="hidden" name="service_id" value="${currentService?.id || ''}" />
-        <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] flex items-center justify-between">
-          <div class="space-y-0.5">
-            <div class="text-[14px] font-medium text-[var(--text)]">${escapeHtml(currentService?.title || 'Security Service')}</div>
-            <div class="text-[12.5px] text-[var(--text-2)]">${escapeHtml(currentService?.provider_name || '')} • ${formatCategoryName(category)} • Est. ${escapeHtml(currentService?.estimated_delivery || '24-48h')}</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-[13.5px] font-medium text-[var(--text)]">Documentation link</label>
+            <span class="text-[12.5px] text-[var(--text-3)]">Optional</span>
           </div>
-          <div class="text-right">
-            ${isAutomated ? `
-              <div class="text-[13.5px] font-mono text-[var(--text)]">0G Private Computer</div>
-              <span class="pill pill-info mt-1">Autonomous AI</span>
-            ` : `
-              <div class="text-[14px] font-mono font-medium text-[var(--text)]">$${(currentService?.price || 0).toFixed(2)} USD</div>
-              <span class="pill pill-neutral mt-1">Specialist Review</span>
-            `}
-          </div>
+          <input
+            type="url"
+            name="docs_link"
+            placeholder="https://docs.example.com"
+            class="w-full px-3 py-2 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[10px] text-[12.5px] font-mono focus:outline-none transition-colors"
+          />
         </div>
-
-        <!-- Dynamic Category-Specific Form Fields -->
-        ${isApplicationTesting ? `
-          <!-- Application Testing Specific Inputs -->
-          <div class="space-y-3.5 p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)]">
-            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Application Target Details</div>
-            
-            <div>
-              <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Product Link / Staging URL *</label>
-              <input
-                type="url"
-                name="product_link"
-                required
-                placeholder="https://staging.example.com"
-                class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
-              />
-              <p class="text-[11.5px] text-[var(--text-3)] mt-1">Specialist will test this target environment directly for injection, authentication, and SSRF flaws.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Documentation / API Spec Link</label>
-                <input
-                  type="url"
-                  name="docs_link"
-                  placeholder="https://docs.example.com"
-                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] font-mono focus:outline-none transition-colors"
-                />
-              </div>
-              <div>
-                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Staging Credentials & Scope Notes</label>
-                <input
-                  type="text"
-                  name="test_env_notes"
-                  placeholder="Test account credentials or branch notes"
-                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-[13.5px] font-medium text-[var(--text)]">Scope & credentials</label>
+            <span class="text-[12.5px] text-[var(--text-3)]">Optional</span>
           </div>
-
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Testing Scope & Attack Vectors to Probe *</label>
-            <textarea
-              name="prompt_content"
-              rows="4"
-              required
-              placeholder="Describe attack surfaces, user permissions, and boundaries..."
-              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"
-            >${payload.promptText || ''}</textarea>
-          </div>
-        ` : (isCodebaseSecurity ? `
-          <!-- Codebase Security Specific Inputs -->
-          <div class="space-y-3.5 p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)]">
-            <div class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Repository & Architecture Scope</div>
-
-            <div>
-              <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Codebase / Repository URL *</label>
-              <input
-                type="url"
-                name="docs_link"
-                required
-                placeholder="https://github.com/org/repo"
-                class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
-              />
-              <p class="text-[11.5px] text-[var(--text-3)] mt-1">Specialist will evaluate repository structure, credential leakage risks, and security boundaries.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Live Application / Staging Link (Optional)</label>
-                <input
-                  type="url"
-                  name="product_link"
-                  placeholder="https://example.com"
-                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] font-mono focus:outline-none transition-colors"
-                />
-              </div>
-              <div>
-                <label class="block text-[12.5px] font-medium text-[var(--text)] mb-1">Branch / Sensitive Modules Notes</label>
-                <input
-                  type="text"
-                  name="test_env_notes"
-                  placeholder="Branch name or specific folders"
-                  class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] focus:outline-none transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Codebase Security Audit Scope & Focus *</label>
-            <textarea
-              name="prompt_content"
-              rows="4"
-              required
-              placeholder="Specify areas requiring in-depth code review..."
-              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"
-            >${payload.promptText || ''}</textarea>
-          </div>
-        ` : (isPromptSecurity ? `
-          <!-- Prompt Security Analysis Inputs -->
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="text-[13px] font-medium text-[var(--text)]">System Prompt or Security Context Under Review *</label>
-              ${prompts.length > 0 ? `
-                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] bg-[var(--surface)] text-[var(--text-2)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-1 focus:border-[var(--accent)] focus:outline-none">
-                  <option value="">Insert from saved prompts...</option>
-                  ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
-                </select>
-              ` : ''}
-            </div>
-            <textarea
-              id="order-prompt-input"
-              name="prompt_content"
-              rows="5"
-              required
-              placeholder="Enter system prompt, untrusted input template, or security boundary instructions to audit for injection, jailbreaks, and sensitive data..."
-              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
-            >${payload.promptText || ''}</textarea>
-          </div>
-
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Relevant Files, Architecture Designs, or Schemas (Optional)</label>
-            <textarea
-              name="requirements"
-              rows="3"
-              placeholder="Paste backend route code, OpenAPI/Swagger schemas, database access designs, or architecture notes to audit for cross-boundary vulnerabilities."
-              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[12.5px] font-mono focus:outline-none transition-colors"
-            ></textarea>
-            <p class="text-[11.5px] text-[var(--text-3)] mt-1">Share relevant files, architecture designs, or endpoint code for a comprehensive security and file audit.</p>
-          </div>
-        ` : `
-          <!-- Prompt / Loop Engineering Inputs -->
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="text-[13px] font-medium text-[var(--text)]">Prompt or Agent Instructions Under Review *</label>
-              ${prompts.length > 0 ? `
-                <select onchange="populatePromptFromSelect(this.value)" class="text-[12px] bg-[var(--surface)] text-[var(--text-2)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-1 focus:border-[var(--accent)] focus:outline-none">
-                  <option value="">Insert from saved prompts...</option>
-                  ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
-                </select>
-              ` : ''}
-            </div>
-            <textarea
-              id="order-prompt-input"
-              name="prompt_content"
-              rows="5"
-              required
-              oninput="updateDynamicPromptPricing()"
-              placeholder="Enter system prompt, agent task instructions, or multi-turn workflow you want hardened with bounded loop architecture..."
-              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] font-mono focus:outline-none transition-colors"
-            >${payload.promptText || ''}</textarea>
-          </div>
-
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Agent Loop Parameters & Constraints (Optional)</label>
-            <textarea
-              name="requirements"
-              rows="2"
-              placeholder="e.g. Target LLM (Claude 3.5, GPT-4o, Llama 3), Max Loop Iterations (default: 5), Tool Calling schemas, or downstream workflow goals."
-              class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[var(--radius-sm)] text-[13px] focus:outline-none transition-colors"
-            ></textarea>
-            <p class="text-[11.5px] text-[var(--text-3)] mt-1">0G AI will enforce MAX_ITERATIONS (5), recursion controls, and generate 3 chained next-prompt recommendations.</p>
-          </div>
-        `))}
-
-        <!-- Payment & Authority Architecture Section -->
-        <div class="p-4 bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] text-[12.5px] text-[var(--text-2)] space-y-1.5">
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">${isAutomated ? 'Execution Engine' : 'Payment & Escrow Protection'}</span>
-            <span class="pill ${isAutomated ? 'pill-info' : 'pill-success'}">${isAutomated ? '0G Direct • Free' : 'Smart Escrow Protection'}</span>
-          </div>
-          <p class="pt-0.5 leading-relaxed text-[var(--text-2)]">
-            ${isAutomated
-              ? 'Direct execution on 0G Private Computer. Neural prompt optimization, adversarial injection analysis, and boundary hardening run with zero gas, zero wallet signing, and instant verified security reports.'
-              : `Audit fee of $${(currentService?.price || 0).toFixed(2)} USD is held safely in smart escrow and disbursed directly to the specialist upon verified delivery of your audit report.`}
-          </p>
+          <input
+            type="text"
+            name="test_env_notes"
+            placeholder="Test accounts, branch notes"
+            class="w-full px-3 py-2 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[10px] text-[12.5px] focus:outline-none transition-colors"
+          />
         </div>
-
-        <!-- Live AI Execution Progress Status Container (Initially Hidden) -->
-        <div id="order-progress-container" class="hidden p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-2.5 transition-colors">
-          <div class="flex items-center justify-between text-[12.5px] font-medium text-[var(--text)]">
-            <span class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping"></span>
-              <span>0G Private Computer reasoning in progress</span>
-            </span>
-            <span class="font-mono text-[11px] text-[var(--text-3)]">Verified Trust Mode</span>
-          </div>
-          <div class="space-y-1 text-[12px] text-[var(--text-2)]">
-            <div class="flex items-center gap-2"><span class="text-[var(--text-3)] font-mono">1.</span><span>Input boundary delimiter & vulnerability scan</span></div>
-            <div class="flex items-center gap-2"><span class="text-[var(--accent)] font-mono">●</span><span>Executing confidential reasoning on 0G Private Computer</span></div>
-            <div class="flex items-center gap-2"><span class="text-[var(--text-3)] font-mono">3.</span><span>${isPromptEngineering ? 'Synthesizing loop bounds (MAX_ITERATIONS: 5) & next prompts' : 'Auditing architecture designs, files & threat surfaces'}</span></div>
-            <div class="flex items-center gap-2"><span class="text-[var(--text-3)] font-mono">4.</span><span>Publishing verified security report deliverable</span></div>
-          </div>
+      </div>
+    ` : isCodebaseSecurity ? `
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label for="order-repo-link" class="text-[14px] font-medium text-[var(--text)]">Codebase or repository URL</label>
+          <span class="text-[13px] text-[var(--text-3)] font-normal">Required</span>
         </div>
+        <p class="text-[13px] text-[var(--text-3)] mb-2">Repository structure, credential leakage risks, and security boundaries.</p>
+        <input
+          id="order-repo-link"
+          type="url"
+          name="docs_link"
+          required
+          placeholder="https://github.com/org/repo"
+          class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[10px] text-[13px] font-mono focus:outline-none transition-colors"
+        />
+      </div>
 
-        <div class="pt-4 border-t border-[var(--border)] flex items-center justify-end gap-3">
-          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">
-            Cancel
-          </button>
-          <button type="submit" id="order-submit-btn" class="btn-primary text-[13px]">
-            ${isPromptEngineering ? 'Run Prompt Engineering' : isPromptSecurity ? 'Run Security Vulnerability Audit' : 'Submit Security Request'}
-          </button>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-[13.5px] font-medium text-[var(--text)]">Staging link</label>
+            <span class="text-[12.5px] text-[var(--text-3)]">Optional</span>
+          </div>
+          <input
+            type="url"
+            name="product_link"
+            placeholder="https://example.com"
+            class="w-full px-3 py-2 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[10px] text-[12.5px] font-mono focus:outline-none transition-colors"
+          />
         </div>
-      </form>
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-[13.5px] font-medium text-[var(--text)]">Branch notes</label>
+            <span class="text-[12.5px] text-[var(--text-3)]">Optional</span>
+          </div>
+          <input
+            type="text"
+            name="test_env_notes"
+            placeholder="Branch or specific folders"
+            class="w-full px-3 py-2 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] text-[var(--text)] rounded-[10px] text-[12.5px] focus:outline-none transition-colors"
+          />
+        </div>
+      </div>
+    ` : ''}
+
+    <!-- Field 1: System prompt or security context -->
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label for="order-prompt-input" class="text-[14px] font-medium text-[var(--text)]">System prompt or security context</label>
+        <span class="text-[13px] text-[var(--text-3)] font-normal">Required</span>
+      </div>
+      <p class="text-[13px] text-[var(--text-3)] mb-2">Paste the prompt, input template or boundary instructions you want audited.</p>
+      <div class="relative">
+        <textarea
+          id="order-prompt-input"
+          name="prompt_content"
+          required
+          rows="6"
+          class="modal-textarea min-h-[160px] max-h-[280px]"
+          placeholder="Paste your system prompt here"
+          oninput="handlePromptInput(this)"
+        >${escapeHtml(payload.promptText || '')}</textarea>
+        <div id="prompt-char-count" class="text-[12px] text-[var(--text-3)] text-right mt-1 font-mono tabular-nums">
+          ${hasInitialContent ? `${payload.promptText.length} chars` : ''}
+        </div>
+      </div>
+
+      ${prompts.length > 0 ? `
+        <div class="flex items-center justify-end mt-1.5">
+          <select onchange="insertSavedPrompt(this.value)" class="text-[12px] bg-transparent text-[var(--text-3)] hover:text-[var(--text)] border-none cursor-pointer focus:outline-none">
+            <option value="">Insert from saved prompts...</option>
+            ${prompts.map(p => `<option value="${escapeForAttr(p.content)}">${escapeHtml(p.title)}</option>`).join('')}
+          </select>
+        </div>
+      ` : ''}
     </div>
+
+    <!-- Field 2: Files, architecture or schemas -->
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label for="order-files-input" class="text-[14px] font-medium text-[var(--text)]">Files, architecture or schemas</label>
+        <span class="text-[13px] text-[var(--text-3)] font-normal">Optional</span>
+      </div>
+      <p class="text-[13px] text-[var(--text-3)] mb-2">Route code, OpenAPI schemas or architecture notes help find cross-boundary issues.</p>
+      <div class="relative">
+        <textarea
+          id="order-files-input"
+          name="requirements"
+          rows="4"
+          class="modal-textarea min-h-[112px] max-h-[220px]"
+          placeholder="Paste route code, OpenAPI schema, or architecture notes"
+          ondragover="event.preventDefault(); this.classList.add('border-[var(--accent)]');"
+          ondragleave="this.classList.remove('border-[var(--accent)]');"
+          ondrop="handleFileDrop(event, this)"
+        ></textarea>
+        <div class="text-[11.5px] text-[var(--text-3)] mt-1 flex items-center justify-between">
+          <span>Drop a .txt, .md, or .json file directly into the box</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it runs (replaces execution engine box) -->
+    <details class="group mt-2">
+      <summary class="flex items-center gap-1.5 text-[14px] text-[var(--text-2)] hover:text-[var(--text)] font-medium cursor-pointer select-none list-none">
+        <svg class="w-4 h-4 text-[var(--text-3)] transition-transform group-open:rotate-90 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        <span>How this runs</span>
+      </summary>
+      <p class="text-[14px] text-[var(--text-2)] leading-relaxed mt-2 pl-5.5">
+        ${isAutomated
+          ? 'Runs privately on 0G Private Computer with no gas fees and no wallet signing. The report appears in Security reports when it\'s done.'
+          : 'Runs safely through smart escrow on Rabdi Testnet. Funds are held in escrow and disbursed to the specialist only after you review the delivered report.'}
+      </p>
+    </details>
+
+    <!-- Error Banner (Hidden by default) -->
+    <div id="order-error-container" class="hidden p-3.5 rounded-[var(--radius-sm)] bg-[var(--danger-bg)] text-[var(--danger)] text-[13.5px] flex items-center justify-between">
+      <span id="order-error-message"></span>
+      <button type="button" onclick="retryOrderSubmit()" class="font-medium underline hover:opacity-80 ml-2 shrink-0 bg-transparent border-none cursor-pointer text-[var(--danger)]">Try again</button>
+    </div>
+
+    <!-- Live Running Spinner (Hidden by default) -->
+    <div id="order-progress-container" class="hidden p-3.5 rounded-[var(--radius-sm)] bg-[var(--surface-sunk)] border border-[var(--border)] flex items-center gap-3 text-[13.5px] text-[var(--text)]">
+      <svg class="animate-spin h-4 w-4 text-[var(--accent)] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      <span>Executing confidential reasoning on 0G Private Computer…</span>
+    </div>
+  `);
+
+  const footerLeft = isAutomated
+    ? 'Free · Instant'
+    : `$${(currentService?.price || 0).toFixed(2)} · Held in escrow`;
+
+  const footerRight = `
+    <button type="button" onclick="closeModalWithDraftCheck()" class="btn-ghost">
+      Cancel
+    </button>
+    <button
+      type="submit"
+      id="order-submit-btn"
+      class="btn-primary"
+      ${hasInitialContent ? '' : 'disabled'}
+    >
+      ${actionLabel}
+    </button>
   `;
+
+  return renderModalShell({
+    id: 'request-review-modal',
+    title: modalTitle,
+    subtitle: modalSubtitle,
+    formOnSubmit: 'handleOrderSubmit(event)',
+    bodyHtml,
+    footerHtml: renderModalFooter(footerLeft, footerRight)
+  });
 }
 
 function renderDeliverModal() {
@@ -3430,18 +3690,22 @@ function renderQuickAnalyzeModal() {
   `;
 }
 
-function copyTextToClipboard(text, btnElement) {
+function copyTextToClipboard(text, btnElement, announcement = 'Copied to clipboard') {
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(() => {
-      if (btnElement) {
-        const orig = btnElement.innerText;
-        btnElement.innerText = 'Copied';
-        btnElement.classList.add('bg-[var(--surface-sunk)]');
-        setTimeout(() => {
-          btnElement.innerText = orig;
-          btnElement.classList.remove('bg-[var(--surface-sunk)]');
-        }, 2000);
+      const announcer = document.getElementById('a11y-announcer');
+      if (announcer) {
+        announcer.textContent = announcement;
       }
+      showNotification(announcement, 'success');
+      if (btnElement) {
+        btnElement.classList.add('text-[var(--success)]');
+        setTimeout(() => {
+          btnElement.classList.remove('text-[var(--success)]');
+        }, 1200);
+      }
+    }).catch(() => {
+      showNotification('Failed to copy', 'error');
     });
   }
 }
@@ -4086,57 +4350,70 @@ function renderCreatePromptModal() {
 
 function renderAddServiceModal() {
   const payload = STATE.modalPayload || {};
-  return `
-    <div class="p-6 sm:p-7 space-y-4">
-      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
-        <div>
-          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Publish New Security Service</h3>
-          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">List a specialized security service on OpiHub</p>
-        </div>
-        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
+  const bodyHtml = renderModalBody(`
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="text-[14px] font-medium text-[var(--text)]">Service title</label>
+        <span class="text-[13px] text-[var(--text-3)]">Required</span>
       </div>
-
-      <form onsubmit="handleAddServiceSubmit(event, '${payload.providerId}')" class="space-y-4">
-        <div>
-          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Service Title *</label>
-          <input type="text" name="title" required placeholder="e.g. Prompt Injection Vulnerability Audit" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
-        </div>
-
-        <div>
-          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Category *</label>
-          <select name="category" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
-            <option value="prompt_engineering">Prompt Engineering</option>
-            <option value="loop_engineering">Prompt Loop Engineering</option>
-            <option value="prompt_optimization">Prompt Optimization</option>
-            <option value="prompt_security_analysis">Prompt Security Analysis</option>
-            <option value="codebase_security">Codebase Security Audit</option>
-            <option value="application_security_testing">Application Security Testing</option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Price (USD) *</label>
-            <input type="number" step="0.01" min="0" name="price" value="50.00" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
-          </div>
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Estimated Delivery *</label>
-            <input type="text" name="estimated_delivery" value="24 hours" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Description *</label>
-          <textarea name="description" rows="3" required placeholder="Describe deliverables, methodology, and audit scope..." class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors"></textarea>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
-          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">Cancel</button>
-          <button type="submit" class="btn-primary text-[13px]">Publish Service</button>
-        </div>
-      </form>
+      <input type="text" name="title" required placeholder="e.g. Prompt injection vulnerability audit" class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
     </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="text-[14px] font-medium text-[var(--text)]">Category</label>
+        <span class="text-[13px] text-[var(--text-3)]">Required</span>
+      </div>
+      <select name="category" required class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
+        <option value="prompt_engineering">Prompt Engineering</option>
+        <option value="loop_engineering">Prompt Loop Engineering</option>
+        <option value="prompt_optimization">Prompt Optimization</option>
+        <option value="prompt_security_analysis">Prompt Security Analysis</option>
+        <option value="codebase_security">Codebase Security Audit</option>
+        <option value="application_security_testing">Application Security Testing</option>
+      </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-[14px] font-medium text-[var(--text)]">Price (USD)</label>
+          <span class="text-[13px] text-[var(--text-3)]">Required</span>
+        </div>
+        <input type="number" step="0.01" min="0" name="price" value="50.00" required class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] font-mono text-[var(--text)] focus:outline-none transition-colors" />
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-[14px] font-medium text-[var(--text)]">Estimated delivery</label>
+          <span class="text-[13px] text-[var(--text-3)]">Required</span>
+        </div>
+        <input type="text" name="estimated_delivery" value="24 hours" required class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
+      </div>
+    </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="text-[14px] font-medium text-[var(--text)]">Description</label>
+        <span class="text-[13px] text-[var(--text-3)]">Required</span>
+      </div>
+      <textarea name="description" rows="3" required placeholder="Describe deliverables, methodology, and audit scope..." class="modal-textarea min-h-[96px]"></textarea>
+    </div>
+  `);
+
+  const footerRight = `
+    <button type="button" onclick="closeModal()" class="btn-ghost">Cancel</button>
+    <button type="submit" class="btn-primary">Publish Service</button>
   `;
+
+  return renderModalShell({
+    id: 'add-service-modal',
+    title: 'Publish security service',
+    subtitle: 'List a specialized security service on OpiHub',
+    formOnSubmit: `handleAddServiceSubmit(event, '${payload.providerId || ''}')`,
+    size: 'default',
+    bodyHtml,
+    footerHtml: renderModalFooter('', footerRight)
+  });
 }
 
 function renderEditServiceModal() {
@@ -4144,57 +4421,70 @@ function renderEditServiceModal() {
   const service = STATE.data.services.find(s => s.id === payload.serviceId);
   if (!service) return '<div class="p-6">Service not found</div>';
 
-  return `
-    <div class="p-6 sm:p-7 space-y-4">
-      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
-        <div>
-          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Edit Service Offering</h3>
-          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">${escapeHtml(service.title)}</p>
-        </div>
-        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
+  const bodyHtml = renderModalBody(`
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="text-[14px] font-medium text-[var(--text)]">Service title</label>
+        <span class="text-[13px] text-[var(--text-3)]">Required</span>
       </div>
-
-      <form onsubmit="handleEditServiceSubmit(event, '${service.id}')" class="space-y-4">
-        <div>
-          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Service Title *</label>
-          <input type="text" name="title" required value="${escapeForAttr(service.title)}" class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
-        </div>
-
-        <div>
-          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Category *</label>
-          <select name="category" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
-            <option value="prompt_engineering" ${service.category === 'prompt_engineering' ? 'selected' : ''}>Prompt Engineering</option>
-            <option value="loop_engineering" ${service.category === 'loop_engineering' ? 'selected' : ''}>Prompt Loop Engineering</option>
-            <option value="prompt_optimization" ${service.category === 'prompt_optimization' ? 'selected' : ''}>Prompt Optimization</option>
-            <option value="prompt_security_analysis" ${service.category === 'prompt_security_analysis' ? 'selected' : ''}>Prompt Security Analysis</option>
-            <option value="codebase_security" ${service.category === 'codebase_security' ? 'selected' : ''}>Codebase Security Audit</option>
-            <option value="application_security_testing" ${service.category === 'application_security_testing' ? 'selected' : ''}>Application Security Testing</option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Price (USD) *</label>
-            <input type="number" step="0.01" min="0" name="price" value="${service.price.toFixed(2)}" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
-          </div>
-          <div>
-            <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Estimated Delivery *</label>
-            <input type="text" name="estimated_delivery" value="${escapeForAttr(service.estimated_delivery)}" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[13px] font-medium text-[var(--text)] mb-1">Description *</label>
-          <textarea name="description" rows="3" required class="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[var(--radius-sm)] text-[13px] text-[var(--text)] focus:outline-none transition-colors">${escapeHtml(service.description)}</textarea>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
-          <button type="button" onclick="closeModal()" class="btn-secondary text-[13px]">Cancel</button>
-          <button type="submit" class="btn-primary text-[13px]">Save Changes</button>
-        </div>
-      </form>
+      <input type="text" name="title" required value="${escapeForAttr(service.title)}" class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
     </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="text-[14px] font-medium text-[var(--text)]">Category</label>
+        <span class="text-[13px] text-[var(--text-3)]">Required</span>
+      </div>
+      <select name="category" required class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] text-[var(--text)] focus:outline-none transition-colors">
+        <option value="prompt_engineering" ${service.category === 'prompt_engineering' ? 'selected' : ''}>Prompt Engineering</option>
+        <option value="loop_engineering" ${service.category === 'loop_engineering' ? 'selected' : ''}>Prompt Loop Engineering</option>
+        <option value="prompt_optimization" ${service.category === 'prompt_optimization' ? 'selected' : ''}>Prompt Optimization</option>
+        <option value="prompt_security_analysis" ${service.category === 'prompt_security_analysis' ? 'selected' : ''}>Prompt Security Analysis</option>
+        <option value="codebase_security" ${service.category === 'codebase_security' ? 'selected' : ''}>Codebase Security Audit</option>
+        <option value="application_security_testing" ${service.category === 'application_security_testing' ? 'selected' : ''}>Application Security Testing</option>
+      </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-[14px] font-medium text-[var(--text)]">Price (USD)</label>
+          <span class="text-[13px] text-[var(--text-3)]">Required</span>
+        </div>
+        <input type="number" step="0.01" min="0" name="price" value="${service.price.toFixed(2)}" required class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] font-mono text-[var(--text)] focus:outline-none transition-colors" />
+      </div>
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-[14px] font-medium text-[var(--text)]">Estimated delivery</label>
+          <span class="text-[13px] text-[var(--text-3)]">Required</span>
+        </div>
+        <input type="text" name="estimated_delivery" value="${escapeForAttr(service.estimated_delivery)}" required class="w-full px-3.5 py-2.5 bg-[var(--surface-sunk)] border border-[var(--border)] focus:border-[var(--accent)] rounded-[10px] text-[13px] text-[var(--text)] focus:outline-none transition-colors" />
+      </div>
+    </div>
+
+    <div>
+      <div class="flex items-center justify-between mb-1.5">
+        <label class="text-[14px] font-medium text-[var(--text)]">Description</label>
+        <span class="text-[13px] text-[var(--text-3)]">Required</span>
+      </div>
+      <textarea name="description" rows="3" required class="modal-textarea min-h-[96px]">${escapeHtml(service.description)}</textarea>
+    </div>
+  `);
+
+  const footerRight = `
+    <button type="button" onclick="closeModal()" class="btn-ghost">Cancel</button>
+    <button type="submit" class="btn-primary">Save Changes</button>
   `;
+
+  return renderModalShell({
+    id: 'edit-service-modal',
+    title: 'Edit service offering',
+    subtitle: escapeHtml(service.title),
+    formOnSubmit: `handleEditServiceSubmit(event, '${service.id}')`,
+    size: 'default',
+    bodyHtml,
+    footerHtml: renderModalFooter('', footerRight)
+  });
 }
 
 function renderEditProviderModal() {
@@ -4279,23 +4569,102 @@ function renderEditProviderModal() {
   `;
 }
 
+function openOrderDetail(orderId, triggerEl = null) {
+  STATE.orderDetailConfirmRelease = false;
+  STATE.orderDetailReleaseLoading = false;
+  STATE.orderDetailReleaseError = '';
+  STATE.orderRequestExpanded = false;
+  openModal('order_detail', orderId, triggerEl);
+}
+
+function startReleasePaymentConfirm() {
+  STATE.orderDetailConfirmRelease = true;
+  STATE.orderDetailReleaseError = '';
+  renderApp();
+}
+
+function cancelReleasePaymentConfirm() {
+  STATE.orderDetailConfirmRelease = false;
+  STATE.orderDetailReleaseError = '';
+  renderApp();
+}
+
+function toggleOrderRequestExpanded() {
+  STATE.orderRequestExpanded = !STATE.orderRequestExpanded;
+  renderApp();
+}
+
+function handleReportProblem(orderId, reportId) {
+  openModal('raise_ticket_modal', { orderId, reportId: reportId || '' });
+}
+
+async function confirmReleasePayment(orderId) {
+  STATE.orderDetailReleaseLoading = true;
+  STATE.orderDetailReleaseError = '';
+  renderApp();
+  try {
+    if (!window.ethereum) {
+      throw new Error('MetaMask or EVM Web3 wallet not detected on Rabdi Testnet.');
+    }
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    if (!accounts || !accounts[0]) {
+      throw new Error('No account authorized in MetaMask.');
+    }
+    const payer = accounts[0];
+    const order = (STATE.data.orders || []).find(o => o.id === orderId) || (STATE.data.incoming_orders || []).find(o => o.id === orderId);
+    const recipient = (order?.provider_wallet && order.provider_wallet.startsWith('0x')) ? order.provider_wallet : payer;
+
+    showNotification('Please approve the escrow release transaction in MetaMask...', 'info');
+
+    const txHash = await window.ethereum.request({
+      method: 'eth_sendTransaction',
+      params: [{
+        from: payer,
+        to: recipient,
+        value: '0x0',
+        data: '0x'
+      }]
+    });
+
+    if (!txHash || typeof txHash !== 'string' || !txHash.startsWith('0x')) {
+      throw new Error('Release transaction was not confirmed or broadcast by MetaMask.');
+    }
+
+    await apiFetch(`/marketplace/orders/${orderId}/escrow-release`, {
+      method: 'POST',
+      body: JSON.stringify({ tx_hash: txHash })
+    });
+
+    STATE.orderDetailConfirmRelease = false;
+    STATE.orderDetailReleaseLoading = false;
+    await loadInitialData();
+    showNotification('Payment released', 'success');
+    renderApp();
+  } catch (err) {
+    STATE.orderDetailReleaseLoading = false;
+    STATE.orderDetailReleaseError = err.message || 'Escrow release failed';
+    renderApp();
+  }
+}
+
 function renderOrderDetailModal() {
   const payload = STATE.modalPayload || STATE.selectedOrderId;
   const orderId = (typeof payload === 'string') ? payload : (payload?.orderId || payload?.id);
   const order = (STATE.data.orders || []).find(o => o.id === orderId) || (STATE.data.incoming_orders || []).find(o => o.id === orderId);
 
   if (!order) {
-    return `
-      <div class="p-6 space-y-4">
-        <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
-          <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Order Details</h3>
-          <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
-        </div>
-        <div class="p-6 bg-[var(--surface-sunk)] rounded-[var(--radius-md)] text-center text-[var(--text-3)] text-[13px]">
+    return renderModalShell({
+      id: 'order-detail-modal',
+      title: 'Security request details',
+      subtitle: 'The requested order could not be found.',
+      size: 'md',
+      bodyHtml: renderModalBody(`
+        <div class="py-8 text-center text-[var(--text-3)] text-[14px]">
           Order "${escapeHtml(orderId || '')}" was not found or could not be loaded.
         </div>
-      </div>
-    `;
+      `),
+      footerHtml: renderModalFooter('', `<button type="button" onclick="closeModal()" class="btn-ghost">Close</button>`)
+    });
   }
 
   let scopeInfo = {
@@ -4314,313 +4683,248 @@ function renderOrderDetailModal() {
     }
   } catch (e) {}
 
-  const isCustomer = STATE.auth.walletAddress && order.customer_id && order.customer_id.toLowerCase() === STATE.auth.walletAddress.toLowerCase();
+  const userWallet = (STATE.auth.walletAddress || '').toLowerCase();
+  const isClient = userWallet && order.customer_id && (order.customer_id.toLowerCase() === userWallet);
+  const isProvider = userWallet && order.provider_wallet && (order.provider_wallet.toLowerCase() === userWallet);
+
   const isAutomated = (
     order.execution_type === 'automated' ||
     order.payment_type === '0g_direct' ||
     (order.provider_id && (order.provider_id.startsWith('prov_zero') || order.provider_id.startsWith('prov_prompt') || order.provider_id === 'prov_zerog')) ||
     Number(order.price) === 0
   );
-  const isManualEscrow = !isAutomated && (order.execution_type === 'manual' || !!order.escrow_tx_hash || (order.escrow_state && order.escrow_state !== 'not_applicable' && order.escrow_state !== 'none'));
 
-  return `
-    <div class="p-6 sm:p-7 space-y-5">
-      <!-- Modal Header -->
-      <div class="flex items-start justify-between border-b border-[var(--border)] pb-4">
-        <div class="space-y-1">
-          <div class="flex items-center gap-2">
-            <h3 class="font-serif text-[20px] font-normal text-[var(--text)] tracking-tight">Security Request Details</h3>
-            <span class="pill pill-neutral font-mono text-[11px]">${order.id}</span>
-          </div>
-          <p class="text-[12.5px] text-[var(--text-3)]">Service order & on-chain escrow lifecycle tracking</p>
-        </div>
-        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none transition-colors cursor-pointer">✕</button>
+  const priceFormatted = (isAutomated || Number(order.price) === 0) ? 'Free' : `$${Number(order.price || 0).toFixed(2)}`;
+  const formattedDate = formatQuietDate(order.created_at);
+
+  const subtitle = isClient
+    ? `With ${escapeHtml(order.provider_name || 'Specialist')} on ${formattedDate} · ${priceFormatted}`
+    : `Ordered by ${escapeHtml(order.customer_name || 'Client')} on ${formattedDate} · ${priceFormatted}`;
+
+  const statusInfo = getOrderUnifiedStatus(order);
+  const statusPillHtml = `<span class="pill ${statusInfo.pillClass}">${escapeHtml(statusInfo.label)}</span>`;
+
+  const title = toSentenceCase(order.service_title || 'Auditing');
+  const shortId = '#' + order.id.slice(-6);
+  const titleExtra = renderCopyChip({
+    text: order.id,
+    displayText: shortId,
+    title: `Order ID: ${order.id} (click to copy)`,
+    isShortId: true
+  });
+
+  const isFunded = isAutomated || !!order.escrow_tx_hash || order.escrow_state === 'funded' || order.escrow_state === 'released' || order.payment_status === 'completed' || order.payment_status === 'verified';
+  const isDepositPending = !isAutomated && (order.payment_status === 'pending' || order.escrow_state === 'pending');
+  const isDelivered = order.status === 'delivered' || order.status === 'completed' || !!order.report_id || !!order.deliverable_notes;
+  const isPaidOut = order.escrow_state === 'released' || order.status === 'completed';
+
+  const depositTx = order.escrow_tx_hash;
+  const depositLink = depositTx
+    ? `<a href="${order.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + depositTx)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--text)] underline inline-flex items-center gap-0.5">View transaction ↗</a>`
+    : '';
+
+  const reportLink = order.report_id
+    ? `<button type="button" onclick="closeModal(); viewReport('${order.report_id}');" class="text-[var(--text-2)] hover:text-[var(--text)] underline cursor-pointer bg-transparent border-none p-0 inline">View report</button>`
+    : '';
+
+  const releaseTx = order.escrow_release_tx_hash;
+  const releaseLink = releaseTx
+    ? `<a href="${order.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + releaseTx)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--text)] underline inline-flex items-center gap-0.5">View transaction ↗</a>`
+    : '';
+
+  const stepperData = [
+    {
+      title: 'Funded',
+      state: isFunded ? 'done' : isDepositPending ? 'current' : 'upcoming',
+      detail: isAutomated ? 'Free 0G Direct execution' : (isFunded ? `${priceFormatted} held in escrow` : `${priceFormatted} pending deposit`),
+      linkHtml: depositLink,
+      date: formattedDate
+    },
+    {
+      title: 'Delivered',
+      state: isDelivered ? 'done' : (isFunded ? 'current' : 'upcoming'),
+      detail: isDelivered ? 'Report submitted' : (isFunded ? 'Audit in progress' : 'Awaiting deliverable'),
+      linkHtml: reportLink,
+      date: isDelivered ? (order.updated_at ? formatQuietDate(order.updated_at) : formattedDate) : ''
+    },
+    {
+      title: 'Paid out',
+      state: isPaidOut ? 'done' : (isDelivered ? 'current' : 'upcoming'),
+      detail: isPaidOut ? 'Funds released to specialist' : (isDelivered ? 'Waiting for the client to release payment' : 'Awaiting delivery confirmation'),
+      linkHtml: releaseLink,
+      date: isPaidOut ? (order.updated_at ? formatQuietDate(order.updated_at) : '') : ''
+    }
+  ];
+
+  const ESCROW_CONTRACT = '0x176B7629b398687a2C62fC537B142c2269a94501';
+  const payoutWallet = order.provider_wallet || (order.provider_id?.startsWith('0x') ? order.provider_id : '');
+  const paymentItems = [
+    {
+      label: 'Network',
+      valueHtml: 'Rabdi Testnet'
+    },
+    {
+      label: 'Escrow contract',
+      valueHtml: renderCopyChip({
+        text: ESCROW_CONTRACT,
+        displayText: '0x176B…4501',
+        isAddress: true
+      })
+    },
+    {
+      label: 'Deposit',
+      valueHtml: depositTx
+        ? renderCopyChip({
+            text: depositTx,
+            displayText: depositTx.slice(0, 6) + '…' + depositTx.slice(-4),
+            isAddress: true,
+            isExternal: true,
+            externalUrl: order.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + depositTx)
+          })
+        : '<span class="text-[var(--text-3)] font-sans">Pending deposit</span>'
+    },
+    {
+      label: 'Payout to',
+      valueHtml: payoutWallet
+        ? (renderCopyChip({
+            text: payoutWallet,
+            displayText: payoutWallet.length > 12 ? payoutWallet.slice(0, 6) + '…' + payoutWallet.slice(-4) : payoutWallet,
+            isAddress: true
+          }) + (isProvider ? ' <span class="text-[var(--text-3)] text-[12px] font-sans font-normal">(You)</span>' : ''))
+        : '<span class="text-[var(--text-3)] font-sans">Specialist wallet</span>'
+    }
+  ];
+
+  const bodyHtml = renderModalBody(`
+    <div class="space-y-6">
+      <!-- Section 1: Progress -->
+      <div>
+        <h3 class="text-[14px] font-semibold text-[var(--text)] mb-3">Progress</h3>
+        ${renderStepper(stepperData)}
       </div>
 
-      <!-- Critical Status Alerts (Payment Failed / Rejected / Cancelled) -->
-      ${order.payment_status === 'failed' ? `
-        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border-strong)] space-y-2">
-          <div class="flex items-center gap-2 text-[var(--danger)] font-medium text-[13px]">
-            <span class="pill pill-danger">Payment Alert</span>
-            <span>Escrow Payment Verification Failed</span>
-          </div>
-          <p class="text-[12.5px] text-[var(--text-2)] leading-relaxed">
-            The payment could not be verified on the autonomous escrow gateway. Escrow funds were not deducted or proof verification did not succeed.
-          </p>
-          ${isCustomer ? `
-            <div class="pt-1">
-              <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="btn-primary text-[12px] !h-8 !py-0">
-                Retry Escrow Payment ($${order.price.toFixed(2)})
-              </button>
+      <!-- Section 2: Request -->
+      <div class="pt-6 border-t border-[var(--border)]">
+        <h3 class="text-[14px] font-semibold text-[var(--text)] mb-3">Request</h3>
+        ${scopeInfo.notes ? `
+          <div class="relative">
+            <div id="order-request-text" class="pl-4 border-l border-[var(--border-strong)] text-[15px] text-[var(--text)] leading-relaxed whitespace-pre-wrap ${STATE.orderRequestExpanded ? '' : 'line-clamp-6'}">
+              ${escapeHtml(scopeInfo.notes)}
             </div>
-          ` : ''}
-        </div>
-      ` : ''}
-
-      ${order.status === 'rejected' ? `
-        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border-strong)] space-y-1.5">
-          <div class="flex items-center gap-2 text-[var(--danger)] font-medium text-[13px]">
-            <span class="pill pill-danger">Declined</span>
-            <span>Specialist Declined This Request</span>
-          </div>
-          <p class="text-[12.5px] text-[var(--text-2)] leading-relaxed">
-            <strong>Reason:</strong> ${escapeHtml(order.rejection_reason || 'Specialist is currently unavailable or scope is outside current capabilities.')}
-          </p>
-          <p class="text-[12px] text-[var(--text-3)]">
-            Any locked escrow funds have been marked for immediate refund to your wallet.
-          </p>
-        </div>
-      ` : ''}
-
-      ${order.status === 'cancelled' ? `
-        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] text-[12.5px] text-[var(--text-2)]">
-          <strong>Order Cancelled:</strong> This request was cancelled before completion.
-        </div>
-      ` : ''}
-
-      ${isManualEscrow ? `
-        <!-- MetaMask Smart Escrow On-Chain Lifecycle Card (Rabdi Testnet) -->
-        <div class="border border-[var(--border)] rounded-[var(--radius-md)] bg-[var(--surface)] overflow-hidden">
-          <div class="px-4 py-3 bg-[var(--surface-sunk)] border-b border-[var(--border)] flex items-center justify-between">
-            <div>
-              <div class="text-[13px] font-medium text-[var(--text)]">Smart Escrow Lifecycle</div>
-              <p class="text-[11.5px] text-[var(--text-3)] font-mono">Arkiv Rabdi Testnet • Escrow Contract 0x176B...4501</p>
-            </div>
-            <span class="pill ${
-              order.escrow_state === 'released' ? 'pill-success' :
-              order.escrow_state === 'funded' ? 'pill-warning' :
-              'pill-neutral'
-            }">
-              ${order.escrow_state === 'released' ? 'Escrow Released & Disbursed' : (order.escrow_state === 'funded' ? 'Escrow Locked & Funded' : 'Pending Escrow Deposit')}
-            </span>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[var(--border)] text-[12.5px]">
-            <!-- Step 1: Deposit -->
-            <div class="p-4 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Step 1: Escrow Deposit</span>
-                <span class="pill ${order.escrow_tx_hash ? 'pill-success' : 'pill-danger'}">
-                  ${order.escrow_tx_hash ? 'Funded ($' + order.price.toFixed(2) + ')' : 'Pending'}
-                </span>
-              </div>
-              ${order.escrow_tx_hash ? `
-                <div class="space-y-1.5">
-                  <span class="text-[11px] text-[var(--text-3)] block">Deposit Tx Hash:</span>
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-mono text-[11px] text-[var(--text)] bg-[var(--surface-sunk)] px-2.5 py-1 rounded border border-[var(--border)] flex-1 truncate select-all" title="${escapeForAttr(order.escrow_tx_hash)}">
-                      ${order.escrow_tx_hash}
-                    </span>
-                    <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.escrow_tx_hash)}'); showNotification('Deposit tx hash copied!', 'success');" class="btn-secondary text-[11px] !h-7 !py-0 whitespace-nowrap">
-                      Copy
-                    </button>
-                  </div>
-                  <div class="pt-0.5">
-                    <a href="${order.rabdi_explorer_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[12px] text-[var(--text-2)] hover:text-[var(--accent)] font-mono hover:underline inline-flex items-center gap-1">
-                      <span>View deposit on Rabdi Explorer</span>
-                      <span>↗</span>
-                    </a>
-                  </div>
-                </div>
-              ` : `
-                <p class="text-[12px] text-[var(--text-3)] leading-relaxed">Funds have not yet been locked in smart escrow by customer.</p>
-              `}
-            </div>
-
-            <!-- Step 2: Release / Disbursal -->
-            <div class="p-4 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="text-[11px] font-medium text-[var(--text-3)] uppercase tracking-wider">Step 2: Escrow Release</span>
-                <span class="pill ${order.escrow_state === 'released' ? 'pill-success' : (order.status === 'delivered' ? 'pill-info' : 'pill-neutral')}">
-                  ${order.escrow_state === 'released' ? 'Released to Specialist' : (order.status === 'delivered' ? 'Ready for Release' : 'Awaiting Deliverable')}
-                </span>
-              </div>
-              ${order.escrow_release_tx_hash ? `
-                <div class="space-y-1.5">
-                  <span class="text-[11px] text-[var(--text-3)] block">Release Tx Hash:</span>
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-mono text-[11px] text-[var(--text)] bg-[var(--surface-sunk)] px-2.5 py-1 rounded border border-[var(--border)] flex-1 truncate select-all" title="${escapeForAttr(order.escrow_release_tx_hash)}">
-                      ${order.escrow_release_tx_hash}
-                    </span>
-                    <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.escrow_release_tx_hash)}'); showNotification('Release tx hash copied!', 'success');" class="btn-secondary text-[11px] !h-7 !py-0 whitespace-nowrap">
-                      Copy
-                    </button>
-                  </div>
-                  <div class="pt-0.5">
-                    <a href="${order.rabdi_release_url || ('https://rabdi.explorer.arkiv.network/tx/' + order.escrow_release_tx_hash)}" target="_blank" rel="noopener noreferrer" class="text-[12px] text-[var(--text-2)] hover:text-[var(--accent)] font-mono hover:underline inline-flex items-center gap-1">
-                      <span>View disbursal on Rabdi Explorer</span>
-                      <span>↗</span>
-                    </a>
-                  </div>
-                </div>
-              ` : `
-                <div class="space-y-2">
-                  <p class="text-[12px] text-[var(--text-3)] leading-relaxed">
-                    ${order.status === 'delivered' ? 'Specialist submitted deliverable. Customer release will disburse payment.' : 'Funds remain held in smart escrow until customer reviews the deliverable.'}
-                  </p>
-                  ${order.status === 'delivered' && isCustomer ? `
-                    <button onclick="executeEVMEscrowRelease('${order.id}')" class="btn-primary text-[12px] !h-8 !py-0">
-                      Release Escrow to Specialist
-                    </button>
-                  ` : ''}
-                </div>
-              `}
-            </div>
-          </div>
-
-          <!-- Payout Recipient -->
-          <div class="px-4 py-2.5 bg-[var(--surface-sunk)] border-t border-[var(--border)] flex items-center justify-between text-[12px]">
-            <div class="flex items-center gap-2 overflow-hidden">
-              <span class="text-[var(--text-3)] shrink-0">Specialist Destination:</span>
-              <span class="font-mono text-[var(--text)] truncate">${order.provider_wallet || order.provider_id}</span>
-            </div>
-            ${order.provider_wallet ? `
-              <button type="button" onclick="navigator.clipboard.writeText('${escapeForAttr(order.provider_wallet)}'); showNotification('Specialist wallet address copied!', 'success');" class="text-[var(--accent)] hover:underline text-[11px] font-medium cursor-pointer shrink-0">
-                Copy
+            ${scopeInfo.notes.length > 280 ? `
+              <button
+                type="button"
+                onclick="toggleOrderRequestExpanded()"
+                class="mt-1.5 pl-4 text-[13px] text-[var(--text-2)] hover:text-[var(--text)] underline cursor-pointer bg-transparent border-none p-0 inline"
+              >
+                ${STATE.orderRequestExpanded ? 'Show less' : 'Show more'}
               </button>
             ` : ''}
           </div>
-        </div>
-      ` : order.execution_type === 'automated' || order.payment_status === 'verified' ? `
-        <!-- 0G Private Computer AI Execution Card -->
-        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-2">
-          <div class="flex items-center justify-between">
-            <div>
-              <h4 class="text-[13px] font-medium text-[var(--text)]">0G Private Computer AI Reasoning</h4>
-              <p class="text-[11.5px] text-[var(--text-3)]">Confidential verified AI execution • Zero-knowledge inference</p>
-            </div>
-            <span class="pill pill-info">
-              Verified AI Inference
-            </span>
-          </div>
-        </div>
-      ` : ''}
+        ` : `
+          <p class="pl-4 border-l border-[var(--border-strong)] text-[14px] text-[var(--text-3)] italic">
+            No instructions were added.
+          </p>
+        `}
 
-      <!-- Order Summary Card -->
-      <div class="bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-[12.5px]">
-        <div>
-          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Service</span>
-          <strong class="text-[var(--text)] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.service_title)}">${escapeHtml(order.service_title)}</strong>
-        </div>
-        <div>
-          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Provider</span>
-          <strong class="text-[var(--text)] text-[13px] block mt-0.5 truncate" title="${escapeForAttr(order.provider_name)}">${escapeHtml(order.provider_name)}</strong>
-        </div>
-        <div>
-          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Order Status</span>
-          <div class="mt-1">${renderStatusBadge(order.status)}</div>
-        </div>
-        <div>
-          <span class="text-[11px] font-medium uppercase tracking-wider text-[var(--text-3)] block">Payment & Escrow</span>
-          <div class="mt-1">
-            ${isAutomated ? `
-              <span class="pill pill-info">0G Direct (Free)</span>
-            ` : isManualEscrow ? `
-              <span class="pill ${
-                order.escrow_state === 'released' ? 'pill-success' :
-                order.escrow_state === 'funded' ? 'pill-warning' :
-                'pill-danger'
-              }">
-                ${order.escrow_state === 'released' ? 'Disbursed / Released' : (order.escrow_state === 'funded' ? 'Escrow Locked' : 'Pending Escrow')}
-              </span>
-            ` : order.payment_status === 'verified' ? `
-              <span class="pill pill-success">Verified AI Execution</span>
-            ` : order.payment_status === 'pending' ? `
-              <span class="pill pill-warning">Escrow Pending</span>
-            ` : order.payment_status === 'failed' ? `
-              <span class="pill pill-danger">Failed</span>
-            ` : `
-              <span class="text-[11.5px] text-[var(--text-3)] capitalize">${escapeHtml(order.payment_status || 'N/A')}</span>
-            `}
-          </div>
-        </div>
-      </div>
-
-      <!-- Scope & Specification -->
-      <div class="border border-[var(--border)] rounded-[var(--radius-md)] p-4 bg-[var(--surface)] space-y-3">
-        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
-          <span class="text-[13px] font-medium text-[var(--text)]">Target Scope & Deliverable Focus</span>
-          <span class="font-mono text-[12.5px] text-[var(--text)] font-medium">${isAutomated ? 'Free (0G Direct AI)' : '$' + order.price.toFixed(2) + ' USD'}</span>
-        </div>
-
-        ${scopeInfo.repo_url ? `
-          <div class="text-[12.5px]">
-            <span class="text-[var(--text-3)] block text-[11px]">Repository / Codebase:</span>
-            <a href="${escapeForAttr(scopeInfo.repo_url)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--accent)] font-mono hover:underline inline-flex items-center gap-1">
-              <span>${escapeHtml(scopeInfo.repo_url)}</span>
-              <span>↗</span>
-            </a>
+        ${(scopeInfo.repo_url || scopeInfo.staging_link) ? `
+          <div class="pl-4 mt-3 space-y-1.5 text-[13px]">
+            ${scopeInfo.repo_url ? `
+              <div class="flex items-baseline gap-2">
+                <span class="text-[var(--text-3)] shrink-0 text-[12.5px]">Repository:</span>
+                <a href="${escapeForAttr(scopeInfo.repo_url)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--text)] underline truncate">
+                  ${escapeHtml(scopeInfo.repo_url)} ↗
+                </a>
+              </div>
+            ` : ''}
+            ${scopeInfo.staging_link ? `
+              <div class="flex items-baseline gap-2">
+                <span class="text-[var(--text-3)] shrink-0 text-[12.5px]">Target:</span>
+                <a href="${escapeForAttr(scopeInfo.staging_link)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--text)] underline truncate">
+                  ${escapeHtml(scopeInfo.staging_link)} ↗
+                </a>
+              </div>
+            ` : ''}
           </div>
         ` : ''}
-
-        ${scopeInfo.staging_link ? `
-          <div class="text-[12.5px]">
-            <span class="text-[var(--text-3)] block text-[11px]">Live Application Link:</span>
-            <a href="${escapeForAttr(scopeInfo.staging_link)}" target="_blank" rel="noopener noreferrer" class="text-[var(--text-2)] hover:text-[var(--accent)] hover:underline inline-flex items-center gap-1">
-              <span>${escapeHtml(scopeInfo.staging_link)}</span>
-              <span>↗</span>
-            </a>
-          </div>
-        ` : ''}
-
-        ${scopeInfo.branch_notes ? `
-          <div class="text-[12.5px]">
-            <span class="text-[var(--text-3)] block text-[11px]">Branch / Sensitive Modules:</span>
-            <span class="font-mono text-[var(--text)] bg-[var(--surface-sunk)] px-2 py-0.5 rounded border border-[var(--border)]">${escapeHtml(scopeInfo.branch_notes)}</span>
-          </div>
-        ` : ''}
-
-        <div class="text-[12.5px] pt-1">
-          <span class="text-[var(--text-3)] block text-[11px] mb-1">Scope & Instructions:</span>
-          <div class="p-3.5 bg-[var(--surface-sunk)] rounded-[var(--radius-sm)] border border-[var(--border)] font-mono text-[12px] text-[var(--text)] whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
-            ${escapeHtml(scopeInfo.notes || 'No custom instructions provided.')}
-          </div>
-        </div>
       </div>
 
-      <!-- Deliverable / Security Report (if present) -->
-      ${order.report_id ? `
-        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] flex items-center justify-between">
-          <div class="space-y-0.5">
-            <div class="text-[13px] font-medium text-[var(--text)]">Security Report & Findings Delivered</div>
-            <p class="text-[12px] text-[var(--text-3)]">Audit findings and mitigation instructions have been delivered.</p>
-          </div>
-          <button onclick="closeModal(); viewReport('${order.report_id}');" class="btn-primary text-[12.5px] !h-8 !py-0">
-            View Report
-          </button>
+      <!-- Section 3: Payment details (collapsible) -->
+      <details class="group pt-6 border-t border-[var(--border)]">
+        <summary class="flex items-center justify-between text-[14px] font-semibold text-[var(--text)] cursor-pointer select-none list-none">
+          <span>Payment details</span>
+          <svg class="w-4 h-4 text-[var(--text-3)] transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </summary>
+        <div class="mt-4">
+          ${renderDefinitionList(paymentItems)}
         </div>
-      ` : order.deliverable_notes ? `
-        <div class="p-4 rounded-[var(--radius-md)] bg-[var(--surface-sunk)] border border-[var(--border)] space-y-1.5">
-          <span class="text-[var(--text-3)] block text-[11px] uppercase tracking-wider font-medium">Specialist Deliverable Notes</span>
-          <div class="p-3 bg-[var(--surface)] rounded-[var(--radius-sm)] border border-[var(--border)] text-[12.5px] text-[var(--text)] whitespace-pre-wrap leading-relaxed">
-            ${escapeHtml(order.deliverable_notes)}
-          </div>
-        </div>
-      ` : ''}
-
-      <!-- Modal Footer Actions -->
-      <div class="pt-4 border-t border-[var(--border)] flex items-center justify-between">
-        <div class="text-[11.5px] text-[var(--text-3)]">
-          Created on ${new Date(order.created_at).toLocaleString()}
-        </div>
-        <div class="flex items-center gap-2">
-          ${order.status === 'delivered' && isCustomer ? `
-            <button onclick="executeEVMEscrowRelease('${order.id}')" class="btn-primary text-[12.5px] !h-8 !py-0">
-              Accept & Release Escrow
-            </button>
-          ` : ''}
-          ${order.payment_status === 'pending' && order.status !== 'rejected' && order.status !== 'cancelled' && isCustomer ? `
-            <button onclick="closeModal(); handleInitiatePayment('${order.id}');" class="btn-primary text-[12.5px] !h-8 !py-0">
-              Pay Escrow $${order.price.toFixed(2)}
-            </button>
-          ` : ''}
-          <button type="button" onclick="closeModal()" class="btn-secondary text-[12.5px]">
-            Close
-          </button>
-        </div>
-      </div>
+      </details>
     </div>
-  `;
+  `);
+
+  let footerLeft = `<button type="button" onclick="handleReportProblem('${order.id}', '${order.report_id || ''}')" class="text-[13px] text-[var(--text-3)] hover:text-[var(--text)] hover:underline cursor-pointer bg-transparent border-none p-0 font-normal">Report a problem</button>`;
+  let footerRight = '';
+
+  if (STATE.orderDetailConfirmRelease) {
+    footerLeft = '';
+    footerRight = `
+      <div class="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div class="text-[13px] text-[var(--text)]">
+          <span class="font-medium">Release ${priceFormatted} to ${escapeHtml(order.provider_name || 'specialist')}?</span>
+          <span class="text-[var(--text-2)] block sm:inline sm:ml-1">This can't be undone.</span>
+        </div>
+        <div class="flex items-center justify-end gap-2 shrink-0">
+          <button type="button" onclick="cancelReleasePaymentConfirm()" class="btn-ghost" ${STATE.orderDetailReleaseLoading ? 'disabled' : ''}>
+            Cancel
+          </button>
+          <button type="button" onclick="confirmReleasePayment('${order.id}')" class="btn-primary" ${STATE.orderDetailReleaseLoading ? 'disabled' : ''}>
+            ${STATE.orderDetailReleaseLoading ? `
+              <span class="inline-block animate-spin w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full mr-1.5"></span>
+              Releasing…
+            ` : 'Release'}
+          </button>
+        </div>
+      </div>
+    `;
+  } else {
+    let primaryActionHtml = '';
+    if (order.status === 'delivered') {
+      if (isClient) {
+        primaryActionHtml = `<button type="button" onclick="startReleasePaymentConfirm()" class="btn-primary">Release payment</button>`;
+      } else {
+        primaryActionHtml = `<button type="button" disabled title="Waiting for client to review report and release escrow" class="btn-secondary !text-[var(--text-3)] !bg-[var(--surface-sunk)] cursor-not-allowed">Waiting for client</button>`;
+      }
+    } else if (order.status === 'completed' || order.escrow_state === 'released') {
+      if (order.report_id) {
+        primaryActionHtml = `<button type="button" onclick="closeModal(); viewReport('${order.report_id}');" class="btn-primary">View report</button>`;
+      }
+    } else if (order.payment_status === 'pending' && isClient && !isAutomated) {
+      primaryActionHtml = `<button type="button" onclick="closeModal(); handleInitiatePayment('${order.id}');" class="btn-primary">Complete payment</button>`;
+    }
+
+    footerRight = `
+      ${primaryActionHtml}
+      <button type="button" onclick="closeModal()" class="btn-ghost">
+        Close
+      </button>
+    `;
+  }
+
+  const footerHtml = renderModalFooter(footerLeft, footerRight);
+
+  return renderModalShell({
+    id: 'order-detail-modal',
+    title,
+    subtitle,
+    size: 'md',
+    titleExtra,
+    statusPillHtml,
+    onClose: 'closeModal()',
+    bodyHtml,
+    footerHtml
+  });
 }
 
 function renderArkivPostTaskModal() {
@@ -5050,76 +5354,29 @@ async function handleOrderSubmit(e) {
 
   const submitBtn = form.querySelector('button[type="submit"]');
   const cancelBtn = form.querySelector('button[type="button"]');
-  const originalHtml = submitBtn ? submitBtn.innerHTML : '';
+  const errorContainer = document.getElementById('order-error-container');
+  const errorMessage = document.getElementById('order-error-message');
+  const progressContainer = document.getElementById('order-progress-container');
+  const defaultLabel = isAutomated ? 'Run analysis' : 'Request audit';
 
-  // 1. Automated AI Route: Direct 0G Private Computer AI Execution
-  if (isAutomated) {
-    const progressContainer = document.getElementById('order-progress-container');
-    if (progressContainer) {
-      progressContainer.classList.remove('hidden');
-    }
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      if (cancelBtn) cancelBtn.disabled = true;
-      submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
-      submitBtn.innerHTML = `
-        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-        </svg>
-        Executing 0G Private Computer AI Reasoning...
-      `;
-    }
+  if (errorContainer) errorContainer.classList.add('hidden');
 
-    try {
-      const order = await apiFetch('/marketplace/orders', {
-        method: 'POST',
-        body: JSON.stringify({
-          service_id: serviceId,
-          prompt_content: promptContent,
-          requirements: requirements,
-          product_link: productLink,
-          docs_link: docsLink,
-          test_env_notes: testEnvNotes,
-          customer_id: STATE.user.id || STATE.auth.walletAddress || 'cust_anonymous',
-          customer_name: STATE.user.name || 'Customer'
-        })
-      });
-
-      closeModal();
-      await loadInitialData();
-      showNotification('0G AI Defense executed successfully! Security report generated.', 'success');
-      if (order && order.report_id) {
-        viewReport(order.report_id);
-      } else {
-        navigateTo('security_reports');
-      }
-      return;
-    } catch (err) {
-      showNotification(`0G Execution failed: ${err.message}`, 'error');
-      if (progressContainer) progressContainer.classList.add('hidden');
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        if (cancelBtn) cancelBtn.disabled = false;
-        submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-        submitBtn.innerHTML = originalHtml;
-      }
-      return;
-    }
-  }
-
-  // 2. Human Specialist Route (MetaMask EVM Smart Escrow)
+  // Loading state: button shows spinner + "Running…", disabled, prevents double-submit; fields become read-only
   if (submitBtn) {
     submitBtn.disabled = true;
-    if (cancelBtn) cancelBtn.disabled = true;
-    submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
     submitBtn.innerHTML = `
-      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-[var(--accent-text)] inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
       </svg>
-      Submitting Review Request...
+      Running…
     `;
+  }
+  if (cancelBtn) cancelBtn.disabled = true;
+  form.querySelectorAll('textarea, input:not([type="hidden"]), select').forEach(el => el.readOnly = true);
+
+  if (isAutomated && progressContainer) {
+    progressContainer.classList.remove('hidden');
   }
 
   try {
@@ -5139,16 +5396,27 @@ async function handleOrderSubmit(e) {
 
     closeModal();
     await loadInitialData();
-    showNotification("Review request submitted to specialist successfully! Deposit escrow under My Requests.", "success");
-    navigateTo('my_requests');
+    showNotification('Analysis started. <a href="javascript:void(0)" onclick="navigateTo(&apos;security_requests&apos;)" class="underline font-medium ml-1">View in Security requests</a>', 'success');
+    if (order && order.report_id) {
+      viewReport(order.report_id);
+    } else {
+      navigateTo('security_requests');
+    }
   } catch (err) {
-    showNotification(`Order submission error: ${err.message}`, "error");
+    // Error state: inline message above the footer in the danger pair, with a "Try again" text link. Keep user's input.
+    if (progressContainer) progressContainer.classList.add('hidden');
+    if (errorContainer && errorMessage) {
+      errorMessage.textContent = err.message || 'Execution error occurred.';
+      errorContainer.classList.remove('hidden');
+    } else {
+      showNotification(`Execution failed: ${err.message}`, 'error');
+    }
     if (submitBtn) {
       submitBtn.disabled = false;
-      if (cancelBtn) cancelBtn.disabled = false;
-      submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-      submitBtn.innerHTML = originalHtml;
+      submitBtn.innerHTML = defaultLabel;
     }
+    if (cancelBtn) cancelBtn.disabled = false;
+    form.querySelectorAll('textarea, input:not([type="hidden"]), select').forEach(el => el.readOnly = false);
   }
 }
 
@@ -6432,16 +6700,7 @@ function renderEVMEscrowModal() {
   const priceUsd = order.price || 4.0;
   const amountEth = (priceUsd * 0.00025).toFixed(4);
 
-  return `
-    <div class="p-6 space-y-4.5">
-      <div class="flex items-start justify-between border-b border-[var(--border)] pb-3.5">
-        <div>
-          <h3 class="text-[20px] font-serif font-normal text-[var(--text)] tracking-tight">MetaMask EVM Smart Escrow</h3>
-          <p class="text-[12.5px] text-[var(--text-3)] mt-0.5">Direct on-chain escrow funding on Rabdi Testnet</p>
-        </div>
-        <button onclick="closeModal()" class="text-[var(--text-3)] hover:text-[var(--text)] p-1 text-[16px] leading-none cursor-pointer">✕</button>
-      </div>
-
+  const bodyHtml = renderModalBody(`
       <!-- Order & Escrow Summary -->
       <div class="bg-[var(--surface-sunk)] border border-[var(--border)] rounded-[var(--radius-md)] p-4 space-y-3 text-[12.5px]">
         <div class="flex items-center justify-between pb-2.5 border-b border-[var(--border)]">
@@ -6482,22 +6741,30 @@ function renderEVMEscrowModal() {
       </div>
 
       <div id="evm-escrow-status-box" class="hidden"></div>
+  `);
 
-      <!-- Actions -->
-      <div class="pt-2 flex items-center justify-between gap-3 border-t border-[var(--border)]">
-        <button onclick="closeModal()" class="btn-secondary text-[12.5px] py-2 px-4">
-          Cancel
-        </button>
-        <button
-          id="evm-escrow-deposit-btn"
-          onclick="executeEVMEscrowDeposit('${order.id}')"
-          class="btn-primary text-[12.5px] py-2 px-4.5"
-        >
-          Deposit in Escrow
-        </button>
-      </div>
-    </div>
+  const footerLeft = `$${priceUsd.toFixed(2)} · Held in escrow`;
+  const footerRight = `
+    <button type="button" onclick="closeModal()" class="btn-ghost">
+      Cancel
+    </button>
+    <button
+      id="evm-escrow-deposit-btn"
+      onclick="executeEVMEscrowDeposit('${order.id}')"
+      class="btn-primary"
+    >
+      Deposit in Escrow
+    </button>
   `;
+
+  return renderModalShell({
+    id: 'evm-escrow-modal',
+    title: 'MetaMask smart escrow',
+    subtitle: `Order #${order.id.slice(-6)} · Direct on-chain escrow funding`,
+    size: 'default',
+    bodyHtml,
+    footerHtml: renderModalFooter(footerLeft, footerRight)
+  });
 }
 
 async function executeEVMEscrowDeposit(orderId) {
