@@ -616,8 +616,8 @@ class MarketplaceService:
 
     def update_service(self, service_id: str, data: ServiceUpdate, provider_id: str) -> ServiceResponse:
         service = self.get_service(service_id)
-        if not service:
-            raise ValueError(f"Service '{service_id}' not found.")
+        if not service or not service.is_active:
+            raise ValueError(f"Service '{service_id}' not found or is no longer active.")
 
         provider = self.get_provider(service.provider_id)
         if provider and provider.is_platform_managed:
@@ -668,8 +668,8 @@ class MarketplaceService:
 
     def delete_service(self, service_id: str, provider_id: str) -> bool:
         service = self.get_service(service_id)
-        if not service:
-            raise ValueError(f"Service '{service_id}' not found.")
+        if not service or not service.is_active:
+            raise ValueError(f"Service '{service_id}' not found or is no longer active.")
 
         provider = self.get_provider(service.provider_id)
         if provider and provider.is_platform_managed:
@@ -682,7 +682,20 @@ class MarketplaceService:
 
         conn = self.db._get_connection()
         with conn:
-            conn.execute("DELETE FROM services WHERE id = ?", (service_id,))
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM orders WHERE service_id = ?", (service_id,))
+            row = cursor.fetchone()
+            count = 0
+            if row:
+                count = row["count"] if hasattr(row, "__getitem__") and not isinstance(row, (tuple, list)) else row[0]
+
+            if count > 0:
+                conn.execute("UPDATE services SET is_active = 0 WHERE id = ?", (service_id,))
+            else:
+                try:
+                    conn.execute("DELETE FROM services WHERE id = ?", (service_id,))
+                except Exception:
+                    conn.execute("UPDATE services SET is_active = 0 WHERE id = ?", (service_id,))
         return True
 
     # -----------------------------------------------------------------------
@@ -701,8 +714,8 @@ class MarketplaceService:
         customer_name: str = "Francis"
     ) -> OrderResponse:
         service = self.get_service(service_id)
-        if not service:
-            raise ValueError(f"Service '{service_id}' not found.")
+        if not service or not service.is_active:
+            raise ValueError(f"Service '{service_id}' not found or is no longer active.")
 
         conn = self.db._get_connection()
         order_id = f"ord_{uuid.uuid4().hex[:8]}"

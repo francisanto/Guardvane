@@ -531,6 +531,10 @@ input::placeholder, textarea::placeholder {
   animation: modalSlideIn 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.modal-shell-md {
+  width: min(640px, calc(100vw - 32px));
+}
+
 .modal-shell-wide {
   width: min(720px, calc(100vw - 32px));
 }
